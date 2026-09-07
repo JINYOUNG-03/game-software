@@ -1,9 +1,9 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "C:\\Users\\\uC815\uC9C4\uC601\\Downloads\\BaseProject_SE\\",
+  "WorkspaceRootPath": "C:\\Users\\\uC815\uC9C4\uC601\\OneDrive\\\uBC14\uD0D5 \uD654\uBA74\\game software\\BaseProject_SE\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{25179D6C-FA85-4619-8EDB-AC241382F6CA}|SimpleGame\\SimpleGame.vcxproj|C:\\Users\\\uC815\uC9C4\uC601\\Downloads\\BaseProject_SE\\SimpleGame\\Renderer.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "AbsoluteMoniker": "D:0:0:{25179D6C-FA85-4619-8EDB-AC241382F6CA}|SimpleGame\\SimpleGame.vcxproj|C:\\Users\\\uC815\uC9C4\uC601\\OneDrive\\\uBC14\uD0D5 \uD654\uBA74\\game software\\BaseProject_SE\\SimpleGame\\Renderer.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{25179D6C-FA85-4619-8EDB-AC241382F6CA}|SimpleGame\\SimpleGame.vcxproj|solutionrelative:SimpleGame\\Renderer.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     }
   ],
@@ -28,11 +28,11 @@
               "$type": "Document",
               "DocumentIndex": 0,
               "Title": "Renderer.cpp",
-              "DocumentMoniker": "C:\\Users\\\uC815\uC9C4\uC601\\Downloads\\BaseProject_SE\\SimpleGame\\Renderer.cpp",
+              "DocumentMoniker": "C:\\Users\\\uC815\uC9C4\uC601\\OneDrive\\\uBC14\uD0D5 \uD654\uBA74\\game software\\BaseProject_SE\\SimpleGame\\Renderer.cpp",
               "RelativeDocumentMoniker": "SimpleGame\\Renderer.cpp",
-              "ToolTip": "C:\\Users\\\uC815\uC9C4\uC601\\Downloads\\BaseProject_SE\\SimpleGame\\Renderer.cpp",
+              "ToolTip": "C:\\Users\\\uC815\uC9C4\uC601\\OneDrive\\\uBC14\uD0D5 \uD654\uBA74\\game software\\BaseProject_SE\\SimpleGame\\Renderer.cpp",
               "RelativeToolTip": "SimpleGame\\Renderer.cpp",
-              "ViewState": "AgIAAJMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAJkAAAAAAAAAAAAAALEAAABNAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2026-09-07T04:41:05.912Z",
               "EditorCaption": ""
