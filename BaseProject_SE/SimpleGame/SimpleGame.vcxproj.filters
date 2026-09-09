@@ -46,6 +46,8 @@
     <None Include="Shaders\SolidRect.fs">
       <Filter>소스 파일\Shaders</Filter>
     </None>
+    <None Include="Shaders\Post.vs" />
+    <None Include="Shaders\Post.fs" />
     <None Include="Shaders\SolidRect.vs">
       <Filter>소스 파일\Shaders</Filter>
     </None>
