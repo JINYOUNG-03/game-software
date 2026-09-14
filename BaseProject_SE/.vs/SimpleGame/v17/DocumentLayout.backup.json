@@ -3,8 +3,28 @@
   "WorkspaceRootPath": "C:\\Users\\\uC815\uC9C4\uC601\\OneDrive\\\uBC14\uD0D5 \uD654\uBA74\\game software\\BaseProject_SE\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{25179D6C-FA85-4619-8EDB-AC241382F6CA}|SimpleGame\\SimpleGame.vcxproj|C:\\Users\\\uC815\uC9C4\uC601\\OneDrive\\\uBC14\uD0D5 \uD654\uBA74\\game software\\BaseProject_SE\\SimpleGame\\SimpleGame.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{25179D6C-FA85-4619-8EDB-AC241382F6CA}|SimpleGame\\SimpleGame.vcxproj|solutionrelative:SimpleGame\\SimpleGame.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{25179D6C-FA85-4619-8EDB-AC241382F6CA}|SimpleGame\\SimpleGame.vcxproj|C:\\Users\\\uC815\uC9C4\uC601\\OneDrive\\\uBC14\uD0D5 \uD654\uBA74\\game software\\BaseProject_SE\\SimpleGame\\Renderer.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{25179D6C-FA85-4619-8EDB-AC241382F6CA}|SimpleGame\\SimpleGame.vcxproj|solutionrelative:SimpleGame\\Renderer.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{25179D6C-FA85-4619-8EDB-AC241382F6CA}|SimpleGame\\SimpleGame.vcxproj|C:\\Users\\\uC815\uC9C4\uC601\\OneDrive\\\uBC14\uD0D5 \uD654\uBA74\\game software\\BaseProject_SE\\SimpleGame\\stdafx.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{25179D6C-FA85-4619-8EDB-AC241382F6CA}|SimpleGame\\SimpleGame.vcxproj|solutionrelative:SimpleGame\\stdafx.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{25179D6C-FA85-4619-8EDB-AC241382F6CA}|SimpleGame\\SimpleGame.vcxproj|C:\\Users\\\uC815\uC9C4\uC601\\OneDrive\\\uBC14\uD0D5 \uD654\uBA74\\game software\\BaseProject_SE\\SimpleGame\\targetver.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{25179D6C-FA85-4619-8EDB-AC241382F6CA}|SimpleGame\\SimpleGame.vcxproj|solutionrelative:SimpleGame\\targetver.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{25179D6C-FA85-4619-8EDB-AC241382F6CA}|SimpleGame\\SimpleGame.vcxproj|C:\\Users\\\uC815\uC9C4\uC601\\OneDrive\\\uBC14\uD0D5 \uD654\uBA74\\game software\\BaseProject_SE\\SimpleGame\\Renderer.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{25179D6C-FA85-4619-8EDB-AC241382F6CA}|SimpleGame\\SimpleGame.vcxproj|solutionrelative:SimpleGame\\Renderer.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{25179D6C-FA85-4619-8EDB-AC241382F6CA}|SimpleGame\\SimpleGame.vcxproj|C:\\Users\\\uC815\uC9C4\uC601\\OneDrive\\\uBC14\uD0D5 \uD654\uBA74\\game software\\BaseProject_SE\\SimpleGame\\stdafx.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{25179D6C-FA85-4619-8EDB-AC241382F6CA}|SimpleGame\\SimpleGame.vcxproj|solutionrelative:SimpleGame\\stdafx.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     }
   ],
   "DocumentGroupContainers": [
@@ -14,7 +34,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 2,
+          "SelectedChildIndex": 6,
           "Children": [
             {
               "$type": "Bookmark",
@@ -26,13 +46,78 @@
             },
             {
               "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "targetver.h",
+              "DocumentMoniker": "C:\\Users\\\uC815\uC9C4\uC601\\OneDrive\\\uBC14\uD0D5 \uD654\uBA74\\game software\\BaseProject_SE\\SimpleGame\\targetver.h",
+              "RelativeDocumentMoniker": "SimpleGame\\targetver.h",
+              "ToolTip": "C:\\Users\\\uC815\uC9C4\uC601\\OneDrive\\\uBC14\uD0D5 \uD654\uBA74\\game software\\BaseProject_SE\\SimpleGame\\targetver.h",
+              "RelativeToolTip": "SimpleGame\\targetver.h",
+              "ViewState": "AgIAAAAAAAAAAAAAAADwvwAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-09-14T05:40:18.589Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "Renderer.h",
+              "DocumentMoniker": "C:\\Users\\\uC815\uC9C4\uC601\\OneDrive\\\uBC14\uD0D5 \uD654\uBA74\\game software\\BaseProject_SE\\SimpleGame\\Renderer.h",
+              "RelativeDocumentMoniker": "SimpleGame\\Renderer.h",
+              "ToolTip": "C:\\Users\\\uC815\uC9C4\uC601\\OneDrive\\\uBC14\uD0D5 \uD654\uBA74\\game software\\BaseProject_SE\\SimpleGame\\Renderer.h",
+              "RelativeToolTip": "SimpleGame\\Renderer.h",
+              "ViewState": "AgIAAAAAAAAAAAAAAADwvwAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-09-14T05:40:14.28Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "stdafx.h",
+              "DocumentMoniker": "C:\\Users\\\uC815\uC9C4\uC601\\OneDrive\\\uBC14\uD0D5 \uD654\uBA74\\game software\\BaseProject_SE\\SimpleGame\\stdafx.h",
+              "RelativeDocumentMoniker": "SimpleGame\\stdafx.h",
+              "ToolTip": "C:\\Users\\\uC815\uC9C4\uC601\\OneDrive\\\uBC14\uD0D5 \uD654\uBA74\\game software\\BaseProject_SE\\SimpleGame\\stdafx.h",
+              "RelativeToolTip": "SimpleGame\\stdafx.h",
+              "ViewState": "AgIAAAAAAAAAAAAAAADwvwAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-09-14T05:40:14.468Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "stdafx.cpp",
+              "DocumentMoniker": "C:\\Users\\\uC815\uC9C4\uC601\\OneDrive\\\uBC14\uD0D5 \uD654\uBA74\\game software\\BaseProject_SE\\SimpleGame\\stdafx.cpp",
+              "RelativeDocumentMoniker": "SimpleGame\\stdafx.cpp",
+              "ToolTip": "C:\\Users\\\uC815\uC9C4\uC601\\OneDrive\\\uBC14\uD0D5 \uD654\uBA74\\game software\\BaseProject_SE\\SimpleGame\\stdafx.cpp",
+              "RelativeToolTip": "SimpleGame\\stdafx.cpp",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-09-14T05:38:26.71Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "SimpleGame.cpp",
+              "DocumentMoniker": "C:\\Users\\\uC815\uC9C4\uC601\\OneDrive\\\uBC14\uD0D5 \uD654\uBA74\\game software\\BaseProject_SE\\SimpleGame\\SimpleGame.cpp",
+              "RelativeDocumentMoniker": "SimpleGame\\SimpleGame.cpp",
+              "ToolTip": "C:\\Users\\\uC815\uC9C4\uC601\\OneDrive\\\uBC14\uD0D5 \uD654\uBA74\\game software\\BaseProject_SE\\SimpleGame\\SimpleGame.cpp",
+              "RelativeToolTip": "SimpleGame\\SimpleGame.cpp",
+              "ViewState": "AgIAAAQEAAAAAAAAAADwvxMEAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-09-14T05:38:14.462Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
               "Title": "Renderer.cpp",
               "DocumentMoniker": "C:\\Users\\\uC815\uC9C4\uC601\\OneDrive\\\uBC14\uD0D5 \uD654\uBA74\\game software\\BaseProject_SE\\SimpleGame\\Renderer.cpp",
               "RelativeDocumentMoniker": "SimpleGame\\Renderer.cpp",
               "ToolTip": "C:\\Users\\\uC815\uC9C4\uC601\\OneDrive\\\uBC14\uD0D5 \uD654\uBA74\\game software\\BaseProject_SE\\SimpleGame\\Renderer.cpp",
               "RelativeToolTip": "SimpleGame\\Renderer.cpp",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABgAAAAaAAAAAAAAAA==",
+              "ViewState": "AgIAAAIAAAAAAAAAAAAAAC0AAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2026-09-07T04:41:05.912Z",
               "EditorCaption": ""
