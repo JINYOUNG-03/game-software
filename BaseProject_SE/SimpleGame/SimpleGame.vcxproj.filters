@@ -31,6 +31,8 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="LevelOne.h" />
+    <ClInclude Include="Actor.h" />
+    <ClInclude Include="SceneGraph.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -44,6 +46,8 @@
     </ClCompile>
     <ClCompile Include="RendererModels.cpp" />
     <ClCompile Include="LevelOne.cpp" />
+    <ClCompile Include="Actor.cpp" />
+    <ClCompile Include="SceneGraph.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\SolidRect.fs">

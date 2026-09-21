@@ -24,9 +24,8 @@ namespace
     constexpr float TileWidth = 96;
     constexpr float TileHeight = 48;
     using Vec3 = Level::Position;
-    using Animal = Level::Enemy;
 
-    struct Npc
+    struct NpcDefinition
     {
         const wchar_t* name;
         Vec3 position;
@@ -34,9 +33,32 @@ namespace
         float r, g, b;
     };
 
+    struct Npc : public Actor
+    {
+        const wchar_t* name = L"";
+        const wchar_t* line = L"";
+    };
+
+    enum class UiPart
+    {
+        Hud,
+        MiniMap,
+        Stats,
+        Prompt,
+        Pause
+    };
+    ActorId promptId = InvalidActorId;
+    float uiOriginX = 0;
+    float uiOriginY = 0;
+
     Renderer* renderer = nullptr;
     Level::FirstLevel firstLevel;
-    const Vec3& player = firstLevel.player;
+
+    Vec3 PlayerPosition()
+    {
+        return firstLevel.Player().WorldPosition();
+    }
+
     bool keys[256] = {};
     bool interactionPressed = false;
     bool potionPressed = false;
@@ -48,7 +70,7 @@ namespace
     HDC fontDC = nullptr;
     HFONT fontHandle = nullptr;
     std::map<wchar_t, GLuint> glyphs;
-    Npc villagers[] = {
+    NpcDefinition villagerDefinitions[] = {
         {L"\uc7a5\uc528",
          {12, 10, 0},
          L"\uc300\uc740 \uc544\uc9c1 \uc788\uc5b4. \uc57d\uc7ac\uac00 \ubb38\uc81c\uc9c0... \ub4e4\uc5b4\uc624\ub294 \ubc30\uac00 \uc5c6\uac70\ub4e0.",
@@ -129,8 +151,10 @@ namespace
 
     void WorldToScreen(const Vec3& point, float& x, float& y)
     {
-        x = ScreenWidth * .5f + ((point.x - point.y) - (player.x - player.y)) * TileWidth * .5f;
-        y = ScreenHeight * .52f + ((point.x + point.y) - (player.x + player.y)) * TileHeight * .5f - point.z;
+        x = ScreenWidth * .5f +
+            ((point.x - point.y) - (PlayerPosition().x - PlayerPosition().y)) * TileWidth * .5f;
+        y = ScreenHeight * .52f +
+            ((point.x + point.y) - (PlayerPosition().x + PlayerPosition().y)) * TileHeight * .5f - point.z;
     }
 
     bool Visible(float x, float y)
@@ -161,7 +185,7 @@ namespace
     {
         glUseProgram(0);
         glColor3f(r, g, b);
-        glRasterPos2f(x / ScreenWidth * 2 - 1, 1 - y / ScreenHeight * 2);
+        glRasterPos2f((x + uiOriginX) / ScreenWidth * 2 - 1, 1 - (y + uiOriginY) / ScreenHeight * 2);
         for (const wchar_t* c = text; *c; ++c)
         {
             auto it = glyphs.find(*c);
@@ -181,7 +205,7 @@ namespace
                 }
                 it = glyphs.insert(std::make_pair(*c, id)).first;
             }
-            glCallList(it->second);
+            renderer->DrawGlyph(it->second);
         }
     }
 
@@ -189,14 +213,6 @@ namespace
     {
         firstLevel.message = std::wstring(name) + L" : " + line;
         firstLevel.messageTime = 7;
-    }
-
-    void DrawPrompt(const Vec3& target, const wchar_t* text)
-    {
-        float x, y;
-        WorldToScreen(target, x, y);
-        renderer->DrawSolidRect(x, y - 70, 170, 30, .04f, .06f, .07f, .92f);
-        DrawText(x - 76, y - 64, text, 1, .84f, .43f);
     }
 
     void DrawTree(float x, float y)
@@ -562,177 +578,181 @@ namespace
         }
     }
 
-    int AnimationFrame(float phase, bool moving)
+    void InitializeSceneActors()
     {
-        return moving ? int(phase * 8 / 6.2831853f) % 8 : 0;
+        SceneGraph& scene = firstLevel.Scene();
+        scene.DestroyChildren(firstLevel.NpcRoot());
+        for (int i = 0; i < int(sizeof(villagerDefinitions) / sizeof(NpcDefinition)); ++i)
+        {
+            const auto& source = villagerDefinitions[i];
+            Npc& npc = scene.Create<Npc>(firstLevel.NpcRoot(), "Villager", ActorKind::Npc);
+            npc.SetWorldPosition(source.position);
+            npc.name = source.name;
+            npc.line = source.line;
+            npc.variant = i;
+            npc.drawable = true;
+            npc.model = "npc" + std::to_string(i % 3);
+            npc.shadowWidth = 30;
+        }
+        scene.DestroyChildren(firstLevel.OverlayRoot());
+        for (UiPart part : {UiPart::Hud, UiPart::MiniMap, UiPart::Stats, UiPart::Pause})
+        {
+            Actor& ui = scene.Create(firstLevel.OverlayRoot(), "UIPanel", ActorKind::UI);
+            ui.variant = int(part);
+            ui.drawable = true;
+            ui.pass = ScenePass::Overlay;
+            ui.drawOrder = part == UiPart::Pause ? 100 : int(part);
+        }
+        promptId = InvalidActorId;
     }
 
-    void RenderTerrain()
+    void UpdatePromptActor()
     {
-        for (int sum = 0; sum < MapSize * 2 - 1; ++sum)
+        SceneGraph& scene = firstLevel.Scene();
+        Actor* prompt = scene.Find(promptId);
+        if (!prompt)
         {
-            for (int x = 0; x < MapSize; ++x)
+            prompt = &scene.Create(firstLevel.OverlayRoot(), "InteractionPrompt", ActorKind::UI);
+            promptId = prompt->Id();
+            prompt->variant = int(UiPart::Prompt);
+            prompt->pass = ScenePass::Overlay;
+            prompt->drawable = true;
+            prompt->drawOrder = 10;
+        }
+        ActorId target = InvalidActorId;
+        float distance = 1.4f;
+        for (const auto* drop : firstLevel.Drops())
+        {
+            if (drop->IsVisible() && Distance2D(PlayerPosition(), drop->WorldPosition()) < 1.3f &&
+                firstLevel.ClearLine(PlayerPosition(), drop->WorldPosition()))
             {
-                int y = sum - x;
-                if (y < 0 || y >= MapSize)
-                {
-                    continue;
-                }
-                float sx, sy;
-                WorldToScreen({x + .5f, y + .5f, 0}, sx, sy);
-                if (!Visible(sx, sy))
-                {
-                    continue;
-                }
-                auto terrain = firstLevel.At(x, y).terrain;
-                int model = terrain == Level::Terrain::Water  ? 5
-                            : terrain == Level::Terrain::Road ? 4
-                                                              : (x * 17 + y * 31) % 4;
-                renderer->DrawModel(FrameName("tile", model), sx, sy);
+                target = drop->Id();
+                break;
             }
+        }
+        if (!target)
+        {
+            for (const Npc* npc : scene.Actors<Npc>(ActorKind::Npc))
+            {
+                float d = Distance2D(PlayerPosition(), npc->WorldPosition());
+                if (npc->IsVisible() && d < distance &&
+                    firstLevel.ClearLine(PlayerPosition(), npc->WorldPosition()))
+                {
+                    distance = d;
+                    target = npc->Id();
+                }
+            }
+        }
+        prompt->SetVisible(target != InvalidActorId && !paused);
+        if (target)
+        {
+            scene.Reparent(promptId, target, false);
+            prompt->SetLocalPosition({0, 0, 70});
         }
     }
 
-    void RenderWorldObjects()
+    void DrawEffectActor(const Actor& actor, float x, float y)
     {
-        struct Item
+        switch (ActorEffect(actor.variant))
         {
-            Vec3 position;
-            int kind;
-            int index;
-        };
-
-        std::vector<Item> items;
-        const auto& props = firstLevel.Props();
-        const auto& enemies = firstLevel.Enemies();
-        const auto& drops = firstLevel.Drops();
-        for (int i = 0; i < int(props.size()); ++i)
-        {
-            items.push_back({props[i].position, 0, i});
-        }
-        for (int i = 0; i < int(sizeof(villagers) / sizeof(Npc)); ++i)
-        {
-            items.push_back({villagers[i].position, 1, i});
-        }
-        items.push_back({player, 2, 0});
-        for (int i = 0; i < int(enemies.size()); ++i)
-        {
-            if (enemies[i].health > 0)
+        case ActorEffect::Flame:
+            renderer->DrawEllipse(x, y + 13, 95, 80, 1, .52f, .13f, .08f);
+            renderer->SetMaterial(8);
+            renderer->DrawSolidRect(x, y, 32, 52, 1, 1, 1, .92f);
+            break;
+        case ActorEffect::Smoke:
+            renderer->SetMaterial(9);
+            renderer->DrawSolidRect(x, y, 75, 95, .47f, .52f, .50f, .19f);
+            break;
+        case ActorEffect::PlayerHurt:
+            if (firstLevel.hurtFlash > 0)
             {
-                items.push_back({enemies[i].position, 3, i});
+                renderer->DrawEllipse(x, y - 25, 40, 60, 1, .14f, .09f, .35f);
             }
-        }
-        for (int i = 0; i < int(drops.size()); ++i)
-        {
-            items.push_back({drops[i].position, 4, i});
-        }
-
-        renderer->SetMaterial(0);
-        for (const auto& item : items)
-        {
-            float x, y;
-            WorldToScreen(item.position, x, y);
-            if (!Visible(x, y))
+            break;
+        case ActorEffect::SwordTrail:
+            if (firstLevel.attackAnimation > 0)
             {
-                continue;
-            }
-            float width = item.kind == 0 ? (props[item.index].kind <= 1 ? 105.0f : 48.0f) : 30.0f;
-            renderer->DrawEllipse(x + 14, y + 5, width, 22, .025f, .045f, .055f, .30f);
-            renderer->DrawEllipse(x + 3, y + 1, width * .55f, 12, .02f, .03f, .035f, .36f);
-        }
-
-        std::stable_sort(items.begin(),
-                         items.end(),
-                         [](const Item& a, const Item& b)
-                         {
-                             return a.position.x + a.position.y < b.position.x + b.position.y;
-                         });
-        for (const auto& item : items)
-        {
-            float x, y;
-            WorldToScreen(item.position, x, y);
-            if (!Visible(x, y))
-            {
-                continue;
-            }
-            if (item.kind == 0)
-            {
-                renderer->DrawModel(FrameName("prop", props[item.index].kind), x, y);
-            }
-            else if (item.kind == 1)
-            {
-                renderer->DrawModel(FrameName("npc", item.index % 3), x, y);
-            }
-            else if (item.kind == 2)
-            {
-                int frame = AnimationFrame(firstLevel.walkPhase, firstLevel.moving);
-                renderer->DrawModel(FrameName("hero", frame), x, y);
-                if (firstLevel.hurtFlash > 0)
+                float progress = 1 - firstLevel.attackAnimation / .22f;
+                float angle = std::atan2(firstLevel.facingY, firstLevel.facingX) + (progress - .5f) * 2.5f;
+                for (int k = 0; k < 5; ++k)
                 {
-                    renderer->DrawEllipse(x, y - 25, 40, 60, 1, .14f, .09f, .35f);
+                    float a = angle - k * .13f;
+                    renderer->DrawEllipse(x + std::cos(a) * 52,
+                                          y - 18 + std::sin(a) * 36,
+                                          17,
+                                          9,
+                                          .95f,
+                                          .89f,
+                                          .67f,
+                                          .8f - k * .13f);
                 }
             }
-            else if (item.kind == 3)
+            break;
+        case ActorEffect::EnemyStatus:
+            if (const auto* enemy =
+                    dynamic_cast<const Level::Enemy*>(firstLevel.Scene().Find(actor.ParentId())))
             {
-                const auto& enemy = enemies[item.index];
-                int frame = AnimationFrame(enemy.phase * 9, enemy.moving);
-                renderer->DrawModel(FrameName("beast" + std::to_string(enemy.kind) + "_", frame), x, y);
-                if (enemy.flash > 0)
+                if (enemy->flash > 0)
                 {
                     renderer->DrawEllipse(x, y - 20, 48, 40, 1, .7f, .45f, .4f);
                 }
-                if (enemy.health < enemy.maxHealth || Distance2D(enemy.position, player) < 4)
+                if (enemy->health < enemy->maxHealth ||
+                    Distance2D(enemy->WorldPosition(), PlayerPosition()) < 4)
                 {
                     renderer->DrawSolidRect(x, y - 60, 42, 5, .07f, .055f, .05f, 1);
-                    float width = 40.0f * enemy.health / enemy.maxHealth;
-                    renderer->DrawSolidRect(x - 20 + width * .5f, y - 60, width, 3, .73f, .25f, .18f, 1);
+                    float width = 40.0f * enemy->health / enemy->maxHealth;
+                    if (width > 0)
+                    {
+                        renderer->DrawSolidRect(x - 20 + width * .5f, y - 60, width, 3, .73f, .25f, .18f, 1);
+                    }
                 }
             }
-            else
-            {
-                int kind = int(drops[item.index].kind);
-                renderer->DrawModel(FrameName("loot", kind), x, y);
-            }
-        }
-
-        if (firstLevel.attackAnimation > 0)
-        {
-            float x, y;
-            WorldToScreen(player, x, y);
-            float progress = 1 - firstLevel.attackAnimation / .22f;
-            float angle = std::atan2(firstLevel.facingY, firstLevel.facingX) + (progress - .5f) * 2.5f;
-            for (int k = 0; k < 5; ++k)
-            {
-                float a = angle - k * .13f;
-                renderer->DrawEllipse(
-                    x + std::cos(a) * 52, y - 18 + std::sin(a) * 36, 17, 9, .95f, .89f, .67f, .8f - k * .13f);
-            }
-        }
-    }
-
-    void RenderEffects()
-    {
-        for (const auto& prop : firstLevel.Props())
-        {
-            float x, y;
-            WorldToScreen(prop.position, x, y);
-            if (!Visible(x, y))
-            {
-                continue;
-            }
-            if (prop.kind == 5)
-            {
-                renderer->DrawEllipse(x, y - 30, 95, 80, 1, .52f, .13f, .08f);
-                renderer->SetMaterial(8);
-                renderer->DrawSolidRect(x, y - 43, 32, 52, 1, 1, 1, .92f);
-            }
-            if (prop.kind <= 1)
-            {
-                renderer->SetMaterial(9);
-                renderer->DrawSolidRect(x + 40, y - 103, 75, 95, .47f, .52f, .50f, .19f);
-            }
+            break;
         }
         renderer->SetMaterial(0);
+    }
+
+    void RenderWorldPass(ScenePass pass)
+    {
+        const SceneGraph& scene = firstLevel.Scene();
+        if (pass == ScenePass::World)
+        {
+            renderer->DrawScene(scene,
+                                pass,
+                                [&](const Actor& actor)
+                                {
+                                    float x, y;
+                                    WorldToScreen(actor.WorldPosition(), x, y);
+                                    if (!Visible(x, y) || actor.shadowWidth <= 0)
+                                    {
+                                        return;
+                                    }
+                                    renderer->DrawEllipse(
+                                        x + 14, y + 5, actor.shadowWidth, 22, .025f, .045f, .055f, .30f);
+                                    renderer->DrawEllipse(
+                                        x + 3, y + 1, actor.shadowWidth * .55f, 12, .02f, .03f, .035f, .36f);
+                                });
+        }
+        renderer->DrawScene(scene,
+                            pass,
+                            [&](const Actor& actor)
+                            {
+                                float x, y;
+                                WorldToScreen(actor.WorldPosition(), x, y);
+                                if (!Visible(x, y))
+                                {
+                                    return;
+                                }
+                                if (!actor.model.empty())
+                                {
+                                    renderer->DrawModel(actor.model, x, y);
+                                }
+                                if (actor.Kind() == ActorKind::Effect)
+                                {
+                                    DrawEffectActor(actor, x, y);
+                                }
+                            });
     }
 
     void TryInteract()
@@ -741,21 +761,23 @@ namespace
         {
             return;
         }
-        int nearest = -1;
+        const Npc* closest = nullptr;
         float distance = 1.4f;
-        for (int i = 0; i < int(sizeof(villagers) / sizeof(Npc)); ++i)
+        for (const Npc* npc : firstLevel.Scene().Actors<Npc>(ActorKind::Npc))
         {
-            float d = Distance2D(player, villagers[i].position);
-            if (d < distance && firstLevel.ClearLine(player, villagers[i].position))
+            float d = Distance2D(PlayerPosition(), npc->WorldPosition());
+            if (npc->IsVisible() && d < distance &&
+                firstLevel.ClearLine(PlayerPosition(), npc->WorldPosition()))
             {
-                nearest = i;
+                closest = npc;
                 distance = d;
             }
         }
-        if (nearest < 0)
+        if (!closest)
         {
             return;
         }
+        int nearest = closest->variant;
         if (nearest == 4)
         {
             firstLevel.stats.health = firstLevel.stats.MaxHealth();
@@ -769,7 +791,7 @@ namespace
         }
         else
         {
-            Say(villagers[nearest].name, villagers[nearest].line);
+            Say(closest->name, closest->line);
         }
     }
 
@@ -777,55 +799,61 @@ namespace
     {
         constexpr float cx = 1150, cy = 126, scale = 2.0f;
         renderer->DrawSolidRect(cx, cy, 240, 225, .04f, .07f, .075f, .94f);
-        for (int x = 0; x < MapSize; ++x)
+        for (const Actor* tile : firstLevel.Scene().RenderList(ScenePass::Ground))
         {
-            for (int y = 0; y < MapSize; ++y)
-            {
-                auto tile = firstLevel.At(x, y);
-                bool w = tile.terrain == Level::Terrain::Water;
-                bool road = tile.terrain == Level::Terrain::Road;
-                renderer->DrawSolidDiamond(cx + (x - y) * scale,
-                                           cy + (x + y - MapSize) * scale * .5f,
-                                           scale * 2 + 1,
-                                           scale + 1,
-                                           w      ? .09f
-                                           : road ? .55f
-                                                  : .22f,
-                                           w      ? .28f
-                                           : road ? .46f
-                                                  : .34f,
-                                           w ? .38f : .21f,
-                                           1);
-            }
+            Vec3 p = tile->WorldPosition();
+            bool w = tile->variant == 5;
+            bool road = tile->variant == 4;
+            renderer->DrawSolidDiamond(cx + (p.x - p.y) * scale,
+                                       cy + (p.x + p.y - MapSize) * scale * .5f,
+                                       scale * 2 + 1,
+                                       scale + 1,
+                                       w      ? .09f
+                                       : road ? .55f
+                                              : .22f,
+                                       w      ? .28f
+                                       : road ? .46f
+                                              : .34f,
+                                       w ? .38f : .21f,
+                                       1);
         }
         auto marker = [&](const Vec3& p, float r, float g, float b, float size)
         {
             renderer->DrawEllipse(
                 cx + (p.x - p.y) * scale, cy + (p.x + p.y - MapSize) * scale * .5f, size, size, r, g, b, 1);
         };
-        for (const auto& prop : firstLevel.Props())
+        for (const Actor* prop : firstLevel.Props())
         {
-            if (prop.kind <= 1)
+            if (prop->IsVisible() && prop->variant <= 1)
             {
-                marker(prop.position, .62f, .49f, .35f, 4);
+                marker(prop->WorldPosition(), .62f, .49f, .35f, 4);
             }
         }
-        for (const auto& npc : villagers)
+        for (const Npc* npc : firstLevel.Scene().Actors<Npc>(ActorKind::Npc))
         {
-            marker(npc.position, .44f, .75f, .6f, 3);
+            if (npc->IsVisible())
+            {
+                marker(npc->WorldPosition(), .44f, .75f, .6f, 3);
+            }
         }
         for (const auto& enemy : firstLevel.Enemies())
         {
-            if (enemy.health > 0)
+            if (enemy->IsVisible() && enemy->health > 0)
             {
-                marker(enemy.position, .95f, .30f, .16f, 4);
+                marker(enemy->WorldPosition(), .95f, .30f, .16f, 4);
             }
         }
         for (const auto& loot : firstLevel.Drops())
         {
-            marker(loot.position, .95f, .77f, .25f, 3);
+            if (loot->IsVisible())
+            {
+                marker(loot->WorldPosition(), .95f, .77f, .25f, 3);
+            }
         }
-        marker(player, .96f, .97f, 1, 6);
+        if (firstLevel.Player().IsActive() && firstLevel.Player().IsVisible())
+        {
+            marker(PlayerPosition(), .96f, .97f, 1, 6);
+        }
         DrawText(cx - 101, cy - 92, L"\uc548\uac1c\ud638 \uc0ac\ub0e5\ud130", .88f, .77f, .53f);
         DrawText(
             cx - 104, cy + 96, L"\ud770\uc0c9 \ub098 / \ubd89\uc740\uc0c9 \uc9d0\uc2b9", .8f, .82f, .75f);
@@ -859,7 +887,7 @@ namespace
         }
     }
 
-    void RenderUI()
+    void DrawHud()
     {
         const auto& stats = firstLevel.stats;
         renderer->SetMaterial(0);
@@ -912,7 +940,11 @@ namespace
             renderer->DrawSolidRect(510, 687, 980, 78, .035f, .05f, .055f, .95f);
             DrawWrapped(36, 680, firstLevel.message, 98);
         }
-        RenderMiniMap();
+    }
+
+    void DrawStatsPanel()
+    {
+        const auto& stats = firstLevel.stats;
 
         if (statsPanel)
         {
@@ -939,33 +971,69 @@ namespace
                      .79f,
                      .44f);
         }
+    }
 
-        bool prompt = false;
-        for (const auto& drop : firstLevel.Drops())
-        {
-            if (Distance2D(player, drop.position) < 1.3f && firstLevel.ClearLine(player, drop.position))
-            {
-                DrawPrompt(drop.position, L"E \uc804\ub9ac\ud488 \uc90d\uae30");
-                prompt = true;
-                break;
-            }
-        }
-        if (!prompt)
-        {
-            for (const auto& npc : villagers)
-            {
-                if (Distance2D(player, npc.position) < 1.4f && firstLevel.ClearLine(player, npc.position))
-                {
-                    DrawPrompt(npc.position, L"E \ub9d0 \uac78\uae30");
-                    break;
-                }
-            }
-        }
+    void DrawPausePanel()
+    {
         if (paused)
         {
             renderer->DrawSolidRect(640, 400, 390, 90, .03f, .05f, .06f, .96f);
             DrawText(498, 405, L"\uc7a0\uc2dc \uc26c\ub294 \uc911 - ESC\ub85c \ub3cc\uc544\uac00\uae30");
         }
+    }
+
+    void RenderOverlay()
+    {
+        renderer->DrawScene(firstLevel.Scene(),
+                            ScenePass::Overlay,
+                            [&](const Actor& actor)
+                            {
+                                UiPart part = UiPart(actor.variant);
+                                if (part == UiPart::Prompt)
+                                {
+                                    const Actor* owner = firstLevel.Scene().Find(actor.ParentId());
+                                    if (!owner)
+                                    {
+                                        return;
+                                    }
+                                    float x, y;
+                                    WorldToScreen(actor.WorldPosition(), x, y);
+                                    renderer->DrawSolidRect(x, y, 170, 30, .04f, .06f, .07f, .92f);
+                                    DrawText(x - 76,
+                                             y + 6,
+                                             owner->Kind() == ActorKind::Loot
+                                                 ? L"E \uc804\ub9ac\ud488 \uc90d\uae30"
+                                                 : L"E \ub9d0 \uac78\uae30",
+                                             1,
+                                             .84f,
+                                             .43f);
+                                    return;
+                                }
+
+                                Vec3 origin = actor.WorldPosition();
+                                uiOriginX = origin.x;
+                                uiOriginY = origin.y;
+                                renderer->SetScreenOffset(uiOriginX, uiOriginY);
+                                switch (part)
+                                {
+                                case UiPart::Hud:
+                                    DrawHud();
+                                    break;
+                                case UiPart::MiniMap:
+                                    RenderMiniMap();
+                                    break;
+                                case UiPart::Stats:
+                                    DrawStatsPanel();
+                                    break;
+                                case UiPart::Pause:
+                                    DrawPausePanel();
+                                    break;
+                                default:
+                                    break;
+                                }
+                                renderer->SetScreenOffset(0, 0);
+                                uiOriginX = uiOriginY = 0;
+                            });
     }
 
     void Update(float dt)
@@ -975,6 +1043,7 @@ namespace
             interactionPressed = false;
             potionPressed = false;
             attributePressed = 0;
+            UpdatePromptActor();
             return;
         }
         elapsed += dt;
@@ -1001,6 +1070,7 @@ namespace
             firstLevel.Allocate(attributePressed);
             attributePressed = 0;
         }
+        UpdatePromptActor();
     }
 } // namespace
 
@@ -1012,12 +1082,13 @@ void RenderScene()
     }
     renderer->SetTime(elapsed);
     renderer->BeginFrame(.075f, .12f, .14f, 1);
-    RenderTerrain();
-    RenderWorldObjects();
-    RenderEffects();
+    RenderWorldPass(ScenePass::Ground);
+    RenderWorldPass(ScenePass::World);
+    RenderWorldPass(ScenePass::Effects);
     renderer->EndWorld(elapsed);
-    RenderUI();
+    RenderOverlay();
     glutSwapBuffers();
+    renderer->EndFrame();
 }
 
 void Idle()
@@ -1131,6 +1202,8 @@ int main(int argc, char** argv)
         return 1;
     }
     InitializeModels();
+    InitializeSceneActors();
+    UpdatePromptActor();
     glutIgnoreKeyRepeat(1);
     glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
     glutReshapeFunc(Reshape);

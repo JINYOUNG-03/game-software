@@ -91,10 +91,127 @@ namespace Level
         return true;
     }
 
-    FirstLevel::FirstLevel() = default;
+    FirstLevel::FirstLevel()
+    {
+        Actor& world = scene.Create(scene.Root().Id(), "World");
+        terrainRoot = scene.Create(world.Id(), "Terrain").Id();
+        propRoot = scene.Create(world.Id(), "Scenery").Id();
+        Actor& characters = scene.Create(world.Id(), "Characters");
+        npcRoot = scene.Create(characters.Id(), "Villagers").Id();
+        enemyRoot = scene.Create(characters.Id(), "Beasts").Id();
+        lootRoot = scene.Create(world.Id(), "Loot").Id();
+        overlayRoot = scene.Create(scene.Root().Id(), "UI").Id();
+        Actor& hero = scene.Create(characters.Id(), "Player", ActorKind::Player);
+        playerId = hero.Id();
+        hero.SetLocalPosition(Camp);
+        hero.drawable = true;
+        hero.model = "hero0";
+        hero.shadowWidth = 30;
+        for (auto effect : {ActorEffect::SwordTrail, ActorEffect::PlayerHurt})
+        {
+            Actor& child = scene.Create(hero.Id(), "PlayerEffect", ActorKind::Effect);
+            child.pass = ScenePass::Effects;
+            child.drawable = true;
+            child.variant = int(effect);
+        }
+    }
+
+    void FirstLevel::RefreshActorObstacles() const
+    {
+        if (generating || collisionRevision == scene.CollisionRevision())
+        {
+            return;
+        }
+        // Rebuild collision from placed Actors, so moving/removing a node changes gameplay too.
+        for (auto& tile : tiles)
+        {
+            tile = {Terrain::Water, false};
+        }
+        for (ActorId id : scene.FindByKind(ActorKind::Terrain))
+        {
+            const Actor& actor = scene.Get(id);
+            Position p = ToGrid(actor.WorldPosition());
+            int x = int(std::floor(p.x)), y = int(std::floor(p.y));
+            if (x >= 0 && y >= 0 && x < MapSize && y < MapSize)
+            {
+                tiles[y * MapSize + x].terrain = actor.variant == 5   ? Terrain::Water
+                                                 : actor.variant == 4 ? Terrain::Road
+                                                                      : Terrain::Grass;
+            }
+        }
+        for (ActorId id : scene.FindByKind(ActorKind::Prop))
+        {
+            const Actor& actor = scene.Get(id);
+            if (!actor.BlocksMovement())
+            {
+                continue;
+            }
+            Position p = ToGrid(actor.WorldPosition());
+            int x = int(std::floor(p.x)), y = int(std::floor(p.y));
+            if (x >= 0 && y >= 0 && x < MapSize && y < MapSize)
+            {
+                tiles[y * MapSize + x].blocked = true;
+            }
+        }
+        collisionRevision = scene.CollisionRevision();
+    }
+
+    void FirstLevel::AddProp(const Position& position, int kind, bool blocksMovement)
+    {
+        Actor& prop = scene.Create(propRoot, "Prop", ActorKind::Prop);
+        prop.SetWorldPosition(ToWorld(position));
+        prop.variant = kind;
+        prop.drawable = true;
+        prop.model = "prop" + std::to_string(kind);
+        prop.shadowWidth = kind <= 1 ? 105.0f : 48.0f;
+        prop.SetBlocksMovement(blocksMovement);
+        if (kind <= 1 || kind == 5)
+        {
+            Actor& effect = scene.Create(prop.Id(), kind == 5 ? "Flame" : "ChimneySmoke", ActorKind::Effect);
+            effect.drawable = true;
+            effect.pass = ScenePass::Effects;
+            effect.variant = int(kind == 5 ? ActorEffect::Flame : ActorEffect::Smoke);
+            effect.SetLocalPosition(kind == 5 ? Position{0, 0, 43} : Position{.416667f, -.416667f, 103});
+        }
+    }
+
+    void FirstLevel::AddLoot(const Position& position, LootKind kind, int amount)
+    {
+        Loot& loot = scene.Create<Loot>(lootRoot, "Drop", ActorKind::Loot);
+        loot.SetWorldPosition(position);
+        loot.kind = kind;
+        loot.amount = amount;
+        loot.drawable = true;
+        loot.model = "loot" + std::to_string(int(kind));
+        loot.shadowWidth = 20;
+    }
+
+    void FirstLevel::UpdateActorModels()
+    {
+        int frame = moving ? int(walkPhase * 8 / 6.2831853f) % 8 : 0;
+        Player().model = "hero" + std::to_string(frame);
+        for (Enemy* enemy : scene.Actors<Enemy>(ActorKind::Enemy))
+        {
+            int pose = enemy->moving ? int(enemy->phase * 9 * 8 / 6.2831853f) % 8 : 0;
+            enemy->model = "beast" + std::to_string(enemy->kind) + "_" + std::to_string(pose);
+        }
+    }
+
+    Position FirstLevel::ToGrid(const Position& world) const
+    {
+        Position origin = scene.Get(terrainRoot).WorldPosition();
+        return {world.x - origin.x, world.y - origin.y, world.z - origin.z};
+    }
+
+    Position FirstLevel::ToWorld(const Position& grid) const
+    {
+        Position origin = scene.Get(terrainRoot).WorldPosition();
+        return {grid.x + origin.x, grid.y + origin.y, grid.z + origin.z};
+    }
 
     const Tile& FirstLevel::At(int x, int y) const
     {
+        RefreshActorObstacles();
         static const Tile border = {Terrain::Water, true};
         if (x < 0 || y < 0 || x >= MapSize || y >= MapSize)
         {
@@ -116,6 +233,9 @@ namespace Level
         {
             return false;
         }
+        Position grid = ToGrid({x, y, 0});
+        x = grid.x;
+        y = grid.y;
         for (float dx : {-BodyRadius, BodyRadius})
         {
             for (float dy : {-BodyRadius, BodyRadius})
@@ -141,7 +261,8 @@ namespace Level
     void FirstLevel::BuildNavigation()
     {
         navigation.fill(-1);
-        int x = int(player.x), y = int(player.y);
+        Position gridPlayer = ToGrid(Player().WorldPosition());
+        int x = int(gridPlayer.x), y = int(gridPlayer.y);
         if (!Open(x, y))
         {
             return;
@@ -252,10 +373,12 @@ namespace Level
         seed = nextSeed;
         random.seed(seed);
         tiles.fill(Tile{});
-        props.clear();
-        enemies.clear();
-        drops.clear();
-        player = Camp;
+        generating = true;
+        scene.DestroyChildren(terrainRoot);
+        scene.DestroyChildren(propRoot);
+        scene.DestroyChildren(enemyRoot);
+        scene.DestroyChildren(lootRoot);
+        Player().SetWorldPosition(ToWorld(Camp));
         moving = false;
         attackAnimation = 0;
         attackCooldown = 0;
@@ -329,7 +452,7 @@ namespace Level
                 tiles[y * MapSize + x].blocked = false;
                 return;
             }
-            props.push_back({{x + .5f, y + .5f, 0}, kind});
+            AddProp({x + .5f, y + .5f, 0}, kind, true);
         };
         for (int x : {9, 17})
         {
@@ -338,13 +461,13 @@ namespace Level
                 addBlock(x, y, int(random() % 2));
             }
         }
-        props.push_back({{12, 9, 0}, 2});
-        props.push_back({{14, 9, 0}, 2});
-        props.push_back({{12, 5, 0}, 3});
-        props.push_back({{14, 5, 0}, 3});
+        AddProp({12, 9, 0}, 2);
+        AddProp({14, 9, 0}, 2);
+        AddProp({12, 5, 0}, 3);
+        AddProp({14, 5, 0}, 3);
         for (int y = 7; y <= 17; y += 3)
         {
-            props.push_back({{14, float(y), 0}, 5});
+            AddProp({14, float(y), 0}, 5);
         }
         for (int attempt = 0; attempt < 400; ++attempt)
         {
@@ -361,8 +484,8 @@ namespace Level
         {
             for (int x = 2; x < MapSize - 2; ++x)
             {
-                Position p = {x + .5f, y + .5f, 0};
-                if (!InCamp(x, y) && Walkable(p.x, p.y) && Distance(p, Camp) > 6)
+                Position p = ToWorld({x + .5f, y + .5f, 0});
+                if (!InCamp(x, y) && Walkable(p.x, p.y) && Distance(p, ToWorld(Camp)) > 6)
                 {
                     candidates.push_back(p);
                 }
@@ -372,9 +495,9 @@ namespace Level
         for (const auto& p : candidates)
         {
             bool crowded = false;
-            for (const auto& e : enemies)
+            for (const Enemy* e : scene.Actors<Enemy>(ActorKind::Enemy))
             {
-                if (Distance(e.home, p) < 2.3f)
+                if (Distance(e->HomePosition(), p) < 2.3f)
                 {
                     crowded = true;
                     break;
@@ -384,25 +507,50 @@ namespace Level
             {
                 continue;
             }
-            Enemy enemy;
-            enemy.position = enemy.home = p;
+            Enemy& enemy = scene.Create<Enemy>(enemyRoot, "Beast", ActorKind::Enemy);
+            enemy.SetWorldPosition(p);
+            enemy.home = enemy.LocalPosition();
+            enemy.drawable = true;
+            enemy.shadowWidth = 30;
+            Actor& status = scene.Create(enemy.Id(), "HealthAndHit", ActorKind::Effect);
+            status.drawable = true;
+            status.pass = ScenePass::Effects;
+            status.variant = int(ActorEffect::EnemyStatus);
             enemy.kind = int(random() % 3);
             enemy.health = enemy.maxHealth = 42 + enemy.kind * 18;
             enemy.phase = float(random() % 100) / 10;
-            enemies.push_back(enemy);
-            if (enemies.size() == 36)
+            if (scene.FindByKind(ActorKind::Enemy).size() == 36)
             {
                 break;
             }
         }
 
+        for (int y = 0; y < MapSize; ++y)
+        {
+            for (int x = 0; x < MapSize; ++x)
+            {
+                Actor& tile = scene.Create(terrainRoot, "Tile", ActorKind::Terrain);
+                tile.SetLocalPosition({x + .5f, y + .5f, 0});
+                tile.pass = ScenePass::Ground;
+                tile.drawable = true;
+                Terrain terrain = At(x, y).terrain;
+                tile.variant = terrain == Terrain::Water  ? 5
+                               : terrain == Terrain::Road ? 4
+                                                          : (x * 17 + y * 31) % 4;
+                tile.model = "tile" + std::to_string(tile.variant);
+            }
+        }
+        generating = false;
+        RefreshActorObstacles();
+        UpdateActorModels();
         BuildNavigation();
         Notify(
             L"\uc0ac\ub0e5\ud130\uc5d0 \ub3c4\ucc29\ud588\ub2e4. \uc9d0\uc2b9\uc744 \uc7a1\uace0, \uc804\ub9ac\ud488\uc744 \ucc59\uae30\uba70 \ubab8\uc744 \ub2e8\ub828\ud574 \ubcf4\uc790.");
     }
 
-    void FirstLevel::Move(Position& position, float dx, float dy)
+    void FirstLevel::Move(Actor& actor, float dx, float dy)
     {
+        Position position = actor.WorldPosition();
         int steps = (std::max)(1, int(std::ceil((std::max)(std::abs(dx), std::abs(dy)) / .1f)));
         dx /= steps;
         dy /= steps;
@@ -417,23 +565,28 @@ namespace Level
                 position.y += dy;
             }
         }
+        actor.SetWorldPosition(position);
     }
 
     void FirstLevel::MovePlayer(float sx, float sy, float dt)
     {
         float length = std::hypot(sx, sy);
         moving = false;
+        if (!Player().IsActive())
+        {
+            return;
+        }
         if (length <= 0)
         {
             return;
         }
         facingX = sx / length;
         facingY = sy / length;
-        Position before = player;
+        Position before = Player().WorldPosition();
         float dx = (facingX / 96 + facingY / 48) * MoveSpeed * dt;
         float dy = (facingY / 48 - facingX / 96) * MoveSpeed * dt;
-        Move(player, dx, dy);
-        moving = Distance(before, player) > .0001f;
+        Move(Player(), dx, dy);
+        moving = Distance(before, Player().WorldPosition()) > .0001f;
         if (moving)
         {
             walkPhase += dt * 10;
@@ -442,12 +595,14 @@ namespace Level
 
     bool FirstLevel::ClearLine(const Position& from, const Position& to) const
     {
+        Position start = ToGrid(from);
+        Position finish = ToGrid(to);
         int steps = (std::max)(1, int(std::ceil(Distance(from, to) * 10)));
         for (int i = 0; i <= steps; ++i)
         {
             float t = float(i) / steps;
-            if (!Open(int(std::floor(from.x + (to.x - from.x) * t)),
-                      int(std::floor(from.y + (to.y - from.y) * t))))
+            if (!Open(int(std::floor(start.x + (finish.x - start.x) * t)),
+                      int(std::floor(start.y + (finish.y - start.y) * t))))
             {
                 return false;
             }
@@ -460,19 +615,23 @@ namespace Level
         enemy.health = 0;
         enemy.respawn = 14;
         enemy.moving = false;
+        enemy.SetVisible(false);
         ++stats.kills;
         int previousLevel = stats.level;
         int reward = 25 + enemy.kind * 10;
         stats.GainExperience(reward);
 
         // Kill state changes before rewards; a held attack cannot award XP twice.
-        if (drops.size() > 180)
+        auto existing = scene.FindByKind(ActorKind::Loot, false);
+        if (existing.size() > 180)
         {
-            drops.erase(drops.begin(), drops.begin() + 30);
+            for (size_t i = 0; i < 30; ++i)
+            {
+                scene.Destroy(existing[i]);
+            }
         }
-        drops.push_back({enemy.position, LootKind::Coins, 3 + enemy.kind * 2, 90});
-        Position second = enemy.position;
-        drops.push_back({second, random() % 3 == 0 ? LootKind::Potion : LootKind::Hide, 1, 90});
+        AddLoot(enemy.WorldPosition(), LootKind::Coins, 3 + enemy.kind * 2);
+        AddLoot(enemy.WorldPosition(), random() % 3 == 0 ? LootKind::Potion : LootKind::Hide, 1);
         if (stats.level > previousLevel)
         {
             Notify(
@@ -489,23 +648,28 @@ namespace Level
 
     void FirstLevel::Attack()
     {
-        if (attackCooldown > 0)
+        if (!Player().IsActive() || attackCooldown > 0)
         {
             return;
         }
         attackCooldown = .48f;
         attackAnimation = .22f;
-        for (auto& enemy : enemies)
+        for (Enemy* instance : scene.Actors<Enemy>(ActorKind::Enemy))
         {
+            Enemy& enemy = *instance;
             if (enemy.health <= 0)
             {
                 continue;
             }
-            float sx = ((enemy.position.x - player.x) - (enemy.position.y - player.y)) * HalfTileWidth;
-            float sy = ((enemy.position.x - player.x) + (enemy.position.y - player.y)) * HalfTileHeight;
+            float sx = ((enemy.WorldPosition().x - Player().WorldPosition().x) -
+                        (enemy.WorldPosition().y - Player().WorldPosition().y)) *
+                       HalfTileWidth;
+            float sy = ((enemy.WorldPosition().x - Player().WorldPosition().x) +
+                        (enemy.WorldPosition().y - Player().WorldPosition().y)) *
+                       HalfTileHeight;
             float length = std::hypot(sx, sy);
             if (length > 78 || (length > 12 && (sx * facingX + sy * facingY) / length < .1f) ||
-                !ClearLine(player, enemy.position))
+                !ClearLine(Player().WorldPosition(), enemy.WorldPosition()))
             {
                 continue;
             }
@@ -521,26 +685,32 @@ namespace Level
     bool FirstLevel::PickUp()
     {
         bool collected = false;
-        for (auto it = drops.begin(); it != drops.end();)
+        for (ActorId id : scene.FindByKind(ActorKind::Loot))
         {
-            if (Distance(player, it->position) > 1.3f || !ClearLine(player, it->position))
+            Loot* loot = dynamic_cast<Loot*>(scene.Find(id));
+            if (!loot)
             {
-                ++it;
                 continue;
             }
-            if (it->kind == LootKind::Coins)
+            Position location = loot->WorldPosition();
+            if (Distance(Player().WorldPosition(), location) > 1.3f ||
+                !ClearLine(Player().WorldPosition(), location))
             {
-                stats.coins += it->amount;
+                continue;
             }
-            if (it->kind == LootKind::Hide)
+            if (loot->kind == LootKind::Coins)
             {
-                stats.hides += it->amount;
+                stats.coins += loot->amount;
             }
-            if (it->kind == LootKind::Potion)
+            if (loot->kind == LootKind::Hide)
             {
-                stats.potions += it->amount;
+                stats.hides += loot->amount;
             }
-            it = drops.erase(it);
+            if (loot->kind == LootKind::Potion)
+            {
+                stats.potions += loot->amount;
+            }
+            scene.Destroy(loot->Id());
             collected = true;
         }
         if (collected)
@@ -605,50 +775,57 @@ namespace Level
             navigationTime = .35f;
         }
 
-        for (auto it = drops.begin(); it != drops.end();)
+        for (ActorId id : scene.FindByKind(ActorKind::Loot))
         {
-            it->lifetime -= dt;
-            if (it->lifetime <= 0)
+            Loot* loot = dynamic_cast<Loot*>(scene.Find(id));
+            if (!loot)
             {
-                it = drops.erase(it);
+                continue;
             }
-            else
+            loot->lifetime -= dt;
+            if (loot->lifetime <= 0)
             {
-                ++it;
+                scene.Destroy(loot->Id());
             }
         }
 
-        for (auto& enemy : enemies)
+        for (Enemy* instance : scene.Actors<Enemy>(ActorKind::Enemy))
         {
+            Enemy& enemy = *instance;
             enemy.phase += dt;
             enemy.flash = (std::max)(0.0f, enemy.flash - dt);
             enemy.cooldown = (std::max)(0.0f, enemy.cooldown - dt);
             if (enemy.health <= 0)
             {
                 enemy.respawn -= dt;
-                if (enemy.respawn <= 0 && Distance(player, enemy.home) > 3)
+                if (enemy.respawn <= 0 && Distance(Player().WorldPosition(), enemy.HomePosition()) > 3)
                 {
-                    enemy.position = enemy.home;
+                    enemy.SetWorldPosition(enemy.HomePosition());
+                    enemy.SetVisible(true);
                     enemy.health = enemy.maxHealth;
                     enemy.cooldown = 1;
                 }
                 continue;
             }
 
-            float distance = Distance(player, enemy.position);
-            Position target = enemy.home;
-            bool chasing = distance < 6 && !InCamp(int(player.x), int(player.y));
+            float distance = Distance(Player().WorldPosition(), enemy.WorldPosition());
+            Position target = enemy.HomePosition();
+            bool chasing =
+                distance < 6 && Player().IsActive() &&
+                !InCamp(int(ToGrid(Player().WorldPosition()).x), int(ToGrid(Player().WorldPosition()).y));
             if (chasing)
             {
-                if (ClearLine(enemy.position, player))
+                if (ClearLine(enemy.WorldPosition(), Player().WorldPosition()))
                 {
-                    target = player;
+                    target = Player().WorldPosition();
                 }
                 else
                 {
-                    int x = int(enemy.position.x), y = int(enemy.position.y);
-                    int best = navigation[y * MapSize + x];
-                    target = enemy.position;
+                    Position gridEnemy = ToGrid(enemy.WorldPosition());
+                    int x = int(std::floor(gridEnemy.x)), y = int(std::floor(gridEnemy.y));
+                    int best =
+                        x >= 0 && y >= 0 && x < MapSize && y < MapSize ? navigation[y * MapSize + x] : -1;
+                    target = enemy.WorldPosition();
                     const int dx[] = {1, -1, 0, 0}, dy[] = {0, 0, 1, -1};
                     for (int k = 0; k < 4; ++k)
                     {
@@ -660,35 +837,35 @@ namespace Level
                         if (value >= 0 && (best < 0 || value < best))
                         {
                             best = value;
-                            target = {x + dx[k] + .5f, y + dy[k] + .5f, 0};
+                            target = ToWorld({x + dx[k] + .5f, y + dy[k] + .5f, 0});
                         }
                     }
                 }
             }
             else
             {
-                Position wander = {enemy.home.x + std::sin(enemy.phase * .3f),
-                                   enemy.home.y + std::cos(enemy.phase * .27f),
-                                   0};
+                Position home = enemy.HomePosition();
+                Position wander = {
+                    home.x + std::sin(enemy.phase * .3f), home.y + std::cos(enemy.phase * .27f), home.z};
                 if (Walkable(wander.x, wander.y))
                 {
                     target = wander;
                 }
             }
 
-            float dx = target.x - enemy.position.x, dy = target.y - enemy.position.y;
+            float dx = target.x - enemy.WorldPosition().x, dy = target.y - enemy.WorldPosition().y;
             float length = std::hypot(dx, dy);
-            Position before = enemy.position;
+            Position before = enemy.WorldPosition();
             if (length > .15f && (!chasing || distance > .55f))
             {
                 float speed = chasing ? 1.15f + enemy.kind * .12f : .35f;
                 float amount = (std::min)(speed * dt, length);
-                Move(enemy.position, dx / length * amount, dy / length * amount);
+                Move(enemy, dx / length * amount, dy / length * amount);
             }
-            enemy.moving = Distance(before, enemy.position) > .0001f;
+            enemy.moving = Distance(before, enemy.WorldPosition()) > .0001f;
 
             if (chasing && distance < .9f && enemy.cooldown <= 0 && invulnerability <= 0 &&
-                ClearLine(enemy.position, player))
+                ClearLine(enemy.WorldPosition(), Player().WorldPosition()))
             {
                 int damage = (std::max)(1, 11 + enemy.kind * 3 - stats.Defense());
                 stats.health -= damage;
@@ -697,7 +874,7 @@ namespace Level
                 hurtFlash = .22f;
                 if (stats.health <= 0)
                 {
-                    player = Camp;
+                    Player().SetWorldPosition(ToWorld(Camp));
                     stats.health = stats.MaxHealth();
                     invulnerability = 3;
                     navigationTime = 0;
@@ -707,5 +884,6 @@ namespace Level
                 }
             }
         }
+        UpdateActorModels();
     }
 } // namespace Level

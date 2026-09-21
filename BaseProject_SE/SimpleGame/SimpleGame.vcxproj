@@ -70,6 +70,14 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <!-- Keep tracked build logs and mapped compiler files out of the synchronized source tree.
+         Separate checkouts, compiler versions and configurations must not share these files. -->
+    <LocalBuildRoot Condition="'$(LocalBuildRoot)'==''">$(LocalAppData)\SimpleGameBuild\$(ProjectGuid)\$([MSBuild]::StableStringHash('$(MSBuildProjectDirectory)'))\</LocalBuildRoot>
+    <IntDir>$(LocalBuildRoot)$(PlatformToolset)\$(VCToolsVersion)\$(Platform)\$(Configuration)\</IntDir>
+    <IntermediateOutputPath>$(IntDir)</IntermediateOutputPath>
+    <TLogLocation>$(IntDir)$(ProjectName).tlog\</TLogLocation>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <ExecutablePath>$(ExecutablePath)</ExecutablePath>
@@ -157,6 +165,8 @@
   <ItemGroup>
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="LevelOne.h" />
+    <ClInclude Include="Actor.h" />
+    <ClInclude Include="SceneGraph.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
@@ -164,6 +174,8 @@
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="RendererModels.cpp" />
     <ClCompile Include="LevelOne.cpp" />
+    <ClCompile Include="Actor.cpp" />
+    <ClCompile Include="SceneGraph.cpp" />
     <ClCompile Include="SimpleGame.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

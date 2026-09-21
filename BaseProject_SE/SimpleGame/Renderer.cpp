@@ -4,6 +4,7 @@
 #endif
 #include <Windows.h>
 #include "Renderer.h"
+#include "SceneGraph.h"
 #include <cmath>
 #include <iomanip>
 
@@ -80,11 +81,48 @@ bool Renderer::IsInitialized()
 
 void Renderer::BeginFrame(float r, float g, float b, float a)
 {
+    ++m_FrameNumber;
+    m_DrawArraysCalls = 0;
+    m_GlyphCalls = 0;
+
+    SetScreenOffset(0, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, m_Framebuffer);
     glViewport(0, 0, m_WindowSizeX, m_WindowSizeY);
 
     glClearColor(r, g, b, a);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+void Renderer::EndFrame()
+{
+    // Count submitted API calls, not model parts recorded in the cache or driver-internal GPU work.
+    std::cout << "[Frame " << m_FrameNumber << "] Draw calls: " << m_DrawArraysCalls + m_GlyphCalls
+              << " (glDrawArrays: " << m_DrawArraysCalls << ", glyph glCallList: " << m_GlyphCalls << ')'
+              << std::endl;
+}
+
+void Renderer::SubmitDrawArrays(GLenum mode, GLint first, GLsizei count)
+{
+    glDrawArrays(mode, first, count);
+    ++m_DrawArraysCalls;
+}
+
+void Renderer::DrawGlyph(GLuint displayList)
+{
+    // Each wglUseFontBitmapsW list submits one glyph bitmap, including cursor-only spaces.
+    glCallList(displayList);
+    ++m_GlyphCalls;
+}
+
+void Renderer::DrawScene(const SceneGraph& scene,
+                         ScenePass pass,
+                         const std::function<void(const Actor&)>& draw)
+{
+    // Painting does not mutate the graph; its list remains valid for the entire pass.
+    for (const Actor* actor : scene.RenderList(pass))
+    {
+        draw(*actor);
+    }
 }
 
 void Renderer::CreateVertexBufferObjects()
@@ -129,8 +167,8 @@ void Renderer::DrawShape(
     {
         return;
     }
-    const float clipX = (x / m_WindowSizeX) * 2.0f - 1.0f;
-    const float clipY = 1.0f - (y / m_WindowSizeY) * 2.0f;
+    const float clipX = ((x + m_OffsetX) / m_WindowSizeX) * 2.0f - 1.0f;
+    const float clipY = 1.0f - ((y + m_OffsetY) / m_WindowSizeY) * 2.0f;
     const float clipWidth = (width / m_WindowSizeX) * 2.0f;
     const float clipHeight = (height / m_WindowSizeY) * 2.0f;
     glUseProgram(m_SolidRectShader);
@@ -142,7 +180,7 @@ void Renderer::DrawShape(
     glEnableVertexAttribArray(position);
     glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
     glVertexAttribPointer(position, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, 0);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
+    SubmitDrawArrays(GL_TRIANGLES, 0, 6);
     glDisableVertexAttribArray(position);
 }
 
@@ -259,7 +297,7 @@ void Renderer::EndWorld(float time)
     glBindBuffer(GL_ARRAY_BUFFER, m_VBORect);
     glEnableVertexAttribArray(p);
     glVertexAttribPointer(p, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), 0);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
+    SubmitDrawArrays(GL_TRIANGLES, 0, 6);
     glDisableVertexAttribArray(p);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
