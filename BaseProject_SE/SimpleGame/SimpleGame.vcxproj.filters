@@ -31,6 +31,10 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="LevelOne.h" />
+    <ClInclude Include="HarborWorld.h" />
+    <ClInclude Include="WorldMonitor.h" />
+    <ClInclude Include="WorldLayout.h" />
+    <ClInclude Include="Profiler.h" />
     <ClInclude Include="Actor.h" />
     <ClInclude Include="SceneGraph.h" />
   </ItemGroup>
@@ -45,7 +49,11 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="RendererModels.cpp" />
+    <ClCompile Include="RendererBatch.cpp" />
+    <ClCompile Include="Profiler.cpp" />
     <ClCompile Include="LevelOne.cpp" />
+    <ClCompile Include="HarborWorld.cpp" />
+    <ClCompile Include="WorldMonitor.cpp" />
     <ClCompile Include="Actor.cpp" />
     <ClCompile Include="SceneGraph.cpp" />
   </ItemGroup>
@@ -55,6 +63,9 @@
     </None>
     <None Include="Shaders\Post.vs" />
     <None Include="Shaders\Post.fs" />
+    <None Include="Monitor\index.html" />
+    <None Include="Monitor\monitor.js" />
+    <None Include="Monitor\monitor.css" />
     <None Include="Shaders\SolidRect.vs">
       <Filter>소스 파일\Shaders</Filter>
     </None>

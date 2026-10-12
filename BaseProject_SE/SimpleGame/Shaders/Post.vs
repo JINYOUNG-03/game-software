@@ -1,5 +1,5 @@
 #version 330
-in vec3 a_Position;
+layout(location = 0) in vec3 a_Position;
 out vec2 uv;
 
 void main()

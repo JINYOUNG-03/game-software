@@ -165,6 +165,10 @@
   <ItemGroup>
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="LevelOne.h" />
+    <ClInclude Include="HarborWorld.h" />
+    <ClInclude Include="WorldMonitor.h" />
+    <ClInclude Include="WorldLayout.h" />
+    <ClInclude Include="Profiler.h" />
     <ClInclude Include="Actor.h" />
     <ClInclude Include="SceneGraph.h" />
     <ClInclude Include="stdafx.h" />
@@ -173,7 +177,11 @@
   <ItemGroup>
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="RendererModels.cpp" />
+    <ClCompile Include="RendererBatch.cpp" />
+    <ClCompile Include="Profiler.cpp" />
     <ClCompile Include="LevelOne.cpp" />
+    <ClCompile Include="HarborWorld.cpp" />
+    <ClCompile Include="WorldMonitor.cpp" />
     <ClCompile Include="Actor.cpp" />
     <ClCompile Include="SceneGraph.cpp" />
     <ClCompile Include="SimpleGame.cpp" />
@@ -195,7 +203,7 @@
       <PreprocessorDefinitions>NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>opengl32.lib;gdi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;gdi32.lib;psapi.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -208,6 +216,18 @@
     </ItemGroup>
     <MakeDir Directories="$(OutDir)Shaders" />
     <Copy SourceFiles="@(RuntimeShaders)" DestinationFolder="$(OutDir)Shaders" SkipUnchangedFiles="true" />
+  </Target>
+  <ItemGroup>
+    <None Include="Monitor\index.html" />
+    <None Include="Monitor\monitor.js" />
+    <None Include="Monitor\monitor.css" />
+  </ItemGroup>
+  <Target Name="CopyMonitorAssets" AfterTargets="Build">
+    <ItemGroup>
+      <MonitorAssets Include="$(ProjectDir)Monitor\index.html;$(ProjectDir)Monitor\monitor.js;$(ProjectDir)Monitor\monitor.css" />
+    </ItemGroup>
+    <MakeDir Directories="$(OutDir)Monitor" />
+    <Copy SourceFiles="@(MonitorAssets)" DestinationFolder="$(OutDir)Monitor" SkipUnchangedFiles="true" />
   </Target>
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

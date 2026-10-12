@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "LevelOne.h"
+#include "Profiler.h"
 
 #include <algorithm>
 #include <cmath>
@@ -12,7 +13,7 @@ namespace Level
         constexpr float HalfTileWidth = 48.0f;
         constexpr float HalfTileHeight = 24.0f;
         constexpr float BodyRadius = 0.18f;
-        const Position Camp = {13.5f, 12.5f, 0};
+        const Position Camp = WorldLayout::VillageSpawn();
 
         float Distance(const Position& a, const Position& b)
         {
@@ -21,8 +22,7 @@ namespace Level
 
         bool InCamp(int x, int y)
         {
-            // Includes every village NPC, including the laundry area south of the square.
-            return x >= 8 && x <= 18 && y >= 6 && y <= 20;
+            return WorldLayout::InVillage({float(x), float(y), 0});
         }
     } // namespace
 
@@ -122,6 +122,7 @@ namespace Level
         {
             return;
         }
+        Perf::Scope scope(Perf::Cpu::CollisionRebuild);
         // Rebuild collision from placed Actors, so moving/removing a node changes gameplay too.
         for (auto& tile : tiles)
         {
@@ -158,7 +159,10 @@ namespace Level
 
     void FirstLevel::AddProp(const Position& position, int kind, bool blocksMovement)
     {
-        Actor& prop = scene.Create(propRoot, "Prop", ActorKind::Prop);
+        int cx = int(position.x) / WorldLayout::ChunkSize;
+        int cy = int(position.y) / WorldLayout::ChunkSize;
+        ActorId parent = propChunks[cy * WorldLayout::ChunksPerSide + cx];
+        Actor& prop = scene.Create(parent ? parent : propRoot, "Prop", ActorKind::Prop);
         prop.SetWorldPosition(ToWorld(position));
         prop.variant = kind;
         prop.drawable = true;
@@ -188,6 +192,7 @@ namespace Level
 
     void FirstLevel::UpdateActorModels()
     {
+        Perf::Scope scope(Perf::Cpu::Animation);
         int frame = moving ? int(walkPhase * 8 / 6.2831853f) % 8 : 0;
         Player().model = "hero" + std::to_string(frame);
         for (Enemy* enemy : scene.Actors<Enemy>(ActorKind::Enemy))
@@ -229,6 +234,7 @@ namespace Level
 
     bool FirstLevel::Walkable(float x, float y) const
     {
+        Perf::Count(Perf::Counter::CollisionTests);
         if (!std::isfinite(x) || !std::isfinite(y))
         {
             return false;
@@ -258,8 +264,9 @@ namespace Level
         tiles[y * MapSize + x] = {Terrain::Road, false};
     }
 
-    void FirstLevel::BuildNavigation()
+    void FirstLevel::BuildNavigation(bool localOnly)
     {
+        Perf::Scope scope(Perf::Cpu::Navigation);
         navigation.fill(-1);
         Position gridPlayer = ToGrid(Player().WorldPosition());
         int x = int(gridPlayer.x), y = int(gridPlayer.y);
@@ -275,11 +282,16 @@ namespace Level
         {
             int id = pending.front();
             pending.pop();
+            Perf::Count(Perf::Counter::NavigationCells);
             const int dx[] = {1, -1, 0, 0};
             const int dy[] = {0, 0, 1, -1};
             for (int i = 0; i < 4; ++i)
             {
                 int nx = id % MapSize + dx[i], ny = id / MapSize + dy[i];
+                if (localOnly && std::abs(nx - x) + std::abs(ny - y) > 16)
+                {
+                    continue;
+                }
                 if (!Open(nx, ny))
                 {
                     continue;
@@ -310,6 +322,7 @@ namespace Level
         {
             int id = pending.front();
             pending.pop();
+            Perf::Count(Perf::Counter::NavigationCells);
             const int dx[] = {1, -1, 0, 0}, dy[] = {0, 0, 1, -1};
             for (int k = 0; k < 4; ++k)
             {
@@ -342,7 +355,7 @@ namespace Level
     void FirstLevel::ConnectGround()
     {
         // Each carved corridor joins at least one disconnected component to the camp.
-        BuildNavigation();
+        BuildNavigation(false);
         for (int y = 1; y < MapSize - 1; ++y)
         {
             for (int x = 1; x < MapSize - 1; ++x)
@@ -363,13 +376,14 @@ namespace Level
                     cy += cy < Camp.y ? 1 : -1;
                 }
                 Carve(cx, cy);
-                BuildNavigation();
+                BuildNavigation(false);
             }
         }
     }
 
     void FirstLevel::Generate(std::uint32_t nextSeed)
     {
+        Perf::Scope scope(Perf::Cpu::WorldGenerate);
         seed = nextSeed;
         random.seed(seed);
         tiles.fill(Tile{});
@@ -378,6 +392,15 @@ namespace Level
         scene.DestroyChildren(propRoot);
         scene.DestroyChildren(enemyRoot);
         scene.DestroyChildren(lootRoot);
+        for (int cy = 0; cy < WorldLayout::ChunksPerSide; ++cy)
+        {
+            for (int cx = 0; cx < WorldLayout::ChunksPerSide; ++cx)
+            {
+                int index = cy * WorldLayout::ChunksPerSide + cx;
+                terrainChunks[index] = scene.Create(terrainRoot, "TerrainChunk").Id();
+                propChunks[index] = scene.Create(propRoot, "SceneryChunk").Id();
+            }
+        }
         Player().SetWorldPosition(ToWorld(Camp));
         moving = false;
         attackAnimation = 0;
@@ -388,21 +411,29 @@ namespace Level
         stats.health = stats.MaxHealth();
 
         std::uniform_int_distribution<int> coordinate(3, MapSize - 4);
-        for (int lake = 0; lake < 7; ++lake)
+        const std::array<Position, 4> destinations = {WorldLayout::HunterCamp(),
+                                                      WorldLayout::Waystation(),
+                                                      WorldLayout::OldShrine(),
+                                                      WorldLayout::RaiderCamp()};
+        for (int lake = 0; lake < 56; ++lake)
         {
             float cx = float(coordinate(random)), cy = float(coordinate(random));
-            float rx = 2.5f + float(random() % 35) / 10.0f;
-            float ry = 2.5f + float(random() % 35) / 10.0f;
-            for (int y = 1; y < MapSize - 1; ++y)
+            float rx = 3.5f + float(random() % 65) / 10.0f;
+            float ry = 3.5f + float(random() % 65) / 10.0f;
+            int minX = (std::max)(1, int(cx - rx - 1)), maxX = (std::min)(MapSize - 2, int(cx + rx + 1));
+            int minY = (std::max)(1, int(cy - ry - 1)), maxY = (std::min)(MapSize - 2, int(cy + ry + 1));
+            for (int y = minY; y <= maxY; ++y)
             {
-                for (int x = 1; x < MapSize - 1; ++x)
+                for (int x = minX; x <= maxX; ++x)
                 {
-                    if (InCamp(x, y))
+                    Position p = {x + .5f, y + .5f, 0};
+                    bool reserved = WorldLayout::InStoryDistrict(p);
+                    for (const Position& destination : destinations)
                     {
-                        continue;
+                        reserved = reserved || Distance(p, destination) < 8;
                     }
                     float dx = (x - cx) / rx, dy = (y - cy) / ry;
-                    if (dx * dx + dy * dy < 1)
+                    if (!reserved && dx * dx + dy * dy < 1)
                     {
                         tiles[y * MapSize + x].terrain = Terrain::Water;
                     }
@@ -410,16 +441,23 @@ namespace Level
             }
         }
 
-        // Random destinations joined by broad roads; village is the only fixed safe landmark.
-        for (int route = 0; route < 7; ++route)
+        for (int y = 6; y <= 27; ++y)
         {
-            int x = int(Camp.x), y = int(Camp.y);
-            int tx = coordinate(random), ty = coordinate(random);
+            for (int x = 26; x <= 38; ++x)
+            {
+                tiles[(y + WorldLayout::TownOffsetY) * MapSize + x + WorldLayout::TownOffsetX].terrain =
+                    Terrain::Water;
+            }
+        }
+        auto road = [&](Position from, Position to)
+        {
+            int x = int(from.x), y = int(from.y), tx = int(to.x), ty = int(to.y);
             while (x != tx || y != ty)
             {
                 Carve(x, y);
                 Carve(x + 1, y);
-                if (x != tx && (y == ty || random() % 2 == 0))
+                Carve(x, y + 1);
+                if (x != tx)
                 {
                     x += x < tx ? 1 : -1;
                 }
@@ -428,51 +466,99 @@ namespace Level
                     y += y < ty ? 1 : -1;
                 }
             }
-        }
-        for (int x = 8; x <= 19; ++x)
+            Carve(x, y);
+            Carve(x + 1, y);
+            Carve(x, y + 1);
+        };
+        for (const auto& destination : destinations)
         {
-            Carve(x, 12);
+            road(Camp, destination);
         }
-        for (int y = 5; y <= 19; ++y)
+        for (const Position& destination : {Position{24.5f, 28.5f, 0},
+                                            Position{24.5f, 232.5f, 0},
+                                            Position{232.5f, 35.5f, 0},
+                                            Position{232.5f, 232.5f, 0}})
         {
-            Carve(13, y);
+            road(Camp, destination);
         }
+        road(WorldLayout::HunterCamp(), WorldLayout::OldShrine());
+        road(WorldLayout::OldShrine(), WorldLayout::RaiderCamp());
+        for (int route = 0; route < 20; ++route)
+        {
+            road(Camp, {float(coordinate(random)), float(coordinate(random)), 0});
+        }
+        for (int y = 5; y <= 33; y += 6)
+        {
+            road(WorldLayout::Town(5, float(y)), WorldLayout::Town(30, float(y)));
+        }
+        for (int x = 5; x <= 23; x += 6)
+        {
+            road(WorldLayout::Town(float(x), 5), WorldLayout::Town(float(x), 33));
+        }
+        road(WorldLayout::Town(13, 12), WorldLayout::Town(25, 12));
+        road(WorldLayout::Town(23, 7), WorldLayout::Town(23, 29));
+        road(WorldLayout::Town(19, 24), WorldLayout::Town(25, 24));
+        road(WorldLayout::Town(21, 17), WorldLayout::Town(30, 17));
         ConnectGround();
 
-        // A prop is accepted only when removing its footprint preserves connectivity.
+        // Removing a tile whose eight-neighbour ring is open cannot disconnect the ground.
+        // This local invariant avoids a whole-world flood fill for every tree.
         auto addBlock = [&](int x, int y, int kind)
         {
             if (!Open(x, y) || At(x, y).terrain == Terrain::Road)
             {
                 return;
             }
+            for (int dy = -1; dy <= 1; ++dy)
+            {
+                for (int dx = -1; dx <= 1; ++dx)
+                {
+                    if (!Open(x + dx, y + dy))
+                    {
+                        return;
+                    }
+                }
+            }
             tiles[y * MapSize + x].blocked = true;
-            if (!AllWalkableConnected())
-            {
-                tiles[y * MapSize + x].blocked = false;
-                return;
-            }
             AddProp({x + .5f, y + .5f, 0}, kind, true);
+            Perf::Count(Perf::Counter::WorldPropsAdded);
         };
-        for (int x : {9, 17})
+        for (int x = 8; x <= 23; x += 5)
         {
-            for (int y : {7, 11, 15})
+            for (int y = 8; y <= 32; y += 6)
             {
-                addBlock(x, y, int(random() % 2));
+                addBlock(x + WorldLayout::TownOffsetX, y + WorldLayout::TownOffsetY, int(random() % 2));
             }
         }
-        AddProp({12, 9, 0}, 2);
-        AddProp({14, 9, 0}, 2);
-        AddProp({12, 5, 0}, 3);
-        AddProp({14, 5, 0}, 3);
-        for (int y = 7; y <= 17; y += 3)
+        for (Position p : {WorldLayout::Town(12, 9), WorldLayout::Town(14, 9), WorldLayout::Town(18, 15)})
         {
-            AddProp({14, float(y), 0}, 5);
+            AddProp(p, 2);
         }
-        for (int attempt = 0; attempt < 400; ++attempt)
+        AddProp(WorldLayout::Town(12, 4), 3);
+        AddProp(WorldLayout::Town(14, 4), 3);
+        AddProp(WorldLayout::Town(16, 21), 4);
+        for (int y = 7; y <= 31; y += 6)
+        {
+            AddProp(WorldLayout::Town(14, float(y)), 5);
+        }
+        for (const Position& destination : destinations)
+        {
+            AddProp({destination.x - 3, destination.y - 2, 0}, 1);
+            AddProp({destination.x + 3, destination.y - 2, 0}, 1);
+            AddProp({destination.x, destination.y + 2, 0}, 5);
+            AddProp({destination.x - 3, destination.y + 3, 0}, 6);
+            AddProp({destination.x + 3, destination.y + 3, 0}, 6);
+        }
+        for (int attempt = 0; attempt < 19500; ++attempt)
         {
             int x = coordinate(random), y = coordinate(random);
-            if (!InCamp(x, y))
+            Position p = {x + .5f, y + .5f, 0};
+            bool reserved = WorldLayout::InStoryDistrict(p);
+            for (const Position& destination : destinations)
+            {
+                reserved = reserved || Distance(p, destination) < 7;
+            }
+            if (!reserved)
             {
                 addBlock(x, y, 7);
             }
@@ -492,12 +578,13 @@ namespace Level
             }
         }
         std::shuffle(candidates.begin(), candidates.end(), random);
+        std::vector<Position> beastHomes;
         for (const auto& p : candidates)
         {
             bool crowded = false;
-            for (const Enemy* e : scene.Actors<Enemy>(ActorKind::Enemy))
+            for (const Position& home : beastHomes)
             {
-                if (Distance(e->HomePosition(), p) < 2.3f)
+                if (Distance(home, p) < 3.8f)
                 {
                     crowded = true;
                     break;
@@ -510,6 +597,7 @@ namespace Level
             Enemy& enemy = scene.Create<Enemy>(enemyRoot, "Beast", ActorKind::Enemy);
             enemy.SetWorldPosition(p);
             enemy.home = enemy.LocalPosition();
+            beastHomes.push_back(p);
             enemy.drawable = true;
             enemy.shadowWidth = 30;
             Actor& status = scene.Create(enemy.Id(), "HealthAndHit", ActorKind::Effect);
@@ -519,7 +607,7 @@ namespace Level
             enemy.kind = int(random() % 3);
             enemy.health = enemy.maxHealth = 42 + enemy.kind * 18;
             enemy.phase = float(random() % 100) / 10;
-            if (scene.FindByKind(ActorKind::Enemy).size() == 36)
+            if (beastHomes.size() == 192)
             {
                 break;
             }
@@ -529,7 +617,9 @@ namespace Level
         {
             for (int x = 0; x < MapSize; ++x)
             {
-                Actor& tile = scene.Create(terrainRoot, "Tile", ActorKind::Terrain);
+                int chunk =
+                    (y / WorldLayout::ChunkSize) * WorldLayout::ChunksPerSide + x / WorldLayout::ChunkSize;
+                Actor& tile = scene.Create(terrainChunks[chunk], "Tile", ActorKind::Terrain);
                 tile.SetLocalPosition({x + .5f, y + .5f, 0});
                 tile.pass = ScenePass::Ground;
                 tile.drawable = true;
@@ -542,10 +632,61 @@ namespace Level
         }
         generating = false;
         RefreshActorObstacles();
+        UpdateVisibleChunks();
         UpdateActorModels();
         BuildNavigation();
         Notify(
             L"\uc0ac\ub0e5\ud130\uc5d0 \ub3c4\ucc29\ud588\ub2e4. \uc9d0\uc2b9\uc744 \uc7a1\uace0, \uc804\ub9ac\ud488\uc744 \ucc59\uae30\uba70 \ubab8\uc744 \ub2e8\ub828\ud574 \ubcf4\uc790.");
+    }
+
+    void FirstLevel::DrainFloodedLane()
+    {
+        Perf::Scope scope(Perf::Cpu::StoryUpdate);
+        // Change shared terrain Actors once, not a render-only overlay or a second tile map.
+        for (ActorId id : scene.FindByKind(ActorKind::Terrain))
+        {
+            Actor& tile = scene.Get(id);
+            Position p = tile.WorldPosition();
+            float x = p.x - WorldLayout::TownOffsetX;
+            float y = p.y - WorldLayout::TownOffsetY;
+            if (tile.variant == 5 && x >= 26 && x < 31 && y >= 19 && y < 27)
+            {
+                tile.SetVariant(4);
+                tile.model = "tile4";
+                Perf::Count(Perf::Counter::TerrainTilesChanged);
+            }
+        }
+        navigationTime = 0;
+    }
+
+    void FirstLevel::UpdateVisibleChunks()
+    {
+        Perf::Scope scope(Perf::Cpu::ChunkVisibility);
+        Position hero = ToGrid(Player().WorldPosition());
+        for (int cy = 0; cy < WorldLayout::ChunksPerSide; ++cy)
+        {
+            for (int cx = 0; cx < WorldLayout::ChunksPerSide; ++cx)
+            {
+                // Project the chunk bounds into the same fixed 1280x800 camera as the renderer.
+                // Include tall scenery and the movement margin, not only tile centers.
+                float minX = static_cast<float>(cx * WorldLayout::ChunkSize);
+                float maxX = minX + WorldLayout::ChunkSize;
+                float minY = static_cast<float>(cy * WorldLayout::ChunkSize);
+                float maxY = minY + WorldLayout::ChunkSize;
+                float left = ((minX - maxY) - (hero.x - hero.y)) * HalfTileWidth;
+                float right = ((maxX - minY) - (hero.x - hero.y)) * HalfTileWidth;
+                float top = ((minX + minY) - (hero.x + hero.y)) * HalfTileHeight;
+                float bottom = ((maxX + maxY) - (hero.x + hero.y)) * HalfTileHeight;
+                bool visible = right > -900 && left < 900 && bottom > -650 && top < 760;
+                int index = cy * WorldLayout::ChunksPerSide + cx;
+                scene.Get(terrainChunks[index]).SetVisible(visible);
+                scene.Get(propChunks[index]).SetVisible(visible);
+                if (visible)
+                {
+                    Perf::Count(Perf::Counter::ChunksVisible);
+                }
+            }
+        }
     }
 
     void FirstLevel::Move(Actor& actor, float dx, float dy)
@@ -570,6 +711,7 @@ namespace Level
 
     void FirstLevel::MovePlayer(float sx, float sy, float dt)
     {
+        Perf::Scope scope(Perf::Cpu::Movement);
         float length = std::hypot(sx, sy);
         moving = false;
         if (!Player().IsActive())
@@ -610,12 +752,16 @@ namespace Level
         return true;
     }
 
-    void FirstLevel::Kill(Enemy& enemy)
+    void FirstLevel::Kill(Enemy& enemy, bool playerCredit)
     {
         enemy.health = 0;
         enemy.respawn = 14;
         enemy.moving = false;
         enemy.SetVisible(false);
+        if (!playerCredit)
+        {
+            return;
+        }
         ++stats.kills;
         int previousLevel = stats.level;
         int reward = 25 + enemy.kind * 10;
@@ -646,11 +792,12 @@ namespace Level
         }
     }
 
-    void FirstLevel::Attack()
+    bool FirstLevel::Attack()
     {
+        Perf::Scope scope(Perf::Cpu::Combat);
         if (!Player().IsActive() || attackCooldown > 0)
         {
-            return;
+            return false;
         }
         attackCooldown = .48f;
         attackAnimation = .22f;
@@ -673,17 +820,150 @@ namespace Level
             {
                 continue;
             }
-            enemy.health -= stats.Attack();
-            enemy.flash = .18f;
-            if (enemy.health <= 0)
+            DamageEnemy(enemy, stats.Attack(), true);
+        }
+        return true;
+    }
+
+    bool FirstLevel::DamageEnemy(Enemy& enemy, int damage, bool playerCredit)
+    {
+        if (enemy.health <= 0 || !enemy.IsActive() || damage <= 0)
+        {
+            return false;
+        }
+        enemy.health -= damage;
+        enemy.flash = .18f;
+        if (enemy.health <= 0)
+        {
+            Kill(enemy, playerCredit);
+            return true;
+        }
+        return false;
+    }
+
+    void FirstLevel::DamagePlayer(int damage)
+    {
+        if (invulnerability > 0 || !Player().IsActive())
+        {
+            return;
+        }
+        stats.health -= (std::max)(1, damage - stats.Defense());
+        invulnerability = .6f;
+        hurtFlash = .22f;
+        if (stats.health <= 0)
+        {
+            Player().SetWorldPosition(ToWorld(Camp));
+            stats.health = stats.MaxHealth();
+            invulnerability = 3;
+            navigationTime = 0;
+            Notify(
+                L"\ub9c8\uc744\uc5d0\uc11c \ub208\uc744 \ub5b4\ub2e4. \uc7a0\uae50 \uc228\uc744 \uace0\ub974\uc790.");
+        }
+    }
+
+    void FirstLevel::MoveActor(Actor& actor, float dx, float dy)
+    {
+        Move(actor, dx, dy);
+    }
+
+    std::vector<Position> FirstLevel::FindPath(const Position& from, const Position& to) const
+    {
+        Perf::Scope scope(Perf::Cpu::NpcNavigation);
+        Position a = ToGrid(from), b = ToGrid(to);
+        int sx = int(std::floor(a.x)), sy = int(std::floor(a.y));
+        int tx = int(std::floor(b.x)), ty = int(std::floor(b.y));
+        if (!Open(sx, sy) || !Open(tx, ty))
+        {
+            return {};
+        }
+        if (pathStamp.size() != MapSize * MapSize)
+        {
+            pathStamp.assign(MapSize * MapSize, 0);
+            pathCost.resize(MapSize * MapSize);
+            pathParent.resize(MapSize * MapSize);
+        }
+        if (++pathSearch == 0)
+        {
+            std::fill(pathStamp.begin(), pathStamp.end(), 0);
+            pathSearch = 1;
+        }
+
+        struct Visit
+        {
+            int cell, cost, estimate;
+
+            bool operator<(const Visit& other) const
             {
-                Kill(enemy);
+                return estimate > other.estimate;
+            }
+        };
+
+        std::priority_queue<Visit> pending;
+        int start = sy * MapSize + sx, goal = ty * MapSize + tx;
+        auto estimate = [&](int cell)
+        {
+            return std::abs(cell % MapSize - tx) + std::abs(cell / MapSize - ty);
+        };
+        pathCost[start] = 0;
+        pathParent[start] = start;
+        pathStamp[start] = pathSearch;
+        pending.push({start, 0, estimate(start)});
+        bool found = false;
+        while (!pending.empty())
+        {
+            Visit visit = pending.top();
+            pending.pop();
+            int cell = visit.cell;
+            if (visit.cost != pathCost[cell])
+            {
+                continue;
+            }
+            Perf::Count(Perf::Counter::NpcPathCells);
+            if (cell == goal)
+            {
+                found = true;
+                break;
+            }
+            const int dx[] = {1, -1, 0, 0}, dy[] = {0, 0, 1, -1};
+            for (int k = 0; k < 4; ++k)
+            {
+                int x = cell % MapSize + dx[k], y = cell / MapSize + dy[k];
+                if (!Open(x, y))
+                {
+                    continue;
+                }
+                int next = y * MapSize + x, cost = visit.cost + 1;
+                if (pathStamp[next] != pathSearch || cost < pathCost[next])
+                {
+                    pathStamp[next] = pathSearch;
+                    pathCost[next] = cost;
+                    pathParent[next] = cell;
+                    pending.push({next, cost, cost + estimate(next)});
+                }
             }
         }
+        if (!found)
+        {
+            return {};
+        }
+        std::vector<Position> path;
+        for (int cell = goal; cell != start; cell = pathParent[cell])
+        {
+            path.push_back(ToWorld({cell % MapSize + .5f, cell / MapSize + .5f, 0}));
+        }
+        std::reverse(path.begin(), path.end());
+        Position center = ToWorld({sx + .5f, sy + .5f, 0});
+        if (Distance(from, center) > .12f)
+        {
+            path.insert(path.begin(), center);
+        }
+        path.push_back(to);
+        return path;
     }
 
     bool FirstLevel::PickUp()
     {
+        Perf::Scope scope(Perf::Cpu::Loot);
         bool collected = false;
         for (ActorId id : scene.FindByKind(ActorKind::Loot))
         {
@@ -763,6 +1043,7 @@ namespace Level
 
     void FirstLevel::Update(float dt)
     {
+        Perf::Scope scope(Perf::Cpu::WorldUpdate);
         attackCooldown = (std::max)(0.0f, attackCooldown - dt);
         attackAnimation = (std::max)(0.0f, attackAnimation - dt);
         hurtFlash = (std::max)(0.0f, hurtFlash - dt);
@@ -782,6 +1063,7 @@ namespace Level
             {
                 continue;
             }
+            Perf::Count(Perf::Counter::LootUpdated);
             loot->lifetime -= dt;
             if (loot->lifetime <= 0)
             {
@@ -789,98 +1071,89 @@ namespace Level
             }
         }
 
-        for (Enemy* instance : scene.Actors<Enemy>(ActorKind::Enemy))
         {
-            Enemy& enemy = *instance;
-            enemy.phase += dt;
-            enemy.flash = (std::max)(0.0f, enemy.flash - dt);
-            enemy.cooldown = (std::max)(0.0f, enemy.cooldown - dt);
-            if (enemy.health <= 0)
+            Perf::Scope aiScope(Perf::Cpu::AI);
+            for (Enemy* instance : scene.Actors<Enemy>(ActorKind::Enemy))
             {
-                enemy.respawn -= dt;
-                if (enemy.respawn <= 0 && Distance(Player().WorldPosition(), enemy.HomePosition()) > 3)
+                Enemy& enemy = *instance;
+                Perf::Count(Perf::Counter::EnemiesUpdated);
+                enemy.phase += dt;
+                enemy.flash = (std::max)(0.0f, enemy.flash - dt);
+                enemy.cooldown = (std::max)(0.0f, enemy.cooldown - dt);
+                if (enemy.health <= 0)
                 {
-                    enemy.SetWorldPosition(enemy.HomePosition());
-                    enemy.SetVisible(true);
-                    enemy.health = enemy.maxHealth;
-                    enemy.cooldown = 1;
-                }
-                continue;
-            }
-
-            float distance = Distance(Player().WorldPosition(), enemy.WorldPosition());
-            Position target = enemy.HomePosition();
-            bool chasing =
-                distance < 6 && Player().IsActive() &&
-                !InCamp(int(ToGrid(Player().WorldPosition()).x), int(ToGrid(Player().WorldPosition()).y));
-            if (chasing)
-            {
-                if (ClearLine(enemy.WorldPosition(), Player().WorldPosition()))
-                {
-                    target = Player().WorldPosition();
-                }
-                else
-                {
-                    Position gridEnemy = ToGrid(enemy.WorldPosition());
-                    int x = int(std::floor(gridEnemy.x)), y = int(std::floor(gridEnemy.y));
-                    int best =
-                        x >= 0 && y >= 0 && x < MapSize && y < MapSize ? navigation[y * MapSize + x] : -1;
-                    target = enemy.WorldPosition();
-                    const int dx[] = {1, -1, 0, 0}, dy[] = {0, 0, 1, -1};
-                    for (int k = 0; k < 4; ++k)
+                    enemy.respawn -= dt;
+                    if (enemy.respawn <= 0 && Distance(Player().WorldPosition(), enemy.HomePosition()) > 3)
                     {
-                        if (!Open(x + dx[k], y + dy[k]))
+                        enemy.SetWorldPosition(enemy.HomePosition());
+                        enemy.SetVisible(true);
+                        enemy.health = enemy.maxHealth;
+                        enemy.cooldown = 1;
+                    }
+                    continue;
+                }
+
+                float distance = Distance(Player().WorldPosition(), enemy.WorldPosition());
+                Position target = enemy.HomePosition();
+                bool chasing =
+                    distance < 6 && Player().IsActive() &&
+                    !InCamp(int(ToGrid(Player().WorldPosition()).x), int(ToGrid(Player().WorldPosition()).y));
+                if (chasing)
+                {
+                    if (ClearLine(enemy.WorldPosition(), Player().WorldPosition()))
+                    {
+                        target = Player().WorldPosition();
+                    }
+                    else
+                    {
+                        Position gridEnemy = ToGrid(enemy.WorldPosition());
+                        int x = int(std::floor(gridEnemy.x)), y = int(std::floor(gridEnemy.y));
+                        int best =
+                            x >= 0 && y >= 0 && x < MapSize && y < MapSize ? navigation[y * MapSize + x] : -1;
+                        target = enemy.WorldPosition();
+                        const int dx[] = {1, -1, 0, 0}, dy[] = {0, 0, 1, -1};
+                        for (int k = 0; k < 4; ++k)
                         {
-                            continue;
-                        }
-                        int value = navigation[(y + dy[k]) * MapSize + x + dx[k]];
-                        if (value >= 0 && (best < 0 || value < best))
-                        {
-                            best = value;
-                            target = ToWorld({x + dx[k] + .5f, y + dy[k] + .5f, 0});
+                            if (!Open(x + dx[k], y + dy[k]))
+                            {
+                                continue;
+                            }
+                            int value = navigation[(y + dy[k]) * MapSize + x + dx[k]];
+                            if (value >= 0 && (best < 0 || value < best))
+                            {
+                                best = value;
+                                target = ToWorld({x + dx[k] + .5f, y + dy[k] + .5f, 0});
+                            }
                         }
                     }
                 }
-            }
-            else
-            {
-                Position home = enemy.HomePosition();
-                Position wander = {
-                    home.x + std::sin(enemy.phase * .3f), home.y + std::cos(enemy.phase * .27f), home.z};
-                if (Walkable(wander.x, wander.y))
+                else
                 {
-                    target = wander;
+                    Position home = enemy.HomePosition();
+                    Position wander = {
+                        home.x + std::sin(enemy.phase * .3f), home.y + std::cos(enemy.phase * .27f), home.z};
+                    if (Walkable(wander.x, wander.y))
+                    {
+                        target = wander;
+                    }
                 }
-            }
 
-            float dx = target.x - enemy.WorldPosition().x, dy = target.y - enemy.WorldPosition().y;
-            float length = std::hypot(dx, dy);
-            Position before = enemy.WorldPosition();
-            if (length > .15f && (!chasing || distance > .55f))
-            {
-                float speed = chasing ? 1.15f + enemy.kind * .12f : .35f;
-                float amount = (std::min)(speed * dt, length);
-                Move(enemy, dx / length * amount, dy / length * amount);
-            }
-            enemy.moving = Distance(before, enemy.WorldPosition()) > .0001f;
-
-            if (chasing && distance < .9f && enemy.cooldown <= 0 && invulnerability <= 0 &&
-                ClearLine(enemy.WorldPosition(), Player().WorldPosition()))
-            {
-                int damage = (std::max)(1, 11 + enemy.kind * 3 - stats.Defense());
-                stats.health -= damage;
-                enemy.cooldown = 1.1f;
-                invulnerability = .6f;
-                hurtFlash = .22f;
-                if (stats.health <= 0)
+                float dx = target.x - enemy.WorldPosition().x, dy = target.y - enemy.WorldPosition().y;
+                float length = std::hypot(dx, dy);
+                Position before = enemy.WorldPosition();
+                if (length > .15f && (!chasing || distance > .55f))
                 {
-                    Player().SetWorldPosition(ToWorld(Camp));
-                    stats.health = stats.MaxHealth();
-                    invulnerability = 3;
-                    navigationTime = 0;
-                    Notify(
-                        L"\ub9c8\uc744 \uc0ac\ub78c\ub4e4\uc774 \ub370\ub824\ub2e4 \uc8fc\uc5c8\ub2e4. \uacbd\ud5d8\uce58\ub294 \uadf8\ub300\ub85c\ub2e4. \uc228\uc744 \uace0\ub974\uace0 \ub2e4\uc2dc \ub098\uac00\uc790.");
-                    break;
+                    float speed = chasing ? 1.15f + enemy.kind * .12f : .35f;
+                    float amount = (std::min)(speed * dt, length);
+                    Move(enemy, dx / length * amount, dy / length * amount);
+                }
+                enemy.moving = Distance(before, enemy.WorldPosition()) > .0001f;
+
+                if (chasing && distance < .9f && enemy.cooldown <= 0 && invulnerability <= 0 &&
+                    ClearLine(enemy.WorldPosition(), Player().WorldPosition()))
+                {
+                    enemy.cooldown = 1.1f;
+                    DamagePlayer(11 + enemy.kind * 3);
                 }
             }
         }

@@ -5,7 +5,9 @@
 #include <Windows.h>
 #include "Renderer.h"
 #include "SceneGraph.h"
+#include "Profiler.h"
 #include <cmath>
+#include <algorithm>
 #include <iomanip>
 
 Renderer::Renderer(int windowSizeX, int windowSizeY)
@@ -15,6 +17,26 @@ Renderer::Renderer(int windowSizeX, int windowSizeY)
 
 Renderer::~Renderer()
 {
+    for (auto& batch : m_GpuBatches)
+    {
+        if (batch.vao)
+        {
+            glDeleteVertexArrays(1, &batch.vao);
+        }
+        if (batch.buffer)
+        {
+            glDeleteBuffers(1, &batch.buffer);
+        }
+    }
+    glDeleteVertexArrays(1, &m_PostVAO);
+    glDeleteFramebuffers(2, m_GlowFbo.data());
+    glDeleteTextures(2, m_GlowTexture.data());
+    glDeleteFramebuffers(1, &m_MiniMapFbo);
+    glDeleteTextures(1, &m_MiniMapTexture);
+    if (!m_FontPages.empty())
+    {
+        glDeleteTextures(GLsizei(m_FontPages.size()), m_FontPages.data());
+    }
     if (m_QuadBuffer)
     {
         glDeleteBuffers(1, &m_QuadBuffer);
@@ -55,23 +77,29 @@ void Renderer::Initialize(int windowSizeX, int windowSizeY)
     m_SolidRectShader = CompileShaders("./Shaders/SolidRect.vs", "./Shaders/SolidRect.fs");
     m_PostShader = CompileShaders("./Shaders/Post.vs", "./Shaders/Post.fs");
 
-    glGenTextures(1, &m_SceneTexture);
-    glBindTexture(GL_TEXTURE_2D, m_SceneTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, windowSizeX, windowSizeY, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    glGenFramebuffers(1, &m_Framebuffer);
-    glBindFramebuffer(GL_FRAMEBUFFER, m_Framebuffer);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_SceneTexture, 0);
-    bool targetReady = glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
+    bool targetReady = CreateTarget(m_Framebuffer, m_SceneTexture, windowSizeX, windowSizeY);
+    for (int i = 0; i < 2; ++i)
+    {
+        targetReady =
+            CreateTarget(m_GlowFbo[i], m_GlowTexture[i], windowSizeX / 4, windowSizeY / 4) && targetReady;
+    }
+    targetReady = CreateTarget(m_MiniMapFbo, m_MiniMapTexture, 240, 225) && targetReady;
+    m_BatchLocations.screen = glGetUniformLocation(m_SolidRectShader, "u_Screen");
+    m_BatchLocations.time = glGetUniformLocation(m_SolidRectShader, "u_Time");
+    m_BatchLocations.texture = glGetUniformLocation(m_SolidRectShader, "u_Texture");
+    m_PostScene = glGetUniformLocation(m_PostShader, "u_Scene");
+    m_PostGlow = glGetUniformLocation(m_PostShader, "u_Glow");
+    m_PostPixel = glGetUniformLocation(m_PostShader, "u_Pixel");
+    m_PostMode = glGetUniformLocation(m_PostShader, "u_Mode");
     CreateVertexBufferObjects();
-    m_Initialized =
-        targetReady && m_PostShader > 0 && m_SolidRectShader > 0 && m_VBORect > 0 && m_VBODiamond > 0;
+    glGenVertexArrays(1, &m_PostVAO);
+    glBindVertexArray(m_PostVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, m_VBORect);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, nullptr);
+    glBindVertexArray(0);
+    m_Queue.reserve(8192);
+    m_Initialized = targetReady && m_PostShader && m_SolidRectShader && m_PostVAO;
 }
 
 bool Renderer::IsInitialized()
@@ -83,7 +111,10 @@ void Renderer::BeginFrame(float r, float g, float b, float a)
 {
     ++m_FrameNumber;
     m_DrawArraysCalls = 0;
-    m_GlyphCalls = 0;
+    m_BatchSlot = 0;
+    m_QueueTexture = 0;
+    m_TargetWidth = float(m_WindowSizeX);
+    m_TargetHeight = float(m_WindowSizeY);
 
     SetScreenOffset(0, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, m_Framebuffer);
@@ -95,23 +126,14 @@ void Renderer::BeginFrame(float r, float g, float b, float a)
 
 void Renderer::EndFrame()
 {
-    // Count submitted API calls, not model parts recorded in the cache or driver-internal GPU work.
-    std::cout << "[Frame " << m_FrameNumber << "] Draw calls: " << m_DrawArraysCalls + m_GlyphCalls
-              << " (glDrawArrays: " << m_DrawArraysCalls << ", glyph glCallList: " << m_GlyphCalls << ')'
-              << std::endl;
+    Perf::Profiler::Get().EndFrame();
 }
 
 void Renderer::SubmitDrawArrays(GLenum mode, GLint first, GLsizei count)
 {
     glDrawArrays(mode, first, count);
     ++m_DrawArraysCalls;
-}
-
-void Renderer::DrawGlyph(GLuint displayList)
-{
-    // Each wglUseFontBitmapsW list submits one glyph bitmap, including cursor-only spaces.
-    glCallList(displayList);
-    ++m_GlyphCalls;
+    Perf::Count(Perf::Counter::DrawCalls);
 }
 
 void Renderer::DrawScene(const SceneGraph& scene,
@@ -119,7 +141,7 @@ void Renderer::DrawScene(const SceneGraph& scene,
                          const std::function<void(const Actor&)>& draw)
 {
     // Painting does not mutate the graph; its list remains valid for the entire pass.
-    for (const Actor* actor : scene.RenderList(pass))
+    for (const Actor* actor : scene.FrameList(pass))
     {
         draw(*actor);
     }
@@ -167,21 +189,21 @@ void Renderer::DrawShape(
     {
         return;
     }
-    const float clipX = ((x + m_OffsetX) / m_WindowSizeX) * 2.0f - 1.0f;
-    const float clipY = 1.0f - ((y + m_OffsetY) / m_WindowSizeY) * 2.0f;
-    const float clipWidth = (width / m_WindowSizeX) * 2.0f;
-    const float clipHeight = (height / m_WindowSizeY) * 2.0f;
-    glUseProgram(m_SolidRectShader);
-    glUniform1i(glGetUniformLocation(m_SolidRectShader, "u_Material"), m_Material);
-    glUniform1f(glGetUniformLocation(m_SolidRectShader, "u_Time"), m_Time);
-    glUniform4f(glGetUniformLocation(m_SolidRectShader, "u_Transform"), clipX, clipY, clipWidth, clipHeight);
-    glUniform4f(glGetUniformLocation(m_SolidRectShader, "u_Color"), r, g, b, a);
-    const GLint position = glGetAttribLocation(m_SolidRectShader, "a_Position");
-    glEnableVertexAttribArray(position);
-    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-    glVertexAttribPointer(position, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, 0);
-    SubmitDrawArrays(GL_TRIANGLES, 0, 6);
-    glDisableVertexAttribArray(position);
+    const float color[] = {r, g, b, a};
+    if (vertexBuffer == m_VBODiamond)
+    {
+        Instance item{};
+        const float corners[] = {
+            x, y - height * .5f, x - width * .5f, y, x, y + height * .5f, x + width * .5f, y};
+        std::copy(corners, corners + 8, item.corners);
+        std::copy(color, color + 4, item.color);
+        item.material = float(m_Material);
+        QueueInstance(item);
+    }
+    else
+    {
+        QueueRect(x, y, width, height, color, m_Material);
+    }
 }
 
 void Renderer::AddShader(GLuint program, const char* text, GLenum type)
@@ -278,30 +300,25 @@ void Renderer::DrawEllipse(float x, float y, float w, float h, float r, float g,
 
 void Renderer::EndWorld(float time)
 {
+    Flush();
+    Perf::Scope scope(Perf::Cpu::Postprocess);
+    glDisable(GL_BLEND);
+    const int lowWidth = m_WindowSizeX / 4, lowHeight = m_WindowSizeY / 4;
+    DrawPost(m_GlowFbo[0], m_SceneTexture, 0, 0, lowWidth, lowHeight);
+    DrawPost(m_GlowFbo[1], m_GlowTexture[0], 0, 1, lowWidth, lowHeight);
+    DrawPost(m_GlowFbo[0], m_GlowTexture[1], 0, 2, lowWidth, lowHeight);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, m_OutputWidth, m_OutputHeight);
     glClearColor(.025f, .035f, .04f, 1);
     glClear(GL_COLOR_BUFFER_BIT);
-    float sx = float(m_OutputWidth) / m_WindowSizeX, sy = float(m_OutputHeight) / m_WindowSizeY;
-    float scale = sx < sy ? sx : sy;
+    float scale = (std::min)(float(m_OutputWidth) / m_WindowSizeX, float(m_OutputHeight) / m_WindowSizeY);
     int width = int(m_WindowSizeX * scale), height = int(m_WindowSizeY * scale);
     glViewport((m_OutputWidth - width) / 2, (m_OutputHeight - height) / 2, width, height);
-    glDisable(GL_BLEND);
-    glUseProgram(m_PostShader);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, m_SceneTexture);
-    glUniform1i(glGetUniformLocation(m_PostShader, "u_Scene"), 0);
-    glUniform2f(glGetUniformLocation(m_PostShader, "u_Pixel"), 1.0f / m_WindowSizeX, 1.0f / m_WindowSizeY);
-    glUniform1f(glGetUniformLocation(m_PostShader, "u_Time"), time);
-    GLint p = glGetAttribLocation(m_PostShader, "a_Position");
-    glBindBuffer(GL_ARRAY_BUFFER, m_VBORect);
-    glEnableVertexAttribArray(p);
-    glVertexAttribPointer(p, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), 0);
-    SubmitDrawArrays(GL_TRIANGLES, 0, 6);
-    glDisableVertexAttribArray(p);
+    DrawPost(0, m_SceneTexture, m_GlowTexture[0], 3, width, height);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     m_Material = 0;
+    Perf::Profiler::Get().GpuMark("postprocess");
 }
 
 void Renderer::DrawQuad(
@@ -312,42 +329,11 @@ void Renderer::DrawQuad(
         m_Models[m_RecordingModel].push_back({2, m_Material, {{x0, y0, x1, y1, x2, y2, x3, y3, r, g, b, 1}}});
         return;
     }
-    float left = x0, right = x0, top = y0, bottom = y0;
-    const float xs[] = {x0, x1, x2, x3}, ys[] = {y0, y1, y2, y3};
-    for (int i = 1; i < 4; ++i)
-    {
-        if (xs[i] < left)
-        {
-            left = xs[i];
-        }
-        if (xs[i] > right)
-        {
-            right = xs[i];
-        }
-        if (ys[i] < top)
-        {
-            top = ys[i];
-        }
-        if (ys[i] > bottom)
-        {
-            bottom = ys[i];
-        }
-    }
-    float w = right - left, h = bottom - top;
-    if (w <= 0 || h <= 0)
-    {
-        return;
-    }
-    float cx = (left + right) * .5f, cy = (top + bottom) * .5f;
-    float vertices[18];
-    const int indices[] = {0, 1, 2, 0, 2, 3};
-    for (int i = 0; i < 6; ++i)
-    {
-        vertices[i * 3] = (xs[indices[i]] - cx) / w;
-        vertices[i * 3 + 1] = (cy - ys[indices[i]]) / h;
-        vertices[i * 3 + 2] = 0;
-    }
-    glBindBuffer(GL_ARRAY_BUFFER, m_QuadBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STREAM_DRAW);
-    DrawShape(m_QuadBuffer, cx, cy, w, h, r, g, b, 1);
+    Instance item{};
+    const float corners[] = {x0, y0, x1, y1, x2, y2, x3, y3};
+    const float color[] = {r, g, b, 1};
+    std::copy(corners, corners + 8, item.corners);
+    std::copy(color, color + 4, item.color);
+    item.material = float(m_Material);
+    QueueInstance(item);
 }

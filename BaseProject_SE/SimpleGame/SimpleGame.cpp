@@ -15,29 +15,28 @@
 #include "Dependencies/freeglut.h"
 #include "Renderer.h"
 #include "LevelOne.h"
+#include "Profiler.h"
+#include "HarborWorld.h"
+#include "WorldMonitor.h"
 
 namespace
 {
+    Monitor::Server worldMonitor;
     constexpr int ScreenWidth = 1280;
     constexpr int ScreenHeight = 800;
     constexpr int MapSize = Level::MapSize;
     constexpr float TileWidth = 96;
     constexpr float TileHeight = 48;
+    constexpr float NpcNameDistance = 2.5f;
+    constexpr int UiFontHeight = 15;
+    constexpr float TextLineHeight = 21;
+    constexpr float QuestPanelWidth = 740;
+    constexpr float QuestPanelHeight = 88;
+    constexpr float HelpPanelWidth = 720;
+    constexpr float HelpPanelHeight = 360;
     using Vec3 = Level::Position;
 
-    struct NpcDefinition
-    {
-        const wchar_t* name;
-        Vec3 position;
-        const wchar_t* line;
-        float r, g, b;
-    };
-
-    struct Npc : public Actor
-    {
-        const wchar_t* name = L"";
-        const wchar_t* line = L"";
-    };
+    using Npc = Harbor::Npc;
 
     enum class UiPart
     {
@@ -45,14 +44,23 @@ namespace
         MiniMap,
         Stats,
         Prompt,
-        Pause
+        Pause,
+        Journal,
+        SiteLabel,
+        NpcLabel,
+        QuestMarker,
+        QuestTracker,
+        GuideHelp
     };
     ActorId promptId = InvalidActorId;
+    ActorId questMarkerId = InvalidActorId;
     float uiOriginX = 0;
     float uiOriginY = 0;
 
     Renderer* renderer = nullptr;
     Level::FirstLevel firstLevel;
+    Harbor::World harbor(firstLevel);
+    Vec3 renderCamera;
 
     Vec3 PlayerPosition()
     {
@@ -62,87 +70,23 @@ namespace
     bool keys[256] = {};
     bool interactionPressed = false;
     bool potionPressed = false;
+    bool tradePressed = false;
+    bool sitePressed = false;
+    bool revealPressed = false;
+    bool journalPanel = false;
+    bool worldMap = false;
     int attributePressed = 0;
     bool statsPanel = false;
     bool paused = false;
+    bool helpVisible = true;
+    bool helpPressed = false;
+    bool continueHelpPressed = false;
     int previousTime = 0;
+    int outputWidth = ScreenWidth;
+    int outputHeight = ScreenHeight;
     float elapsed = 0;
     HDC fontDC = nullptr;
     HFONT fontHandle = nullptr;
-    std::map<wchar_t, GLuint> glyphs;
-    NpcDefinition villagerDefinitions[] = {
-        {L"\uc7a5\uc528",
-         {12, 10, 0},
-         L"\uc300\uc740 \uc544\uc9c1 \uc788\uc5b4. \uc57d\uc7ac\uac00 \ubb38\uc81c\uc9c0... \ub4e4\uc5b4\uc624\ub294 \ubc30\uac00 \uc5c6\uac70\ub4e0.",
-         .62f,
-         .39f,
-         .24f},
-        {L"\uc21c\ub355 \ud560\uba48",
-         {11, 13, 0},
-         L"\uc232\uae38 \uc870\uc2ec\ud574. \uc694 \uba70\uce60 \uc9d0\uc2b9\ub4e4\uc774 \ub9c8\uc744\uae4c\uc9c0 \ub0b4\ub824\uc624\ub354\ub77c.",
-         .42f,
-         .53f,
-         .36f},
-        {L"\uc218\ubb38\uc7a5",
-         {14, 6, 0},
-         L"\ubd81\ucabd \uae38\uc740 \ub9c9\ud614\uc18c. \ub2f5\ub2f5\ud574\ub3c4 \uc870\uae08\ub9cc \ucc38\uc544 \uc8fc\uc2dc\uc624.",
-         .29f,
-         .37f,
-         .48f},
-        {L"\ubcf5\uc774",
-         {10, 11, 0},
-         L"\uc6b0\ub9ac \ud615\ub3c4 \ub098\uc73c\uba74 \uac19\uc774 \ub180 \uc218 \uc788\uaca0\uc9c0?",
-         .73f,
-         .49f,
-         .36f},
-        {L"\uc8fc\ubaa8",
-         {16, 9, 0},
-         L"\uba3c \uae38 \uc654\uc9c0? \uad6d\uc774\ub77c\ub3c4 \ud55c \uadf8\ub987 \uba39\uace0 \uac00.",
-         .56f,
-         .26f,
-         .24f},
-        {L"\ub098\ubb34\uafbc",
-         {8, 14, 0},
-         L"\uc548\uac1c\ud480 \ucc3e\ub098? \uc232\uae38 \ub05d, \uc816\uc740 \ubc14\uc704 \uc606\uc744 \ubd10.",
-         .37f,
-         .42f,
-         .29f},
-        {L"\ub18d\ubd80",
-         {15, 16, 0},
-         L"\uc0ac\ub78c\uc774 \uc544\ud30c\ub3c4 \ubc2d\uc740 \ub3cc\ubd10\uc57c\uc9c0. \uc548 \uadf8\ub7ec\uba74 \uaca8\uc6b8\uc744 \ubabb \ub098.",
-         .52f,
-         .44f,
-         .29f},
-        {L"\ube68\ub798\ud558\ub294 \uc544\ub099",
-         {17, 19, 0},
-         L"\uc800 \ubc43\uc0ac\uacf5 \uc880 \ubd10 \uc918. \uc5b4\uc81c\ubd80\ud130 \ubb3c\ub3c4 \ubabb \ub118\uaca8.",
-         .38f,
-         .47f,
-         .61f},
-        {L"\ub3c4\uacf5",
-         {9, 9, 0},
-         L"\uae68\uc9c4 \uadf8\ub987 \uc788\uc73c\uba74 \uac00\uc838\uc640. \uc544\uc9c1 \uc190\uc740 \uba40\uca61\ud558\ub2c8\uae4c.",
-         .59f,
-         .44f,
-         .32f},
-        {L"\ud589\uc0c1",
-         {13, 15, 0},
-         L"\ub3c4\uc131\ub3c4 \ubcc4\uc218 \uc5c6\ub2e4\ub354\uad70. \uc5b4\ub514\ub85c \uac00\uc57c \ud560\uc9c0 \ubaa8\ub974\uaca0\uc5b4.",
-         .46f,
-         .32f,
-         .48f},
-        {L"\uc57d\ubc29 \uc2ec\ubd80\ub984\uafbc",
-         {16, 12, 0},
-         L"\uc11c\ub9b0 \ub204\ub098\uac00 \ubc24\uc0c8 \ubabb \uc7a4\uc5b4. \uc544\ud508 \uc0ac\ub78c\uc774 \ub108\ubb34 \ub9ce\uc544.",
-         .36f,
-         .54f,
-         .52f},
-        {L"\ub178\uc778",
-         {11, 7, 0},
-         L"\uc800\ub141\ubc25 \uc9d3\ub294 \uc5f0\uae30\ub294 \uc5ec\uc804\ud55c\ub370... \ub9c8\uc744\uc774 \ucc38 \uc870\uc6a9\ud574\uc84c\uc5b4.",
-         .49f,
-         .49f,
-         .42f}};
 
     float Distance2D(const Vec3& a, const Vec3& b)
     {
@@ -151,10 +95,9 @@ namespace
 
     void WorldToScreen(const Vec3& point, float& x, float& y)
     {
-        x = ScreenWidth * .5f +
-            ((point.x - point.y) - (PlayerPosition().x - PlayerPosition().y)) * TileWidth * .5f;
+        x = ScreenWidth * .5f + ((point.x - point.y) - (renderCamera.x - renderCamera.y)) * TileWidth * .5f;
         y = ScreenHeight * .52f +
-            ((point.x + point.y) - (PlayerPosition().x + PlayerPosition().y)) * TileHeight * .5f - point.z;
+            ((point.x + point.y) - (renderCamera.x + renderCamera.y)) * TileHeight * .5f - point.z;
     }
 
     bool Visible(float x, float y)
@@ -164,8 +107,9 @@ namespace
 
     void InitializeKoreanFont()
     {
+        Perf::Scope scope(Perf::Cpu::FontInit);
         fontDC = wglGetCurrentDC();
-        fontHandle = CreateFontW(-18,
+        fontHandle = CreateFontW(-UiFontHeight,
                                  0,
                                  0,
                                  0,
@@ -183,30 +127,7 @@ namespace
 
     void DrawText(float x, float y, const wchar_t* text, float r = .93f, float g = .88f, float b = .73f)
     {
-        glUseProgram(0);
-        glColor3f(r, g, b);
-        glRasterPos2f((x + uiOriginX) / ScreenWidth * 2 - 1, 1 - (y + uiOriginY) / ScreenHeight * 2);
-        for (const wchar_t* c = text; *c; ++c)
-        {
-            auto it = glyphs.find(*c);
-            if (it == glyphs.end())
-            {
-                GLuint id = glGenLists(1);
-                HGDIOBJ previous = SelectObject(fontDC, fontHandle);
-                bool ok = id && wglUseFontBitmapsW(fontDC, *c, 1, id);
-                SelectObject(fontDC, previous);
-                if (!ok)
-                {
-                    if (id)
-                    {
-                        glDeleteLists(id, 1);
-                    }
-                    continue;
-                }
-                it = glyphs.insert(std::make_pair(*c, id)).first;
-            }
-            renderer->DrawGlyph(it->second);
-        }
+        renderer->DrawText(x, y, text, r, g, b, fontDC, fontHandle);
     }
 
     void Say(const wchar_t* name, const wchar_t* line)
@@ -367,6 +288,109 @@ namespace
         }
     }
 
+    void BuildCitizen(int look, int frame)
+    {
+        struct Outfit
+        {
+            float r, g, b, width, height;
+        };
+
+        static const Outfit outfits[WorldLayout::NpcAppearanceCount] = {{.25f, .52f, .53f, 19, 47},
+                                                                        {.36f, .43f, .63f, 15, 51},
+                                                                        {.18f, .32f, .56f, 23, 57},
+                                                                        {.55f, .29f, .57f, 19, 50},
+                                                                        {.73f, .49f, .28f, 14, 40},
+                                                                        {.29f, .46f, .27f, 21, 52},
+                                                                        {.53f, .58f, .33f, 17, 46},
+                                                                        {.30f, .19f, .17f, 25, 54},
+                                                                        {.17f, .23f, .29f, 18, 50},
+                                                                        {.70f, .44f, .24f, 23, 49},
+                                                                        {.55f, .28f, .37f, 21, 44},
+                                                                        {.71f, .74f, .67f, 15, 54},
+                                                                        {.62f, .36f, .30f, 24, 47},
+                                                                        {.46f, .53f, .54f, 22, 46},
+                                                                        {.37f, .48f, .36f, 20, 53},
+                                                                        {.27f, .43f, .63f, 22, 54},
+                                                                        {.40f, .32f, .22f, 23, 50},
+                                                                        {.62f, .49f, .24f, 18, 52}};
+        const Outfit& outfit = outfits[look];
+        float stride = std::sin(frame * 6.2831853f / 8) * 3;
+        float bob = std::abs(stride) * .4f, head = -outfit.height - bob;
+        float width = outfit.width;
+        bool guard = look == 2 || look == 15;
+        bool raider = look == 7 || look == 8;
+        bool hunter = look == 5 || look == 6 || look == 16;
+        bool scholar = look == 1 || look == 11;
+        bool apron = look == 0 || look == 4 || look == 12 || look == 13 || look == 14;
+        renderer->SetMaterial(0);
+        renderer->DrawSolidRect(-width * .23f, -5 + stride, 7, 11, .11f, .12f, .12f, 1);
+        renderer->DrawSolidRect(width * .23f, -5 - stride, 7, 11, .11f, .12f, .12f, 1);
+        renderer->DrawSolidDiamond(0,
+                                   head * .42f,
+                                   width + (scholar ? 9 : 3),
+                                   outfit.height * .59f,
+                                   outfit.r * .77f,
+                                   outfit.g * .77f,
+                                   outfit.b * .77f,
+                                   1);
+        renderer->DrawSolidRect(0, head * .57f, width, outfit.height * .33f, outfit.r, outfit.g, outfit.b, 1);
+        renderer->DrawSolidRect(
+            -width * .62f, head * .56f - stride, 7, 18, outfit.r * .83f, outfit.g * .83f, outfit.b * .83f, 1);
+        renderer->DrawSolidRect(
+            width * .62f, head * .56f + stride, 7, 18, outfit.r * .83f, outfit.g * .83f, outfit.b * .83f, 1);
+        renderer->DrawSolidDiamond(0, head * .69f, 8, 12, .83f, .79f, .65f, 1);
+        renderer->DrawSolidRect(0, head * .43f, width + 1, 3, raider ? .65f : .24f, .18f, .12f, 1);
+        float skin = (look % 4) * .045f;
+        renderer->DrawEllipse(
+            0, head + 9, look == 4 ? 12.0f : 15.0f, 17, .76f - skin, .59f - skin, .42f - skin, 1);
+        renderer->DrawSolidRect(4, head + 8, 2, 2, .10f, .08f, .07f, 1);
+        if (guard)
+        {
+            renderer->DrawSolidRect(0, head * .58f, width - 4, 13, .23f, .29f, .34f, 1);
+            renderer->DrawEllipse(0, head, 23, 13, .12f, .18f, .25f, 1);
+            renderer->DrawSolidRect(3, head - 9, 4, 15, .70f, .18f, .14f, 1);
+            renderer->DrawSolidRect(width + 1, -25, 3, 55, .43f, .29f, .16f, 1);
+            renderer->DrawSolidDiamond(width + 1, -56, 8, 15, .64f, .70f, .71f, 1);
+        }
+        else if (raider)
+        {
+            renderer->DrawSolidDiamond(
+                -7, head * .47f, width + 18, outfit.height * .77f, .16f, .13f, .12f, .95f);
+            renderer->DrawEllipse(0, head + 3, 23, 23, .15f, .17f, .18f, 1);
+            renderer->DrawSolidRect(0, head + 12, 16, 8, look == 7 ? .55f : .31f, .15f, .12f, 1);
+            renderer->DrawSolidRect(3, head + 5, 3, 2, .79f, .70f, .42f, 1);
+            renderer->DrawSolidDiamond(width + 2, -25, 8, 31, .68f, .66f, .57f, 1);
+        }
+        else if (scholar)
+        {
+            renderer->DrawEllipse(0, head - 1, 35, 7, .12f, .13f, .14f, 1);
+            renderer->DrawSolidRect(0, head - 6, 14, 12, .15f, .16f, .17f, 1);
+            renderer->DrawSolidRect(width * .67f, -23, 10, 16, .72f, .69f, .54f, 1);
+        }
+        else
+        {
+            renderer->DrawSolidRect(
+                0, head - 1, width * .95f, 6, hunter ? .28f : outfit.r * .8f, .28f, .23f, 1);
+            renderer->DrawEllipse(-3, head - 7, 9, 10, .12f, .12f, .10f, 1);
+        }
+        if (hunter)
+        {
+            renderer->DrawSolidDiamond(width + 1, -26, 12, 44, .48f, .32f, .17f, 1);
+            renderer->DrawSolidRect(width + 1, -26, 2, 39, .84f, .77f, .58f, 1);
+            renderer->DrawSolidRect(-width * .5f, -25, 8, 21, .31f, .24f, .16f, 1);
+        }
+        if (apron)
+        {
+            renderer->DrawSolidDiamond(0, head * .34f, width - 4, 21, .64f, .58f, .42f, 1);
+            renderer->DrawSolidRect(width * .64f, -21, 7, 12, .31f, .22f, .13f, 1);
+        }
+        if (look == 3 || look == 9 || look == 10 || look == 17)
+        {
+            renderer->DrawEllipse(width * .64f, -15, 13, 15, .55f, .40f, .20f, 1);
+            renderer->DrawSolidRect(width * .64f, -16, 3, 3, .86f, .72f, .29f, 1);
+        }
+    }
+
     void BuildAnimal(int kind, int frame)
     {
         float x = 0, y = 0;
@@ -430,8 +454,14 @@ namespace
             renderer->SetMaterial(0);
             for (int k = 0; k < 3; ++k)
             {
-                renderer->DrawEllipse(
-                    (k - 1) * 15, -52 - k * 9, 47, 35, .12f + k * .018f, .25f + k * .02f, .19f, 1);
+                renderer->DrawEllipse(static_cast<float>((k - 1) * 15),
+                                      static_cast<float>(-52 - k * 9),
+                                      47,
+                                      35,
+                                      .12f + k * .018f,
+                                      .25f + k * .02f,
+                                      .19f,
+                                      1);
             }
             break;
         }
@@ -439,6 +469,7 @@ namespace
 
     void InitializeModels()
     {
+        Perf::Scope scope(Perf::Cpu::ModelBuild);
         // Cache only local shape data: no GPU handles, camera positions or runtime state.
         wchar_t executable[32768] = {};
         DWORD length = GetModuleFileNameW(nullptr, executable, 32768);
@@ -451,7 +482,7 @@ namespace
         directory += L"Cache";
         bool directoryReady =
             CreateDirectoryW(directory.c_str(), nullptr) != FALSE || GetLastError() == ERROR_ALREADY_EXISTS;
-        std::wstring cache = directory + L"/level1_models_v1.cache";
+        std::wstring cache = directory + L"/harbor_models_v3.cache";
 
         std::vector<std::string> expected;
         for (int k = 0; k < 8; ++k)
@@ -462,9 +493,17 @@ namespace
         {
             expected.push_back(FrameName("hero", k));
         }
-        for (int k = 0; k < 3; ++k)
+        for (int k = 0; k < WorldLayout::NpcAppearanceCount; ++k)
         {
-            expected.push_back(FrameName("npc", k));
+            for (int frame = 0; frame < 8; ++frame)
+            {
+                expected.push_back("citizen" + std::to_string(k) + "_" + std::to_string(frame));
+            }
+        }
+        for (const char* name :
+             {"drain", "sluice", "sluice_open", "notice", "wreck", "ledger", "key", "corpse", "bandit_sign"})
+        {
+            expected.push_back(name);
         }
         for (int k = 0; k < 3; ++k)
         {
@@ -505,11 +544,17 @@ namespace
             BuildActor(.38f, .46f, .60f, true, frame);
             renderer->EndModel();
         }
+        for (int look = 0; look < WorldLayout::NpcAppearanceCount; ++look)
+        {
+            for (int frame = 0; frame < 8; ++frame)
+            {
+                renderer->BeginModel("citizen" + std::to_string(look) + "_" + std::to_string(frame));
+                BuildCitizen(look, frame);
+                renderer->EndModel();
+            }
+        }
         for (int kind = 0; kind < 3; ++kind)
         {
-            renderer->BeginModel(FrameName("npc", kind));
-            BuildActor(.42f + kind * .10f, .49f - kind * .06f, .39f, false, 0);
-            renderer->EndModel();
             for (int frame = 0; frame < 8; ++frame)
             {
                 renderer->BeginModel(FrameName("beast" + std::to_string(kind) + "_", frame));
@@ -562,11 +607,81 @@ namespace
                 renderer->SetMaterial(0);
                 for (int k = 0; k < 3; ++k)
                 {
-                    renderer->DrawSolidDiamond((k - 1) * 14, -3 + k * 3, 3, 9, .25f, .36f, .21f, .6f);
+                    renderer->DrawSolidDiamond(static_cast<float>((k - 1) * 14),
+                                               static_cast<float>(-3 + k * 3),
+                                               3,
+                                               9,
+                                               .25f,
+                                               .36f,
+                                               .21f,
+                                               .6f);
                 }
             }
             renderer->EndModel();
         }
+
+        renderer->BeginModel("drain");
+        renderer->SetMaterial(2);
+        renderer->DrawSolidDiamond(0, -6, 92, 36, .24f, .27f, .27f, 1);
+        renderer->DrawSolidRect(0, -21, 70, 32, .09f, .14f, .15f, 1);
+        for (int k = -2; k <= 2; ++k)
+        {
+            renderer->DrawSolidRect(k * 13.0f, -21, 3, 32, .36f, .39f, .37f, 1);
+        }
+        renderer->EndModel();
+        for (int open = 0; open < 2; ++open)
+        {
+            renderer->BeginModel(open ? "sluice_open" : "sluice");
+            renderer->SetMaterial(2);
+            renderer->DrawSolidRect(-39, -37, 14, 78, .29f, .32f, .30f, 1);
+            renderer->DrawSolidRect(39, -37, 14, 78, .29f, .32f, .30f, 1);
+            renderer->SetMaterial(6);
+            renderer->DrawSolidDiamond(0, 0, 78, 32, .08f, .29f, .35f, 1);
+            renderer->SetMaterial(3);
+            renderer->DrawSolidRect(0, open ? -65.0f : -31.0f, 66, open ? 18.0f : 66.0f, .30f, .21f, .14f, 1);
+            renderer->DrawSolidRect(0, -76, 96, 11, .26f, .20f, .15f, 1);
+            renderer->EndModel();
+        }
+        renderer->BeginModel("notice");
+        renderer->SetMaterial(3);
+        renderer->DrawSolidRect(-19, -30, 7, 58, .30f, .22f, .15f, 1);
+        renderer->DrawSolidRect(19, -30, 7, 58, .30f, .22f, .15f, 1);
+        renderer->DrawSolidRect(0, -42, 49, 33, .35f, .27f, .18f, 1);
+        renderer->SetMaterial(0);
+        renderer->DrawSolidRect(0, -43, 29, 22, .76f, .70f, .53f, 1);
+        renderer->EndModel();
+        renderer->BeginModel("wreck");
+        renderer->SetMaterial(3);
+        renderer->DrawSolidDiamond(0, -9, 146, 55, .24f, .18f, .13f, 1);
+        for (int k = -3; k <= 3; ++k)
+        {
+            renderer->DrawSolidRect(k * 16.0f, -24, 6, 30 + std::abs(k) * 5.0f, .37f, .28f, .18f, 1);
+        }
+        renderer->DrawSolidRect(18, -67, 7, 100, .31f, .24f, .16f, 1);
+        renderer->EndModel();
+        renderer->BeginModel("ledger");
+        renderer->SetMaterial(0);
+        renderer->DrawSolidRect(0, -9, 19, 21, .26f, .36f, .45f, 1);
+        renderer->DrawSolidRect(-6, -9, 3, 21, .77f, .71f, .53f, 1);
+        renderer->DrawSolidRect(2, -9, 8, 11, .70f, .65f, .49f, 1);
+        renderer->EndModel();
+        renderer->BeginModel("key");
+        renderer->DrawEllipse(0, -18, 10, 10, .79f, .64f, .25f, 1);
+        renderer->DrawSolidRect(0, -7, 3, 17, .79f, .64f, .25f, 1);
+        renderer->DrawSolidRect(4, -2, 7, 3, .79f, .64f, .25f, 1);
+        renderer->EndModel();
+        renderer->BeginModel("bandit_sign");
+        renderer->SetMaterial(3);
+        renderer->DrawSolidRect(0, -38, 8, 76, .21f, .14f, .10f, 1);
+        renderer->SetMaterial(0);
+        renderer->DrawSolidDiamond(0, -52, 42, 45, .58f, .12f, .10f, 1);
+        renderer->DrawSolidRect(0, -52, 4, 24, .9f, .68f, .45f, 1);
+        renderer->DrawSolidRect(0, -37, 5, 4, .9f, .68f, .45f, 1);
+        renderer->EndModel();
+        renderer->BeginModel("corpse");
+        renderer->DrawEllipse(0, -2, 38, 14, .32f, .33f, .30f, 1);
+        renderer->DrawEllipse(17, -5, 11, 10, .62f, .46f, .32f, 1);
+        renderer->EndModel();
 
         if (!directoryReady || !renderer->SaveModels(cache))
         {
@@ -581,34 +696,67 @@ namespace
     void InitializeSceneActors()
     {
         SceneGraph& scene = firstLevel.Scene();
-        scene.DestroyChildren(firstLevel.NpcRoot());
-        for (int i = 0; i < int(sizeof(villagerDefinitions) / sizeof(NpcDefinition)); ++i)
+        harbor.Initialize();
+        for (Harbor::Landmark* site : scene.Actors<Harbor::Landmark>(ActorKind::Prop))
         {
-            const auto& source = villagerDefinitions[i];
-            Npc& npc = scene.Create<Npc>(firstLevel.NpcRoot(), "Villager", ActorKind::Npc);
-            npc.SetWorldPosition(source.position);
-            npc.name = source.name;
-            npc.line = source.line;
-            npc.variant = i;
-            npc.drawable = true;
-            npc.model = "npc" + std::to_string(i % 3);
-            npc.shadowWidth = 30;
+            Actor& label = scene.Create(site->Id(), "SiteLabel", ActorKind::UI);
+            label.pass = ScenePass::Overlay;
+            label.variant = int(UiPart::SiteLabel);
+            label.drawable = true;
+            label.SetLocalPosition({0, 0, 105});
+        }
+        for (const Npc* npc : scene.Actors<Npc>(ActorKind::Npc))
+        {
+            Actor& label = scene.Create(npc->Id(), "NpcIdentity", ActorKind::UI);
+            label.pass = ScenePass::Overlay;
+            label.variant = int(UiPart::NpcLabel);
+            label.drawable = true;
+            label.drawOrder = 1;
+            label.SetLocalPosition({0, 0, 93});
         }
         scene.DestroyChildren(firstLevel.OverlayRoot());
-        for (UiPart part : {UiPart::Hud, UiPart::MiniMap, UiPart::Stats, UiPart::Pause})
+        for (UiPart part : {UiPart::Hud,
+                            UiPart::MiniMap,
+                            UiPart::Stats,
+                            UiPart::Journal,
+                            UiPart::Pause,
+                            UiPart::QuestTracker,
+                            UiPart::GuideHelp})
         {
             Actor& ui = scene.Create(firstLevel.OverlayRoot(), "UIPanel", ActorKind::UI);
             ui.variant = int(part);
             ui.drawable = true;
             ui.pass = ScenePass::Overlay;
-            ui.drawOrder = part == UiPart::Pause ? 100 : int(part);
+            ui.drawOrder = part == UiPart::GuideHelp ? 200 : part == UiPart::Pause ? 100 : int(part);
         }
+        helpVisible = true;
+        helpPressed = continueHelpPressed = false;
         promptId = InvalidActorId;
+        Actor& marker = scene.Create(firstLevel.OverlayRoot(), "CurrentQuestTarget", ActorKind::UI);
+        marker.variant = int(UiPart::QuestMarker);
+        marker.pass = ScenePass::Overlay;
+        marker.drawable = true;
+        marker.drawOrder = 9;
+        marker.SetVisible(false);
+        questMarkerId = marker.Id();
     }
 
     void UpdatePromptActor()
     {
         SceneGraph& scene = firstLevel.Scene();
+        if (Actor* marker = scene.Find(questMarkerId))
+        {
+            ActorId target = harbor.ObjectiveTarget();
+            marker->SetVisible(target != InvalidActorId);
+            if (target)
+            {
+                if (marker->ParentId() != target)
+                {
+                    scene.Reparent(marker->Id(), target, false);
+                }
+                marker->SetLocalPosition({0, 0, 125});
+            }
+        }
         Actor* prompt = scene.Find(promptId);
         if (!prompt)
         {
@@ -641,6 +789,13 @@ namespace
                     distance = d;
                     target = npc->Id();
                 }
+            }
+        }
+        if (!target)
+        {
+            if (const Actor* site = harbor.NearbySite())
+            {
+                target = site->Id();
             }
         }
         prompt->SetVisible(target != InvalidActorId && !paused);
@@ -709,22 +864,45 @@ namespace
                 }
             }
             break;
+        case ActorEffect::NpcStatus:
+            if (const auto* npc = dynamic_cast<const Npc*>(firstLevel.Scene().Find(actor.ParentId())))
+            {
+                if (npc->health > 0 &&
+                    (npc->health < npc->maxHealth || Distance2D(npc->WorldPosition(), PlayerPosition()) < 2))
+                {
+                    renderer->DrawSolidRect(x, y - 64, 42, 5, .07f, .055f, .05f, 1);
+                    float width = 40.0f * npc->health / npc->maxHealth;
+                    renderer->DrawSolidRect(x - 20 + width * .5f,
+                                            y - 64,
+                                            width,
+                                            3,
+                                            npc->threatTime > 0 ? .8f : .35f,
+                                            .58f,
+                                            .34f,
+                                            1);
+                }
+            }
+            break;
         }
         renderer->SetMaterial(0);
     }
 
     void RenderWorldPass(ScenePass pass)
     {
+        Perf::Scope scope(pass == ScenePass::Ground  ? Perf::Cpu::RenderGround
+                          : pass == ScenePass::World ? Perf::Cpu::RenderWorld
+                                                     : Perf::Cpu::RenderEffects);
         const SceneGraph& scene = firstLevel.Scene();
         if (pass == ScenePass::World)
         {
+            Perf::Scope shadows(Perf::Cpu::RenderShadow);
             renderer->DrawScene(scene,
                                 pass,
                                 [&](const Actor& actor)
                                 {
                                     float x, y;
                                     WorldToScreen(actor.WorldPosition(), x, y);
-                                    if (!Visible(x, y) || actor.shadowWidth <= 0)
+                                    if (actor.shadowWidth <= 0)
                                     {
                                         return;
                                     }
@@ -733,6 +911,8 @@ namespace
                                     renderer->DrawEllipse(
                                         x + 3, y + 1, actor.shadowWidth * .55f, 12, .02f, .03f, .035f, .36f);
                                 });
+            renderer->Flush();
+            Perf::Profiler::Get().GpuMark("shadow");
         }
         renderer->DrawScene(scene,
                             pass,
@@ -740,10 +920,6 @@ namespace
                             {
                                 float x, y;
                                 WorldToScreen(actor.WorldPosition(), x, y);
-                                if (!Visible(x, y))
-                                {
-                                    return;
-                                }
                                 if (!actor.model.empty())
                                 {
                                     renderer->DrawModel(actor.model, x, y);
@@ -753,193 +929,421 @@ namespace
                                     DrawEffectActor(actor, x, y);
                                 }
                             });
+        renderer->Flush();
+        Perf::Profiler::Get().GpuMark(pass == ScenePass::Ground  ? "ground"
+                                      : pass == ScenePass::World ? "world"
+                                                                 : "effects");
     }
 
     void TryInteract()
     {
+        Perf::Scope scope(Perf::Cpu::Interaction);
+        if (!firstLevel.Player().IsActive())
+        {
+            return;
+        }
+        const auto guide = harbor.Guide();
+        if (guide.ready && guide.interactionKey == 'E')
+        {
+            harbor.Talk();
+            return;
+        }
         if (firstLevel.PickUp())
         {
             return;
         }
-        const Npc* closest = nullptr;
-        float distance = 1.4f;
-        for (const Npc* npc : firstLevel.Scene().Actors<Npc>(ActorKind::Npc))
-        {
-            float d = Distance2D(PlayerPosition(), npc->WorldPosition());
-            if (npc->IsVisible() && d < distance &&
-                firstLevel.ClearLine(PlayerPosition(), npc->WorldPosition()))
-            {
-                closest = npc;
-                distance = d;
-            }
-        }
-        if (!closest)
-        {
-            return;
-        }
-        int nearest = closest->variant;
-        if (nearest == 4)
-        {
-            firstLevel.stats.health = firstLevel.stats.MaxHealth();
-            Say(L"\uc8fc\ubaa8",
-                L"\uc7a0\uae50 \uc549\uc544 \uc26c\uc5b4. \ub2e4\uce5c \ub370\ubd80\ud130 \ucd94\uc2ac\ub7ec\uc57c\uc9c0. \uae30\uc6b4\uc740 \uc880 \ub3cc\uc544\uc654\ub098?");
-        }
-        else if (nearest == 2)
-        {
-            Say(L"\uc218\ubb38\uc7a5",
-                L"\ub9c8\uc744 \ubc16 \uc9d0\uc2b9\ub4e4\uc774 \uc0ac\ub098\uc6cc\uc84c\uc18c. SPACE\ub85c \uacf5\uaca9\ud558\uace0 \uc804\ub9ac\ud488\uc740 E\ub85c \ucc59\uae30\uc2dc\uc624.");
-        }
-        else
-        {
-            Say(closest->name, closest->line);
-        }
+        harbor.Talk();
     }
 
     void RenderMiniMap()
     {
-        constexpr float cx = 1150, cy = 126, scale = 2.0f;
-        renderer->DrawSolidRect(cx, cy, 240, 225, .04f, .07f, .075f, .94f);
-        for (const Actor* tile : firstLevel.Scene().RenderList(ScenePass::Ground))
+        Perf::Scope scope(Perf::Cpu::MiniMap);
+        constexpr float cx = 1150, cy = 163, extent = 208;
+        const int span = worldMap ? MapSize : 64;
+        const int originX =
+            worldMap ? 0
+                     : (std::max)(0, (std::min)(MapSize - span, int(PlayerPosition().x) / 8 * 8 - span / 2));
+        const int originY =
+            worldMap ? 0
+                     : (std::max)(0, (std::min)(MapSize - span, int(PlayerPosition().y) / 8 * 8 - span / 2));
+        const float scale = extent / static_cast<float>(span);
+        const float left = cx - extent * .5f, top = cy - extent * .5f;
+        renderer->SetMaterial(0);
+        renderer->DrawSolidRect(cx, 164, 240, 300, .16f, .21f, .18f, .98f);
+        // Snapped local windows reuse the terrain texture; the atlas is available without shrinking local markers.
+        const std::uint64_t revision = firstLevel.MapRevision() ^ (std::uint64_t(originX) << 48) ^
+                                       (std::uint64_t(originY) << 40) ^
+                                       (worldMap ? (std::uint64_t(1) << 63) : 0);
+        renderer->DrawMiniMapLayer(revision,
+                                   cx,
+                                   cy,
+                                   [&]()
+                                   {
+                                       renderer->DrawSolidRect(cx, cy, extent, extent, .67f, .72f, .51f, 1);
+                                       const int stride = worldMap ? 2 : 1;
+                                       for (int y = originY; y < originY + span; y += stride)
+                                       {
+                                           for (int x = originX; x < originX + span; x += stride)
+                                           {
+                                               bool water = false, road = false, blocked = false;
+                                               for (int sy = 0; sy < stride; ++sy)
+                                               {
+                                                   for (int sx = 0; sx < stride; ++sx)
+                                                   {
+                                                       const auto& tile = firstLevel.At(x + sx, y + sy);
+                                                       water = water || tile.terrain == Level::Terrain::Water;
+                                                       road = road || tile.terrain == Level::Terrain::Road;
+                                                       blocked = blocked || tile.blocked;
+                                                   }
+                                               }
+                                               renderer->DrawSolidRect(
+                                                   left + (x - originX + stride * .5f) * scale,
+                                                   top + (y - originY + stride * .5f) * scale,
+                                                   stride * scale + .1f,
+                                                   stride * scale + .1f,
+                                                   road      ? .82f
+                                                   : water   ? .26f
+                                                   : blocked ? .38f
+                                                             : .61f,
+                                                   road      ? .71f
+                                                   : water   ? .56f
+                                                   : blocked ? .49f
+                                                             : .70f,
+                                                   road      ? .48f
+                                                   : water   ? .72f
+                                                   : blocked ? .31f
+                                                             : .46f,
+                                                   1);
+                                           }
+                                       }
+                                   });
+        auto marker = [&](const Vec3& p, float r, float g, float b, float size, bool edge)
         {
-            Vec3 p = tile->WorldPosition();
-            bool w = tile->variant == 5;
-            bool road = tile->variant == 4;
-            renderer->DrawSolidDiamond(cx + (p.x - p.y) * scale,
-                                       cy + (p.x + p.y - MapSize) * scale * .5f,
-                                       scale * 2 + 1,
-                                       scale + 1,
-                                       w      ? .09f
-                                       : road ? .55f
-                                              : .22f,
-                                       w      ? .28f
-                                       : road ? .46f
-                                              : .34f,
-                                       w ? .38f : .21f,
-                                       1);
-        }
-        auto marker = [&](const Vec3& p, float r, float g, float b, float size)
-        {
-            renderer->DrawEllipse(
-                cx + (p.x - p.y) * scale, cy + (p.x + p.y - MapSize) * scale * .5f, size, size, r, g, b, 1);
-        };
-        for (const Actor* prop : firstLevel.Props())
-        {
-            if (prop->IsVisible() && prop->variant <= 1)
+            float x = left + (p.x - originX) * scale;
+            float y = top + (p.y - originY) * scale;
+            if (!edge && (x < left || x > left + extent || y < top || y > top + extent))
             {
-                marker(prop->WorldPosition(), .62f, .49f, .35f, 4);
+                return;
+            }
+            x = (std::max)(left + size, (std::min)(left + extent - size, x));
+            y = (std::max)(top + size, (std::min)(top + extent - size, y));
+            renderer->DrawEllipse(x, y, size + 3, size + 3, .14f, .18f, .12f, 1);
+            renderer->DrawEllipse(x, y, size, size, r, g, b, 1);
+        };
+        for (ActorId id : harbor.LandmarkIds())
+        {
+            const auto* site = dynamic_cast<const Harbor::Landmark*>(firstLevel.Scene().Find(id));
+            if (site)
+            {
+                marker(site->WorldPosition(),
+                       site->site == 7 ? 1.0f : .9f,
+                       site->site == 7 ? .2f : .73f,
+                       site->site == 7 ? .15f : .42f,
+                       6,
+                       false);
             }
         }
         for (const Npc* npc : firstLevel.Scene().Actors<Npc>(ActorKind::Npc))
         {
-            if (npc->IsVisible())
+            if (npc->health > 0)
             {
-                marker(npc->WorldPosition(), .44f, .75f, .6f, 3);
+                bool raider = npc->job == Harbor::Job::Raider;
+                marker(npc->WorldPosition(), raider ? 1.0f : .3f, raider ? .2f : .45f, .2f, 3, false);
             }
         }
-        for (const auto& enemy : firstLevel.Enemies())
+        for (const auto* enemy : firstLevel.Enemies())
         {
-            if (enemy->IsVisible() && enemy->health > 0)
+            if (!worldMap && enemy->health > 0 && Distance2D(enemy->WorldPosition(), PlayerPosition()) < 25)
             {
-                marker(enemy->WorldPosition(), .95f, .30f, .16f, 4);
+                marker(enemy->WorldPosition(), .9f, .28f, .15f, 3, false);
             }
         }
-        for (const auto& loot : firstLevel.Drops())
+        if (const Actor* goal = firstLevel.Scene().Find(harbor.ObjectiveTarget()))
         {
-            if (loot->IsVisible())
-            {
-                marker(loot->WorldPosition(), .95f, .77f, .25f, 3);
-            }
+            marker(goal->WorldPosition(), 1, .85f, .15f, 8 + std::sin(elapsed * 4), true);
         }
-        if (firstLevel.Player().IsActive() && firstLevel.Player().IsVisible())
-        {
-            marker(PlayerPosition(), .96f, .97f, 1, 6);
-        }
-        DrawText(cx - 101, cy - 92, L"\uc548\uac1c\ud638 \uc0ac\ub0e5\ud130", .88f, .77f, .53f);
-        DrawText(
-            cx - 104, cy + 96, L"\ud770\uc0c9 \ub098 / \ubd89\uc740\uc0c9 \uc9d0\uc2b9", .8f, .82f, .75f);
+        marker(PlayerPosition(), 1, 1, 1, 6, true);
+        std::wstring title =
+            worldMap ? L"\uc804\uccb4 \uc9c0\ub3c4 256x256 [M]" : L"\uc8fc\ubcc0 \uc9c0\ub3c4 64x64 [M]";
+        DrawText(1040, 38, title.c_str(), .97f, .89f, .67f);
+        DrawText(1040, 290, L"\uae08\ube5b \ubaa9\ud45c / \ud770\uc0c9 \ub098", .97f, .9f, .7f);
+        DrawText(1040,
+                 313,
+                 worldMap ? L"\ubd89\uc740 \uac70\uc810: \uc57d\ud0c8\uc790"
+                          : L"\uc804\uccb4 256x256 \uc911 \uc77c\ubd80",
+                 .83f,
+                 .87f,
+                 .71f);
     }
 
-    void DrawWrapped(float x, float y, const std::wstring& text, int limit)
+    float DrawWrapped(float x, float y, const std::wstring& text, float width, int maxLines = 2)
     {
-        // Wide Korean glyphs count as two columns. Explicit line breaks remain supported.
+        Perf::Scope scope(Perf::Cpu::Text);
+        // Use actual cached glyph advances and a bounded line budget, not approximate Korean column counts.
         std::wstring line;
-        int columns = 0;
-        for (wchar_t ch : text)
+        float used = 0;
+        int lines = 0;
+        for (size_t i = 0; i < text.size(); ++i)
         {
-            int advance = ch < 128 ? 1 : 2;
-            if (ch == L'\n' || columns + advance > limit)
+            wchar_t ch = text[i];
+            float advance = ch == L'\n' ? 0 : renderer->TextAdvance(ch, fontDC, fontHandle);
+            if (ch == L'\n' || used + advance > width)
             {
+                if (lines + 1 == maxLines)
+                {
+                    while (!line.empty() &&
+                           renderer->TextWidth((line + L"...").c_str(), fontDC, fontHandle) > width)
+                    {
+                        line.pop_back();
+                    }
+                    line += L"...";
+                    DrawText(x, y, line.c_str());
+                    return float(lines + 1) * TextLineHeight;
+                }
                 DrawText(x, y, line.c_str());
-                y += 25;
+                y += TextLineHeight;
+                ++lines;
                 line.clear();
-                columns = 0;
+                used = 0;
                 if (ch == L'\n')
                 {
                     continue;
                 }
             }
             line += ch;
-            columns += advance;
+            used += advance;
         }
         if (!line.empty())
         {
             DrawText(x, y, line.c_str());
+            ++lines;
         }
+        return float(lines) * TextLineHeight;
+    }
+
+    std::wstring TravelHint(const Harbor::ObjectiveGuide& guide)
+    {
+        const Actor* target = firstLevel.Scene().Find(guide.target);
+        if (!target)
+        {
+            return L"\ud070\uae38\uc744 \ub530\ub77c \uc8fc\ubcc0\uc744 \ud0d0\ud5d8\ud558\uc790.";
+        }
+        if (guide.ready)
+        {
+            return guide.interactionKey ? L"\ub3c4\ucc29\ud588\ub2e4. " + guide.action : guide.action;
+        }
+        if (Distance2D(target->WorldPosition(), PlayerPosition()) < 1.8f)
+        {
+            if (guide.step == 4 && !guide.interactionKey)
+            {
+                return guide.action;
+            }
+            return firstLevel.ClearLine(PlayerPosition(), target->WorldPosition())
+                       ? L"\uc870\uae08\ub9cc \ub354 \uac00\uae4c\uc774 \uac00\uc790. " + guide.action
+                       : L"\ub2f4\uc774\ub098 \uac74\ubb3c \ubc18\ub300\ud3b8\uc5d0 \uc788\ub2e4. \uae38\uc744 \ub530\ub77c \ub3cc\uc544\uac00\uc790.";
+        }
+        float dx = ((target->WorldPosition().x - target->WorldPosition().y) -
+                    (PlayerPosition().x - PlayerPosition().y)) *
+                   TileWidth * .5f;
+        float dy = ((target->WorldPosition().x + target->WorldPosition().y) -
+                    (PlayerPosition().x + PlayerPosition().y)) *
+                   TileHeight * .5f;
+        std::wstring direction;
+        if (std::abs(dx) > std::abs(dy) * 2)
+        {
+            direction = dx < 0 ? L"A \uc67c\ucabd" : L"D \uc624\ub978\ucabd";
+        }
+        else if (std::abs(dy) > std::abs(dx) * 2)
+        {
+            direction = dy < 0 ? L"W \uc704\ucabd" : L"S \uc544\ub798\ucabd";
+        }
+        else
+        {
+            direction =
+                dy < 0 ? (dx < 0 ? L"W+A \uc67c\ucabd \uc704" : L"W+D \uc624\ub978\ucabd \uc704")
+                       : (dx < 0 ? L"S+A \uc67c\ucabd \uc544\ub798" : L"S+D \uc624\ub978\ucabd \uc544\ub798");
+        }
+        return guide.destination + L" \u00b7 \ud654\uba74 " + direction + L" \ubc29\ud5a5 \u00b7 \uc57d " +
+               std::to_wstring(int(std::ceil(Distance2D(target->WorldPosition(), PlayerPosition())))) +
+               L"\ud0c0\uc77c (\ub9c9\ud788\uba74 \uae38\uc744 \ub530\ub77c \ub3cc\uc544\uac00\uc790)";
+    }
+
+    void DrawQuestTracker()
+    {
+        const auto guide = harbor.Guide();
+        renderer->SetMaterial(0);
+        renderer->DrawSolidRect(390, 166, QuestPanelWidth, QuestPanelHeight, .035f, .055f, .06f, .94f);
+        DrawText(32, 142, L"\uc9c0\uae08 \ud560 \uc77c \u00b7 H \uc790\uc138\ud788", 1, .83f, .4f);
+        DrawWrapped(32, 164, guide.action, 716, 1);
+        DrawWrapped(32, 188, TravelHint(guide), 716, 1);
+        if (guide.ready && guide.interactionKey)
+        {
+            renderer->DrawSolidRect(701, 138, 94, 24, .22f, .36f, .18f, 1);
+            std::wstring key = L"[";
+            key += wchar_t(guide.interactionKey);
+            key += L"] \ub204\ub974\uae30";
+            DrawText(662, 144, key.c_str(), 1, .94f, .55f);
+        }
+    }
+
+    void DrawGuideHelp()
+    {
+        if (!helpVisible)
+        {
+            return;
+        }
+        const auto guide = harbor.Guide();
+        renderer->SetMaterial(0);
+        renderer->DrawSolidRect(640, 400, 1280, 800, .015f, .025f, .025f, .60f);
+        renderer->DrawSolidRect(640, 390, HelpPanelWidth, HelpPanelHeight, .055f, .085f, .075f, 1);
+        DrawText(304,
+                 244,
+                 guide.step == 0 ? L"\ubb34\uc5f0\ud56d\uc5d0 \ub3c4\ucc29\ud588\ub2e4"
+                                 : L"\uc9c0\uae08 \ubb34\uc5c7\uc744 \ud558\uba74 \ub420\uae4c?",
+                 1,
+                 .83f,
+                 .45f);
+        DrawWrapped(304, 276, guide.reason, 672, 2);
+        if (guide.step == 0)
+        {
+            DrawWrapped(304,
+                        338,
+                        L"\uccab \ubaa9\ud45c: " + guide.destination + L" \ucc3e\uc544\uac00\uae30",
+                        672,
+                        1);
+            DrawWrapped(
+                304,
+                370,
+                L"1. WASD\ub85c \uc774\ub984\uc774 \uc801\ud78c \uae08\ube5b \ud45c\uc2dd\uc744 \ub530\ub77c\uac00\uc138\uc694.",
+                672,
+                1);
+            DrawWrapped(
+                304,
+                400,
+                L"2. \uac00\uae4c\uc774 \uac00\uba74 \ud45c\uc2dc\ub418\ub294 \ud589\ub3d9\uc744 \ud558\uc138\uc694: " +
+                    guide.action,
+                672,
+                1);
+            DrawWrapped(
+                304,
+                440,
+                L"\uc804\ubd80 \uc678\uc6b8 \ud544\uc694\ub294 \uc5c6\uc5b4\uc694. \uc77c\uc744 \ub9c8\uce58\uba74 \ud654\uba74 \uc704\uc5d0 \ub2e4\uc74c \ud589\ub3d9\uc774 \ub098\ud0c0\ub0a9\ub2c8\ub2e4.",
+                672,
+                2);
+        }
+        else if (guide.step == 3)
+        {
+            DrawWrapped(
+                304,
+                338,
+                L"\uacf5\uac1c [\uc7a5\ud130 R]: \uac00\uc871\ub4e4\uc774 \uc774\ub984\uc744 \ub4e3\uc9c0\ub9cc, \ub4dc\ub7ec\ub098\uae38 \uc6d0\uce58 \uc54a\ub294 \uc0ac\ub78c\ub3c4 \uc788\uc2b5\ub2c8\ub2e4.",
+                672,
+                2);
+            DrawWrapped(
+                304,
+                386,
+                L"\uad00\uccad [\uc138\ub77c\ud2b8 \uacc1 T]: 30\ub0e5\uc744 \ubc1b\uc2b5\ub2c8\ub2e4. \ub300\uc2e0 \ud604\uc7a5\uc774 \ud1b5\uc81c\ub429\ub2c8\ub2e4.",
+                672,
+                2);
+            DrawWrapped(
+                304,
+                434,
+                L"\ud310\ub9e4 [\uc774\uc548 \uacc1 T]: 40\ub0e5\uc744 \ubc1b\uc2b5\ub2c8\ub2e4. \uae30\ub85d\uc740 \uc0ac\uc801\uc778 \uac70\ub798\uc5d0 \ubb36\uc785\ub2c8\ub2e4.",
+                672,
+                2);
+            DrawWrapped(
+                304,
+                482,
+                L"\uc5ec\uae30\uc11c\ub294 \uacb0\uc815\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4. \ub3cc\uc544\uac00\uc11c \uc6d0\ud558\ub294 \uc0ac\ub78c\uc774\ub098 \uc7a5\uc18c\ub97c \ucc3e\uc544 \ud589\ub3d9\ud558\uc138\uc694.",
+                672,
+                2);
+        }
+        else
+        {
+            DrawWrapped(304, 338, L"\ucc3e\uc544\uac08 \uacf3: " + guide.destination, 672, 1);
+            DrawWrapped(304, 370, L"\ud574\uc57c \ud560 \ud589\ub3d9: " + guide.action, 672, 2);
+            DrawWrapped(304, 420, TravelHint(guide), 672, 2);
+            DrawWrapped(
+                304,
+                474,
+                L"\uae08\ube5b \ud45c\uc2dc\ub294 \uc9c0\uae08 \ucc3e\uc744 \ub300\uc0c1\uc785\ub2c8\ub2e4. \ub3c4\ucc29\ud558\uba74 \ud654\uba74\uc5d0 \ub204\ub97c \ud0a4\uac00 \ud45c\uc2dc\ub429\ub2c8\ub2e4.",
+                672,
+                2);
+        }
+        DrawText(
+            304,
+            548,
+            L"ENTER \ub610\ub294 H: \uac8c\uc784\uc73c\ub85c \u00b7 \uc124\uba85\uc744 \uc77d\ub294 \ub3d9\uc548 \uc2dc\uac04\uc740 \uba48\ucda5\ub2c8\ub2e4.",
+            .86f,
+            .9f,
+            .75f);
     }
 
     void DrawHud()
     {
         const auto& stats = firstLevel.stats;
         renderer->SetMaterial(0);
-        renderer->DrawSolidRect(430, 62, 820, 104, .035f, .055f, .06f, .92f);
-        DrawText(
-            35, 38, L"\uccab \ub808\ubca8 \u00b7 \uc548\uac1c\ud638 \uc0ac\ub0e5\ud130", .92f, .76f, .48f);
+        renderer->DrawSolidRect(510, 61, 980, 102, .035f, .055f, .06f, .94f);
+        DrawText(35,
+                 38,
+                 L"\ubb34\uc5f0\ud56d \u00b7 \ubb3c\uae38 \uc544\ub798\uc758 \uc774\ub984\ub4e4",
+                 .92f,
+                 .76f,
+                 .48f);
+        DrawText(785, 38, harbor.Clock().c_str(), .84f, .82f, .7f);
         std::wstring status = L"\ub808\ubca8 " + std::to_wstring(stats.level) + L"   \uccb4\ub825 " +
-                              std::to_wstring(stats.health) + L" / " + std::to_wstring(stats.MaxHealth()) +
+                              std::to_wstring(stats.health) + L"/" + std::to_wstring(stats.MaxHealth()) +
                               L"   \uacf5\uaca9 " + std::to_wstring(stats.Attack()) + L"   \ubc29\uc5b4 " +
                               std::to_wstring(stats.Defense());
         DrawText(35, 65, status.c_str());
         float hp = 260.0f * stats.health / stats.MaxHealth();
-        renderer->DrawSolidRect(165, 81, 260, 7, .18f, .13f, .12f, 1);
+        renderer->DrawSolidRect(165, 84, 260, 7, .18f, .13f, .12f, 1);
         if (hp > 0)
         {
-            renderer->DrawSolidRect(35 + hp * .5f, 81, hp, 7, .66f, .28f, .21f, 1);
+            renderer->DrawSolidRect(35 + hp * .5f, 84, hp, 7, .66f, .28f, .21f, 1);
         }
-        std::wstring xp = stats.level == Level::MaximumLevel
-                              ? L"\ucd5c\uace0 \ub808\ubca8"
-                              : L"\uacbd\ud5d8\uce58 " + std::to_wstring(stats.experience) + L" / " +
-                                    std::to_wstring(stats.RequiredExperience());
-        DrawText(325, 91, xp.c_str());
-        float xpWidth =
-            stats.level == Level::MaximumLevel ? 260 : 260.0f * stats.experience / stats.RequiredExperience();
-        renderer->DrawSolidRect(690, 81, 260, 7, .16f, .18f, .17f, 1);
+        std::wstring xp = L"\uacbd\ud5d8\uce58 " + std::to_wstring(stats.experience) + L"/" +
+                          std::to_wstring(stats.RequiredExperience());
+        DrawText(325, 95, xp.c_str());
+        float xpWidth = stats.level == Level::MaximumLevel
+                            ? 260.0f
+                            : 260.0f * stats.experience / stats.RequiredExperience();
+        renderer->DrawSolidRect(690, 84, 260, 7, .16f, .18f, .17f, 1);
         if (xpWidth > 0)
         {
-            renderer->DrawSolidRect(560 + xpWidth * .5f, 81, xpWidth, 7, .45f, .66f, .47f, 1);
+            renderer->DrawSolidRect(560 + xpWidth * .5f, 84, xpWidth, 7, .45f, .66f, .47f, 1);
         }
+        std::wstring points = L"TAB \ub2a5\ub825 \uc810\uc218 " + std::to_wstring(stats.points);
+        DrawText(780, 65, points.c_str(), .97f, .8f, .49f);
 
-        std::wstring goal =
-            stats.level >= 5
-                ? L"\uae30\ubcf8 \uc218\ub828 \uc644\ub8cc! \uacc4\uc18d \uc0ac\ub0e5\ud558\uba70 \uc131\uc7a5\ud560 \uc218 \uc788\ub2e4."
-                : L"\uc9d0\uc2b9\uc744 \uc0ac\ub0e5\ud558\uba70 \ub808\ubca8 5\uae4c\uc9c0 \uc131\uc7a5\ud574 \ubcf4\uc790.";
-        DrawText(35, 140, goal.c_str(), .9f, .81f, .56f);
+        if (!journalPanel)
+        {
+            renderer->DrawSolidRect(390, 583, 740, 54, .035f, .055f, .06f, .93f);
+            DrawWrapped(35, 573, harbor.AreaName(), 710, 1);
+            if (Npc* npc = harbor.Nearest(2.2f))
+            {
+                std::wstring info = npc->name + L" \u00b7 " + Harbor::World::ActionLabel(npc->action) +
+                                    L"  [E \ub300\ud654 / T \uac70\ub798]  \uccb4\ub825 " +
+                                    std::to_wstring(npc->health);
+                DrawWrapped(35, 603, info, 710, 1);
+            }
+            if (firstLevel.messageTime > 0)
+            {
+                renderer->DrawSolidRect(430, 672, 820, 80, .035f, .05f, .055f, .97f);
+                DrawWrapped(32, 650, firstLevel.message, 796, 3);
+            }
+        }
         std::wstring inventory = L"\ud68c\ubcf5\uc57d " + std::to_wstring(stats.potions) +
                                  L"   \uc5fd\uc804 " + std::to_wstring(stats.coins) + L"   \uac00\uc8fd " +
                                  std::to_wstring(stats.hides) + L"   \ucc98\uce58 " +
                                  std::to_wstring(stats.kills);
-        DrawText(35, 744, inventory.c_str());
-        DrawText(
+        DrawWrapped(35, 744, inventory, 950, 1);
+        DrawWrapped(
             28,
             777,
-            L"WASD \uc774\ub3d9   SPACE \uacf5\uaca9   E \uc90d\uae30/\ub300\ud654   Q \ud68c\ubcf5\uc57d   TAB \ub2a5\ub825\uce58   ESC \uc26c\uae30",
-            .8f,
-            .81f,
-            .73f);
-        if (firstLevel.messageTime > 0)
-        {
-            renderer->DrawSolidRect(510, 687, 980, 78, .035f, .05f, .055f, .95f);
-            DrawWrapped(36, 680, firstLevel.message, 98);
-        }
+            L"WASD \uc774\ub3d9  E \ub300\ud654\u00b7\uc90d\uae30  F \uc870\uc0ac  H \uc9c0\uae08 \ud560 \uc77c  SPACE \uacf5\uaca9  Q \uc57d  M \uc9c0\ub3c4  J \uc77c\uc9c0  TAB \ub2a5\ub825  ESC",
+            1220,
+            1);
     }
 
     void DrawStatsPanel()
@@ -962,15 +1366,32 @@ namespace
             std::wstring seed = L"\uc9c0\ub3c4 \ubc88\ud638: " + std::to_wstring(firstLevel.seed);
             DrawText(885, 590, seed.c_str(), .65f, .72f, .71f);
         }
-        else if (stats.points > 0)
+    }
+
+    void DrawJournal()
+    {
+        if (!journalPanel)
         {
-            DrawText(35,
-                     171,
-                     L"\ub2a5\ub825\uce58 \uc810\uc218\uac00 \uc0dd\uacbc\ub2e4! TAB \ub610\ub294 1 / 2 / 3",
-                     .97f,
-                     .79f,
-                     .44f);
+            return;
         }
+        renderer->DrawSolidRect(510, 496, 980, 442, .03f, .055f, .065f, .98f);
+        float y = 305;
+        for (const auto& line : harbor.Journal())
+        {
+            int budget = (std::min)(3, int((680 - y) / TextLineHeight));
+            if (budget <= 0)
+            {
+                break;
+            }
+            y += DrawWrapped(38, y, line, 938, budget) + 5;
+        }
+        DrawText(
+            38,
+            705,
+            L"J \ub2eb\uae30 \u00b7 \uc9c0\ub098\uac04 \uc0ac\uac74\uacfc \ub0b4 \uc120\ud0dd\uc758 \uacb0\uacfc",
+            .8f,
+            .83f,
+            .72f);
     }
 
     void DrawPausePanel()
@@ -982,66 +1403,245 @@ namespace
         }
     }
 
+    struct LabelBounds
+    {
+        float left, top, right, bottom;
+    };
+
+    std::vector<LabelBounds> worldLabelBounds;
+
+    bool ReserveWorldLabel(float x, float y, float width, float height)
+    {
+        LabelBounds bounds = {x - width * .5f, y - height * .5f, x + width * .5f, y + height * .5f};
+        bool blocked = paused || helpVisible || journalPanel || statsPanel || bounds.left < 20 ||
+                       bounds.right > 1000 || bounds.top < 226 || bounds.bottom > 540;
+        for (const auto& other : worldLabelBounds)
+        {
+            blocked = blocked || (bounds.left < other.right + 4 && bounds.right + 4 > other.left &&
+                                  bounds.top < other.bottom + 4 && bounds.bottom + 4 > other.top);
+        }
+        if (blocked)
+        {
+            Perf::Count(Perf::Counter::UiLabelsCulled);
+            return false;
+        }
+        worldLabelBounds.push_back(bounds);
+        return true;
+    }
+
+    void QuestMarkerPosition(const Actor& marker, float& x, float& y, bool& edge)
+    {
+        WorldToScreen(marker.WorldPosition(), x, y);
+        edge = x < 180 || x > 850 || y < 248 || y > 500;
+        x = (std::max)(180.0f, (std::min)(850.0f, x));
+        y = (std::max)(248.0f, (std::min)(500.0f, y));
+    }
+
     void RenderOverlay()
     {
-        renderer->DrawScene(firstLevel.Scene(),
-                            ScenePass::Overlay,
-                            [&](const Actor& actor)
-                            {
-                                UiPart part = UiPart(actor.variant);
-                                if (part == UiPart::Prompt)
-                                {
-                                    const Actor* owner = firstLevel.Scene().Find(actor.ParentId());
-                                    if (!owner)
-                                    {
-                                        return;
-                                    }
-                                    float x, y;
-                                    WorldToScreen(actor.WorldPosition(), x, y);
-                                    renderer->DrawSolidRect(x, y, 170, 30, .04f, .06f, .07f, .92f);
-                                    DrawText(x - 76,
-                                             y + 6,
-                                             owner->Kind() == ActorKind::Loot
-                                                 ? L"E \uc804\ub9ac\ud488 \uc90d\uae30"
-                                                 : L"E \ub9d0 \uac78\uae30",
-                                             1,
-                                             .84f,
-                                             .43f);
-                                    return;
-                                }
+        Perf::Scope scope(Perf::Cpu::RenderUI);
+        worldLabelBounds.clear();
+        const Npc* focusedNpc = harbor.Nearest(NpcNameDistance);
+        const ActorId focusedNpcId = focusedNpc ? focusedNpc->Id() : InvalidActorId;
+        if (const Actor* marker = firstLevel.Scene().Find(questMarkerId))
+        {
+            if (marker->IsVisible())
+            {
+                float x, y;
+                bool edge;
+                QuestMarkerPosition(*marker, x, y, edge);
+                worldLabelBounds.push_back({x - 145, y - 17, x + 145, y + 42});
+            }
+        }
+        renderer->DrawScene(
+            firstLevel.Scene(),
+            ScenePass::Overlay,
+            [&](const Actor& actor)
+            {
+                UiPart part = UiPart(actor.variant);
+                if (part == UiPart::QuestMarker)
+                {
+                    if (paused || helpVisible || journalPanel || statsPanel)
+                    {
+                        return;
+                    }
+                    const Actor* goal = firstLevel.Scene().Find(actor.ParentId());
+                    if (!goal)
+                    {
+                        return;
+                    }
+                    const auto guide = harbor.Guide();
+                    float x, y;
+                    bool offscreen;
+                    QuestMarkerPosition(actor, x, y, offscreen);
+                    renderer->DrawEllipse(
+                        x, y, 24 + std::sin(elapsed * 4) * 4, 24, guide.ready ? .45f : 1.0f, .85f, .16f, .8f);
+                    if (offscreen)
+                    {
+                        const Vec3 p = goal->WorldPosition(), hero = PlayerPosition();
+                        float dx = ((p.x - p.y) - (hero.x - hero.y)) * TileWidth * .5f;
+                        float dy = ((p.x + p.y) - (hero.x + hero.y)) * TileHeight * .5f;
+                        float length = (std::max)(.001f, std::hypot(dx, dy));
+                        dx /= length;
+                        dy /= length;
+                        renderer->DrawQuad(x + dx * 15,
+                                           y + dy * 15,
+                                           x - dx * 7 - dy * 8,
+                                           y - dy * 7 + dx * 8,
+                                           x - dx * 7 + dy * 8,
+                                           y - dy * 7 - dx * 8,
+                                           x + dx * 15,
+                                           y + dy * 15,
+                                           1,
+                                           .9f,
+                                           .35f);
+                    }
+                    else
+                    {
+                        renderer->DrawSolidDiamond(x, y, 13, 17, 1, .9f, .35f, 1);
+                    }
+                    std::wstring label = guide.destination;
+                    if (guide.ready && guide.interactionKey)
+                    {
+                        label += L" [";
+                        label += wchar_t(guide.interactionKey);
+                        label += L"]";
+                    }
+                    else
+                    {
+                        label += L" \u00b7 " +
+                                 std::to_wstring(
+                                     int(std::ceil(Distance2D(goal->WorldPosition(), PlayerPosition())))) +
+                                 L"\ud0c0\uc77c";
+                    }
+                    renderer->DrawSolidRect(x, y + 26, 280, 30, .04f, .06f, .05f, .96f);
+                    DrawWrapped(x - 132, y + 32, label, 264, 1);
+                    return;
+                }
+                if (part == UiPart::NpcLabel)
+                {
+                    const auto* npc = dynamic_cast<const Npc*>(firstLevel.Scene().Find(actor.ParentId()));
+                    if (!npc || npc->health <= 0 || npc->Id() != focusedNpcId ||
+                        Distance2D(npc->WorldPosition(), PlayerPosition()) >= NpcNameDistance ||
+                        npc->Id() == harbor.ObjectiveTarget())
+                    {
+                        return;
+                    }
+                    float x, y;
+                    WorldToScreen(actor.WorldPosition(), x, y);
+                    float width = renderer->TextWidth(npc->name.c_str(), fontDC, fontHandle) + 16;
+                    if (ReserveWorldLabel(x, y, width, 24))
+                    {
+                        bool danger = npc->job == Harbor::Job::Raider;
+                        renderer->DrawSolidRect(x, y, width, 24, .035f, .055f, .06f, .92f);
+                        DrawText(x - width * .5f + 8,
+                                 y + 5,
+                                 npc->name.c_str(),
+                                 danger ? 1.0f : .9f,
+                                 danger ? .42f : .88f,
+                                 danger ? .32f : .67f);
+                    }
+                    return;
+                }
+                if (part == UiPart::SiteLabel)
+                {
+                    const auto* site =
+                        dynamic_cast<const Harbor::Landmark*>(firstLevel.Scene().Find(actor.ParentId()));
+                    float x, y;
+                    WorldToScreen(actor.WorldPosition(), x, y);
+                    if (site && Distance2D(site->WorldPosition(), PlayerPosition()) < 9)
+                    {
+                        float width = (std::min)(
+                            300.0f, renderer->TextWidth(site->label.c_str(), fontDC, fontHandle) + 16);
+                        if (ReserveWorldLabel(x, y, width, 28))
+                        {
+                            renderer->DrawSolidRect(x, y, width, 28, .04f, .06f, .07f, .92f);
+                            DrawWrapped(x - width * .5f + 8, y + 6, site->label, width - 16, 1);
+                        }
+                    }
+                    return;
+                }
+                if (part == UiPart::Prompt)
+                {
+                    const Actor* owner = firstLevel.Scene().Find(actor.ParentId());
+                    if (!owner)
+                    {
+                        return;
+                    }
+                    float x, y;
+                    WorldToScreen(actor.WorldPosition(), x, y);
+                    if (!ReserveWorldLabel(x, y, 170, 30))
+                    {
+                        return;
+                    }
+                    renderer->DrawSolidRect(x, y, 170, 30, .04f, .06f, .07f, .96f);
+                    const Npc* npc = dynamic_cast<const Npc*>(owner);
+                    const wchar_t* promptText =
+                        owner->Kind() == ActorKind::Loot   ? L"E \uc804\ub9ac\ud488 \uc90d\uae30"
+                        : owner->Kind() == ActorKind::Prop ? L"F \uc870\uc0ac\u00b7\ud68d\ub4dd"
+                        : npc && npc->health <= 0          ? L"E \uc720\ud488 \ucc59\uae30\uae30"
+                                                           : L"E \ub9d0 \uac78\uae30";
+                    DrawText(x - 76, y + 6, promptText, 1, .84f, .43f);
+                    return;
+                }
 
-                                Vec3 origin = actor.WorldPosition();
-                                uiOriginX = origin.x;
-                                uiOriginY = origin.y;
-                                renderer->SetScreenOffset(uiOriginX, uiOriginY);
-                                switch (part)
-                                {
-                                case UiPart::Hud:
-                                    DrawHud();
-                                    break;
-                                case UiPart::MiniMap:
-                                    RenderMiniMap();
-                                    break;
-                                case UiPart::Stats:
-                                    DrawStatsPanel();
-                                    break;
-                                case UiPart::Pause:
-                                    DrawPausePanel();
-                                    break;
-                                default:
-                                    break;
-                                }
-                                renderer->SetScreenOffset(0, 0);
-                                uiOriginX = uiOriginY = 0;
-                            });
+                Vec3 origin = actor.WorldPosition();
+                uiOriginX = origin.x;
+                uiOriginY = origin.y;
+                renderer->SetScreenOffset(uiOriginX, uiOriginY);
+                switch (part)
+                {
+                case UiPart::Hud:
+                    DrawHud();
+                    break;
+                case UiPart::GuideHelp:
+                    DrawGuideHelp();
+                    break;
+                case UiPart::QuestTracker:
+                    DrawQuestTracker();
+                    break;
+                case UiPart::MiniMap:
+                    RenderMiniMap();
+                    break;
+                case UiPart::Stats:
+                    DrawStatsPanel();
+                    break;
+                case UiPart::Journal:
+                    DrawJournal();
+                    break;
+                case UiPart::Pause:
+                    DrawPausePanel();
+                    break;
+                default:
+                    break;
+                }
+                renderer->SetScreenOffset(0, 0);
+                uiOriginX = uiOriginY = 0;
+            });
+        renderer->FinishOverlay();
     }
 
     void Update(float dt)
     {
-        if (paused)
+        Perf::Scope scope(Perf::Cpu::Update);
+        if (helpPressed)
         {
+            helpVisible = true;
+            helpPressed = false;
+            journalPanel = statsPanel = false;
+        }
+        if (helpVisible && continueHelpPressed)
+        {
+            helpVisible = false;
+            continueHelpPressed = false;
+            std::fill(std::begin(keys), std::end(keys), false);
+        }
+        if (paused || helpVisible)
+        {
+            continueHelpPressed = false;
             interactionPressed = false;
             potionPressed = false;
+            tradePressed = sitePressed = revealPressed = false;
             attributePressed = 0;
             UpdatePromptActor();
             return;
@@ -1051,14 +1651,33 @@ namespace
         float sy = (keys['s'] ? 1.0f : 0) - (keys['w'] ? 1.0f : 0);
         firstLevel.MovePlayer(sx, sy, dt);
         firstLevel.Update(dt);
+        harbor.Update(dt);
         if (keys[' '])
         {
-            firstLevel.Attack();
+            if (firstLevel.Attack())
+            {
+                harbor.PlayerAttack();
+            }
         }
         if (interactionPressed)
         {
             TryInteract();
             interactionPressed = false;
+        }
+        if (tradePressed)
+        {
+            harbor.Trade();
+            tradePressed = false;
+        }
+        if (sitePressed)
+        {
+            harbor.InteractSite();
+            sitePressed = false;
+        }
+        if (revealPressed)
+        {
+            harbor.Reveal();
+            revealPressed = false;
         }
         if (potionPressed)
         {
@@ -1080,6 +1699,31 @@ void RenderScene()
     {
         return;
     }
+    auto& profiler = Perf::Profiler::Get();
+    profiler.BeginFrame();
+    int now = glutGet(GLUT_ELAPSED_TIME);
+    float dt = previousTime ? float(now - previousTime) / 1000 : 0;
+    previousTime = now;
+    Update((std::min)(dt, .05f));
+    const Vec3 camera = PlayerPosition();
+    renderCamera = camera;
+    firstLevel.UpdateVisibleChunks();
+    profiler.SetSceneState(firstLevel.seed,
+                           camera.x,
+                           camera.y,
+                           (std::min)(dt, .05f),
+                           paused || helpVisible,
+                           outputWidth,
+                           outputHeight);
+    firstLevel.Scene().PrepareFrame(
+        [&](const Actor& actor)
+        {
+            auto p = actor.WorldPosition();
+            float x = ScreenWidth * .5f + ((p.x - p.y) - (camera.x - camera.y)) * TileWidth * .5f;
+            float y = ScreenHeight * .52f + ((p.x + p.y) - (camera.x + camera.y)) * TileHeight * .5f - p.z;
+            return Visible(x, y);
+        });
+    profiler.GpuMark("render_begin");
     renderer->SetTime(elapsed);
     renderer->BeginFrame(.075f, .12f, .14f, 1);
     RenderWorldPass(ScenePass::Ground);
@@ -1087,16 +1731,16 @@ void RenderScene()
     RenderWorldPass(ScenePass::Effects);
     renderer->EndWorld(elapsed);
     RenderOverlay();
-    glutSwapBuffers();
+    {
+        Perf::Scope swap(Perf::Cpu::Swap);
+        glutSwapBuffers();
+    }
+    worldMonitor.Tick(harbor, paused || helpVisible, dt);
     renderer->EndFrame();
 }
 
 void Idle()
 {
-    int now = glutGet(GLUT_ELAPSED_TIME);
-    float dt = previousTime ? float(now - previousTime) / 1000 : 0;
-    previousTime = now;
-    Update((std::min)(dt, .05f));
     glutPostRedisplay();
 }
 
@@ -1111,6 +1755,19 @@ void KeyDown(unsigned char key, int, int)
         return;
     }
     keys[key] = true;
+    if (helpVisible)
+    {
+        if (key == 13 || key == 'h')
+        {
+            continueHelpPressed = true;
+        }
+        return;
+    }
+    if (key == 'h' && !paused)
+    {
+        helpPressed = true;
+        return;
+    }
     if (key == 27)
     {
         paused = !paused;
@@ -1118,12 +1775,40 @@ void KeyDown(unsigned char key, int, int)
     else if (key == '\t')
     {
         statsPanel = !statsPanel;
+        if (statsPanel)
+        {
+            journalPanel = false;
+        }
+    }
+    else if (key == 'j')
+    {
+        journalPanel = !journalPanel;
+        if (journalPanel)
+        {
+            statsPanel = false;
+        }
+    }
+    else if (key == 'm')
+    {
+        worldMap = !worldMap;
     }
     else if (!paused)
     {
         if (key == 'e')
         {
             interactionPressed = true;
+        }
+        if (key == 't')
+        {
+            tradePressed = true;
+        }
+        if (key == 'f')
+        {
+            sitePressed = true;
+        }
+        if (key == 'r')
+        {
+            revealPressed = true;
         }
         if (key == 'q')
         {
@@ -1155,19 +1840,18 @@ void Entry(int state)
 
 void Reshape(int w, int h)
 {
+    outputWidth = w > 0 ? w : 1;
+    outputHeight = h > 0 ? h : 1;
     if (renderer)
     {
-        renderer->SetOutputSize(w > 0 ? w : 1, h > 0 ? h : 1);
+        renderer->SetOutputSize(outputWidth, outputHeight);
     }
 }
 
 void Close()
 {
-    for (const auto& glyph : glyphs)
-    {
-        glDeleteLists(glyph.second, 1);
-    }
-    glyphs.clear();
+    worldMonitor.Stop();
+    Perf::Profiler::Get().Shutdown();
     delete renderer;
     renderer = nullptr;
 }
@@ -1177,8 +1861,8 @@ int main(int argc, char** argv)
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
     glutInitWindowSize(ScreenWidth, ScreenHeight);
-    glutCreateWindow("Mist Lake - Level 1");
-    SetWindowTextW(GetActiveWindow(), L"\uc548\uac1c\ud638 \u00b7 \uccab \ubc88\uc9f8 \uc0ac\ub0e5\ud130");
+    glutCreateWindow("Muyeon Harbor - Living World");
+    SetWindowTextW(GetActiveWindow(), L"\ubb34\uc5f0\ud56d \u00b7 \uc0b4\uc544 \uc788\ub294 \ud56d\uad6c");
     if (glewInit() != GLEW_OK || !glewIsSupported("GL_VERSION_3_3"))
     {
         return 1;
@@ -1186,10 +1870,15 @@ int main(int argc, char** argv)
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    renderer = new Renderer(ScreenWidth, ScreenHeight);
+    Perf::Profiler::Get().Initialize();
+    Perf::Profiler::Get().BeginFrame();
+    {
+        Perf::Scope scope(Perf::Cpu::RendererInit);
+        renderer = new Renderer(ScreenWidth, ScreenHeight);
+    }
     if (!renderer->IsInitialized())
     {
-        delete renderer;
+        Close();
         return 1;
     }
     InitializeKoreanFont();
@@ -1204,6 +1893,8 @@ int main(int argc, char** argv)
     InitializeModels();
     InitializeSceneActors();
     UpdatePromptActor();
+    worldMonitor.Start();
+    Perf::Profiler::Get().EndFrame("startup");
     glutIgnoreKeyRepeat(1);
     glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
     glutReshapeFunc(Reshape);

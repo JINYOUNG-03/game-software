@@ -4,6 +4,7 @@
 #endif
 #include <Windows.h>
 #include "Renderer.h"
+#include "Profiler.h"
 
 #include <cmath>
 #include <iomanip>
@@ -21,6 +22,7 @@ bool Renderer::HasModel(const std::string& name) const
 
 void Renderer::BeginModel(const std::string& name)
 {
+    m_CompiledModels.erase(name);
     m_RecordingModel = name;
     m_Models[name].clear();
     m_Material = 0;
@@ -34,6 +36,7 @@ void Renderer::EndModel()
 
 bool Renderer::LoadModels(const std::wstring& path)
 {
+    Perf::Scope scope(Perf::Cpu::ModelLoad);
     std::ifstream file(path.c_str());
     std::string magic;
     int version = 0;
@@ -85,11 +88,13 @@ bool Renderer::LoadModels(const std::wstring& path)
         return false;
     }
     m_Models = std::move(loaded);
+    m_CompiledModels.clear();
     return true;
 }
 
 bool Renderer::SaveModels(const std::wstring& path) const
 {
+    Perf::Scope scope(Perf::Cpu::ModelSave);
     // Replace only this versioned cache after the complete file is flushed.
     std::wstring temporary = path + L".tmp";
     std::ofstream file(temporary.c_str(), std::ios::trunc);
@@ -129,6 +134,27 @@ void Renderer::DrawModel(const std::string& name, float x, float y)
     {
         return;
     }
+    auto compiled = m_CompiledModels.find(name);
+    if (compiled != m_CompiledModels.end())
+    {
+        Perf::Count(Perf::Counter::ModelCacheHit);
+        for (auto item : compiled->second)
+        {
+            for (int i = 0; i < 8; i += 2)
+            {
+                item.corners[i] += x;
+                item.corners[i + 1] += y;
+            }
+            QueueInstance(item);
+        }
+        return;
+    }
+    Perf::Scope scope(Perf::Cpu::ModelBuild);
+    Perf::Count(Perf::Counter::ModelCacheMiss);
+    float originX = x, originY = y;
+    x = y = 0;
+    m_ModelInstances.clear();
+    m_CompileModel = true;
     int previousMaterial = m_Material;
     for (const auto& part : model->second)
     {
@@ -158,4 +184,15 @@ void Renderer::DrawModel(const std::string& name, float x, float y)
         }
     }
     m_Material = previousMaterial;
+    m_CompileModel = false;
+    m_CompiledModels[name] = std::move(m_ModelInstances);
+    for (auto item : m_CompiledModels.at(name))
+    {
+        for (int i = 0; i < 8; i += 2)
+        {
+            item.corners[i] += originX;
+            item.corners[i + 1] += originY;
+        }
+        QueueInstance(item);
+    }
 }

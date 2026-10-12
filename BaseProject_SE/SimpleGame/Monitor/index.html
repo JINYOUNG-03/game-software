@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>무연항 · 월드 모니터</title>
+    <link rel="stylesheet" href="/monitor.css">
+    <script src="/monitor.js" defer></script>
+</head>
+<body>
+    <header class="masthead">
+        <div><p class="eyebrow">MUYEON / WORLD OBSERVER</p><h1>무연항 월드 모니터</h1>
+            <p class="muted">게임 화면 밖에서 살펴보는 주민과 마을의 현재 상태</p></div>
+        <div class="connection"><span id="connection" class="badge" role="status">연결 대기</span>
+            <span id="received" class="muted">아직 받은 상태가 없습니다.</span></div>
+    </header>
+    <main>
+        <section class="toolbar" aria-label="연결 설정">
+            <span>로컬 전용 · 읽기 전용 · JSON / 1초</span>
+            <div><button id="toggle" type="button">수신 일시정지</button>
+                <button id="retry" type="button">다시 연결</button>
+                <button id="download" type="button" disabled>JSON 저장</button></div>
+        </section>
+        <p id="notice" class="notice" role="status">게임을 실행한 뒤 http://127.0.0.1:18765/ 를 열어주세요.</p>
+        <section id="overview" class="overview" aria-label="월드 개체 수"></section>
+        <section class="panel objective"><h2>플레이어와 월드</h2>
+            <p id="objective">첫 상태를 기다리는 중입니다.</p><p id="consequence" class="muted"></p>
+            <p id="world-status" class="muted"></p></section>
+        <section aria-labelledby="settlement-heading">
+            <div class="section-heading"><h2 id="settlement-heading">마을과 거점</h2><span class="muted">거주 인구와 현장 인원은 서로 다릅니다.</span></div>
+            <p class="explanation">분위기는 현장 전투·부상·침수·이야기 상태로 계산한 진단 요약입니다.
+                성향은 살아 있는 거주민의 목표 가중치를 합산하며, 소문은 실제 지식 보유 인원입니다.</p>
+            <div id="settlements" class="settlements"></div>
+        </section>
+        <section class="panel" aria-labelledby="npc-heading">
+            <div class="section-heading"><h2 id="npc-heading">NPC 상태</h2><span id="npc-count" class="muted">0명</span></div>
+            <div class="filters">
+                <label>이름 검색<input id="search" type="search" placeholder="이름 또는 Actor ID"></label>
+                <label>직업<select id="job"><option value="">전체 직업</option></select></label>
+                <label>행동<select id="action"><option value="">전체 행동</option></select></label>
+                <label>거주지<select id="settlement"><option value="">전체 거주지</option></select></label>
+                <label class="checkbox"><input id="show-dead" type="checkbox" checked>사망자 포함</label>
+            </div>
+            <p class="explanation">행을 누르면 목표·소지품·소문·이동 상태를 자세히 볼 수 있습니다. HP와 재산의 증감은 이전 수신 대비입니다.</p>
+            <div class="table-scroll"><table>
+                <thead><tr><th scope="col">이름 / ID</th><th scope="col">직업 / 거주지</th>
+                    <th scope="col">현재 행동 / 위치</th><th scope="col">체력</th><th scope="col">재산</th>
+                    <th scope="col">주요 목표</th><th scope="col">알고 있는 소문</th></tr></thead>
+                <tbody id="npcs"><tr><td colspan="7">수신한 NPC가 없습니다.</td></tr></tbody>
+            </table></div>
+            <div id="npc-detail" class="npc-detail" aria-live="polite">NPC를 선택하세요.</div>
+        </section>
+        <section class="panel"><h2>최근 월드 사건</h2><ol id="events"><li>기록을 기다리는 중입니다.</li></ol>
+            <p class="explanation">게임이 보관하는 최근 6개 사건입니다. 특정 마을에서만 발생한 사건 목록은 아닙니다.</p></section>
+        <details class="panel" id="json-panel"><summary>수신 JSON 원문</summary><pre id="json"></pre></details>
+        <footer>연결이 끊기면 마지막 상태를 유지하고 다시 연결합니다. 수신 일시정지는 게임을 멈추지 않습니다.
+            NPC·몹 수는 화면에 보이는 수가 아니라 전체 SceneGraph 기준입니다.</footer>
+    </main>
+</body>
+</html>

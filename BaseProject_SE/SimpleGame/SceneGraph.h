@@ -2,6 +2,8 @@
 
 #include "Actor.h"
 #include <memory>
+#include <array>
+#include <functional>
 #include <stdexcept>
 #include <type_traits>
 #include <unordered_map>
@@ -62,6 +64,10 @@ class SceneGraph
     T& Create(ActorId parent, const std::string& name, ActorKind kind = ActorKind::Group)
     {
         static_assert(std::is_base_of<Actor, T>::value, "Scene nodes must derive from Actor.");
+        if (size_t(kind) >= m_ByKind.size())
+        {
+            throw std::invalid_argument("Invalid Actor kind.");
+        }
         Actor* owner = Find(parent);
         if (!owner)
         {
@@ -77,6 +83,7 @@ class SceneGraph
         T* result = actor.get();
         m_Actors.emplace(result->Id(), std::move(actor));
         owner->m_Children.push_back(result->Id());
+        m_ByKind[size_t(kind)].push_back(result->Id());
         InvalidateCollisionSubtree(*result);
         return *result;
     }
@@ -87,6 +94,24 @@ class SceneGraph
     std::vector<ActorId> FindByKind(ActorKind kind, bool activeOnly = true) const;
     std::vector<const Actor*> RenderList(ScenePass pass) const;
 
+    // Prepare after Update; do not mutate the graph until all render consumers finish.
+    void PrepareFrame(const std::function<bool(const Actor&)>& visible);
+
+    const std::vector<const Actor*>& FrameList(ScenePass pass) const
+    {
+        return m_FrameLists.at(size_t(pass));
+    }
+
+    const std::vector<const Actor*>& TerrainList() const
+    {
+        return m_TerrainList;
+    }
+
+    std::uint64_t TerrainFingerprint() const
+    {
+        return m_TerrainFingerprint;
+    }
+
     std::uint64_t CollisionRevision() const
     {
         return m_CollisionRevision;
@@ -96,6 +121,11 @@ class SceneGraph
     friend class Actor;
     void InvalidateCollisionSubtree(const Actor& actor);
     void Collect(const Actor& actor, ScenePass pass, std::vector<const Actor*>& result) const;
+    void CollectFrame(const Actor& actor, const std::function<bool(const Actor&)>& visible);
+    std::array<std::vector<ActorId>, size_t(ActorKind::Count)> m_ByKind;
+    std::array<std::vector<const Actor*>, size_t(ScenePass::Count)> m_FrameLists;
+    std::vector<const Actor*> m_TerrainList;
+    std::uint64_t m_TerrainFingerprint = 0;
     std::unordered_map<ActorId, std::unique_ptr<Actor>> m_Actors;
     ActorId m_Root = InvalidActorId;
     ActorId m_NextId = 1;

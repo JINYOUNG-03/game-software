@@ -1,0 +1,20 @@
+# Visual Studio local state and generated build output.
+**/.vs/
+**/Debug/
+**/Release/
+**/ipch/
+*.obj
+*.pch
+*.pdb
+*.ilk
+*.idb
+*.suo
+*.tlog
+*.lastbuildstate
+
+# Runtime primitive-model cache (regenerated if absent or incompatible).
+**/Cache/level1_models_v*.cache
+**/Cache/level1_models_v*.cache.tmp
+
+# Local rotating profiling output (never commit runtime traces).
+**/Profiles/profile_*.jsonl

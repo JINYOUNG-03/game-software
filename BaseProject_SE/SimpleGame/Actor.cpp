@@ -9,19 +9,44 @@ ActorId Actor::ParentId() const
 
 ActorPosition Actor::WorldPosition() const
 {
-    ActorPosition result = m_Position;
-    for (const Actor* parent = m_Parent; parent; parent = parent->m_Parent)
+    if (m_WorldDirty)
     {
-        result.x += parent->m_Position.x;
-        result.y += parent->m_Position.y;
-        result.z += parent->m_Position.z;
+        m_CachedWorld = m_Position;
+        if (m_Parent)
+        {
+            auto parent = m_Parent->WorldPosition();
+            m_CachedWorld.x += parent.x;
+            m_CachedWorld.y += parent.y;
+            m_CachedWorld.z += parent.z;
+        }
+        m_WorldDirty = false;
     }
-    return result;
+    return m_CachedWorld;
+}
+
+void Actor::InvalidateWorldPosition()
+{
+    m_WorldDirty = true;
+    if (m_Scene)
+    {
+        for (ActorId child : m_Children)
+        {
+            if (auto actor = m_Scene->Find(child))
+            {
+                actor->InvalidateWorldPosition();
+            }
+        }
+    }
 }
 
 void Actor::SetLocalPosition(const ActorPosition& position)
 {
+    if (m_Position.x == position.x && m_Position.y == position.y && m_Position.z == position.z)
+    {
+        return;
+    }
     m_Position = position;
+    InvalidateWorldPosition();
     if (m_Scene)
     {
         m_Scene->InvalidateCollisionSubtree(*this);
@@ -71,6 +96,18 @@ void Actor::SetBlocksMovement(bool blocked)
         if (m_Scene)
         {
             ++m_Scene->m_CollisionRevision;
+        }
+    }
+}
+
+void Actor::SetVariant(int value)
+{
+    if (variant != value)
+    {
+        variant = value;
+        if (m_Scene && Kind() == ActorKind::Terrain)
+        {
+            m_Scene->InvalidateCollisionSubtree(*this);
         }
     }
 }
