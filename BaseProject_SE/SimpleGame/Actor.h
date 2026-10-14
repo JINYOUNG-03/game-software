@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <array>
 #include <string>
 #include <vector>
 
@@ -44,7 +45,9 @@ enum class ActorEffect
     SwordTrail,
     PlayerHurt,
     EnemyStatus,
-    NpcStatus
+    NpcStatus,
+    WarmLight,
+    HarborMist
 };
 
 class SceneGraph;
@@ -110,6 +113,12 @@ class Actor
     int drawOrder = 0;
     int variant = 0;
     float shadowWidth = 0;
+    float shadowHeight = 0;
+    float visualHeight = 0;
+    bool mirrorModel = false;
+    // Derived from shared terrain, not a second collision/position representation.
+    // Water/land edge mask, road edge mask, water depth, flooded-lane wetness.
+    std::array<float, 4> surfaceData{{0, 0, -1, 0}};
     bool drawable = false;
 
   protected:

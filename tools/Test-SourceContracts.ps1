@@ -2,8 +2,8 @@
 # Lightweight source checks only: not a compiler, game build, execution or screen test.
 $ErrorActionPreference = 'Stop'
 $sourceCheckRoot = Join-Path (Split-Path $PSScriptRoot -Parent) 'BaseProject_SE/SimpleGame'
-$checkedFiles = @('Actor.h', 'Actor.cpp', 'WorldLayout.h', 'LevelOne.h', 'LevelOne.cpp',
-                  'HarborWorld.h', 'HarborWorld.cpp', 'Renderer.h', 'RendererBatch.cpp',
+$checkedFiles = @('Actor.h', 'Actor.cpp', 'WorldLayout.h', 'CharacterPresentation.h', 'LevelOne.h', 'LevelOne.cpp',
+                  'HarborWorld.h', 'HarborWorld.cpp', 'Renderer.h', 'Renderer.cpp', 'RendererModels.cpp', 'RendererBatch.cpp',
                   'SimpleGame.cpp', 'Profiler.h', 'Profiler.cpp', 'WorldMonitor.h', 'WorldMonitor.cpp')
 $ignoredTokens = @'
 (?s)/\*.*?\*/|//[^\r\n]*|L?"(?:\\.|[^"\\])*"|L?'(?:\\.|[^'\\])*'

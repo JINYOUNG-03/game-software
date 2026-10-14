@@ -4,6 +4,7 @@
 
 1. Visual Studio에서 `BaseProject_SE/SimpleGame.sln`을 열고 Release / x64로 다시 빌드한다.
 2. 게임을 실행한다. 시작 안내창이 떠 있어도 모니터는 사용할 수 있다.
+   도입 장면·H 도움말·NPC 대화 중에는 게임 상태가 일시정지로 표시된다.
 3. 별도 브라우저 창에서 **http://127.0.0.1:18765/** 를 연다.
 
 HTML·CSS·JavaScript는 빌드 시 실행 파일 옆 `Monitor` 폴더로 복사한다.
@@ -50,7 +51,7 @@ HTML 파일을 더블클릭하는 `file://` 방식이 아니라 위 로컬 HTTP 
 - 전송: 같은 로컬 서버의 `GET /api/snapshot`, HTTP 응답 `application/json; charset=utf-8`.
 - 브라우저는 성공 시 약 1초 간격으로 요청하며 중복 요청을 겹치지 않는다.
   요청 제한 시간은 2.5초, 실패 시 재접속 간격은 2/4/8초다.
-- 모니터 스키마는 `schema_version: 1`이다. 프로파일링 로그의 스키마 5와 별개다.
+- 모니터 스키마는 `schema_version: 1`이다. 프로파일링 로그의 스키마 7과 별개다.
 - 최초 요청 직후에는 `{"schema_version":1,"status":"waiting"}`을 받을 수 있다.
   다음 게임 프레임에서 준비한 뒤 `status: ready` 상태를 받는다.
 

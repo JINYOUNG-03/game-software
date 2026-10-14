@@ -165,6 +165,7 @@
   <ItemGroup>
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="LevelOne.h" />
+    <ClInclude Include="CharacterPresentation.h" />
     <ClInclude Include="HarborWorld.h" />
     <ClInclude Include="WorldMonitor.h" />
     <ClInclude Include="WorldLayout.h" />

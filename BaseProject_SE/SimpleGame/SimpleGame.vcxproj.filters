@@ -31,6 +31,7 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="LevelOne.h" />
+    <ClInclude Include="CharacterPresentation.h" />
     <ClInclude Include="HarborWorld.h" />
     <ClInclude Include="WorldMonitor.h" />
     <ClInclude Include="WorldLayout.h" />

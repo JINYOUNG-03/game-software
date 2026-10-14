@@ -57,6 +57,10 @@ namespace Perf
         ChunkVisibility,
         QuestUpdate,
         MonitorSnapshot,
+        TerrainAppearance,
+        SceneryBuild,
+        Lighting,
+        CharacterBuild,
         Count
     };
     enum class Counter
@@ -110,6 +114,15 @@ namespace Perf
         MonitorResponseBytes,
         MonitorErrors,
         MonitorIoMicroseconds,
+        TerrainAppearanceTiles,
+        ShorelineTiles,
+        SceneryProps,
+        LightsConsidered,
+        LightsSelected,
+        ShadowCasters,
+        CharacterModelsBuilt,
+        CharacterInstances,
+        MirroredCharacterInstances,
         Count
     };
 

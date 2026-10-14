@@ -12,7 +12,7 @@
 
 namespace
 {
-    constexpr int ModelCacheVersion = 1;
+    constexpr int ModelCacheVersion = 2;
 }
 
 bool Renderer::HasModel(const std::string& name) const
@@ -63,7 +63,7 @@ bool Renderer::LoadModels(const std::wstring& path)
         for (auto& part : model)
         {
             if (!(file >> part.shape >> part.material) || part.shape < 0 || part.shape > 2 ||
-                part.material < 0 || part.material > 10)
+                part.material < 0 || part.material > 21)
             {
                 return false;
             }
@@ -127,22 +127,31 @@ bool Renderer::SaveModels(const std::wstring& path) const
            FALSE;
 }
 
-void Renderer::DrawModel(const std::string& name, float x, float y)
+void Renderer::DrawModel(const std::string& name, float x, float y, bool mirrorX)
 {
     auto model = m_Models.find(name);
     if (model == m_Models.end())
     {
         return;
     }
+    const bool character = name.compare(0, 4, "hero") == 0 || name.compare(0, 7, "citizen") == 0;
     auto compiled = m_CompiledModels.find(name);
     if (compiled != m_CompiledModels.end())
     {
         Perf::Count(Perf::Counter::ModelCacheHit);
+        if (character)
+        {
+            Perf::Count(Perf::Counter::CharacterInstances, compiled->second.size());
+            if (mirrorX)
+            {
+                Perf::Count(Perf::Counter::MirroredCharacterInstances, compiled->second.size());
+            }
+        }
         for (auto item : compiled->second)
         {
             for (int i = 0; i < 8; i += 2)
             {
-                item.corners[i] += x;
+                item.corners[i] = x + (mirrorX ? -item.corners[i] : item.corners[i]);
                 item.corners[i + 1] += y;
             }
             QueueInstance(item);
@@ -180,17 +189,26 @@ void Renderer::DrawModel(const std::string& name, float x, float y)
                      y + v[7],
                      v[8],
                      v[9],
-                     v[10]);
+                     v[10],
+                     v[11]);
         }
     }
     m_Material = previousMaterial;
     m_CompileModel = false;
     m_CompiledModels[name] = std::move(m_ModelInstances);
+    if (character)
+    {
+        Perf::Count(Perf::Counter::CharacterInstances, m_CompiledModels.at(name).size());
+        if (mirrorX)
+        {
+            Perf::Count(Perf::Counter::MirroredCharacterInstances, m_CompiledModels.at(name).size());
+        }
+    }
     for (auto item : m_CompiledModels.at(name))
     {
         for (int i = 0; i < 8; i += 2)
         {
-            item.corners[i] += originX;
+            item.corners[i] = originX + (mirrorX ? -item.corners[i] : item.corners[i]);
             item.corners[i + 1] += originY;
         }
         QueueInstance(item);

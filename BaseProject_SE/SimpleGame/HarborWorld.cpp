@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "HarborWorld.h"
 #include "Profiler.h"
+#include "CharacterPresentation.h"
 #include <algorithm>
 #include <cmath>
 #include <iomanip>
@@ -533,6 +534,7 @@ namespace Harbor
         gateOpen = published = controlled = repaired = copied = ledgerWet = false;
         flood = 0;
         briefed = recoveredLedger = recoveredKey = returned = explored = dealSettled = false;
+        EndDialogue();
         recordChoice = RecordChoice::Undecided;
         questStep = 0;
         consequence.clear();
@@ -726,6 +728,8 @@ namespace Harbor
             npc.drawable = true;
             npc.model = "citizen" + std::to_string(i) + "_0";
             npc.shadowWidth = 30;
+            npc.shadowHeight = 62;
+            npc.visualHeight = CharacterPresentation::NpcVisualHeight(i);
             npc.coins = IsMerchant(npc) ? 180 : 25 + i * 2;
             if (i < 5 && !IsMerchant(npc))
             {
@@ -1212,8 +1216,18 @@ namespace Harbor
                 level.MoveActor(npc, (target.x - before.x) / d * amount, (target.y - before.y) / d * amount);
             }
         }
-        npc.moving = Distance(before, npc.WorldPosition()) > .0001f;
-        npc.phase += dt * 10;
+        const Position after = npc.WorldPosition();
+        float travelled = Distance(before, after);
+        npc.moving = travelled > .0001f;
+        if (npc.moving)
+        {
+            npc.phase += travelled * 5.5f;
+            float screenDirection = (after.x - before.x) - (after.y - before.y);
+            if (std::abs(screenDirection) > .0001f)
+            {
+                npc.mirrorModel = screenDirection < 0;
+            }
+        }
         npc.model = "citizen" + std::to_string(npc.variant) + "_" +
                     std::to_string(npc.moving ? int(npc.phase * 8 / 6.2831853f) % 8 : 0);
         npc.cooldown = (std::max)(0.0f, npc.cooldown - dt);
@@ -1544,8 +1558,296 @@ namespace Harbor
         return nullptr;
     }
 
+    void World::EndDialogue()
+    {
+        dialogue = {};
+    }
+
+    void World::AdvanceDialogue()
+    {
+        Perf::Scope scope(Perf::Cpu::Interaction);
+        if (!dialogue.Active() || !dialogue.pages[dialogue.page].choices.empty())
+        {
+            return;
+        }
+        if (++dialogue.page >= dialogue.pages.size())
+        {
+            EndDialogue();
+        }
+    }
+
+    void World::CompleteFirstQuest()
+    {
+        if (returned || questStep != 5)
+        {
+            return;
+        }
+        returned = true;
+        level.stats.GainExperience(120);
+        level.stats.coins += 20;
+        ReactToPlayer(
+            L"\ubb3c\uae38\uc744 \uc5f0 \uc77c\uc744 \ubcf4\uace0\ud588\ub2e4. \ud488\uc0af 20\ub0e5\uacfc \uacbd\ud5d8\uce58 120\uc744 \ubc1b\uc558\ub2e4. \ub2e4\uc74c\uc740 \uc194\ubc14\ub78c \uc0ac\ub0e5\uafbc \uac70\uc810\uc744 \ucc3e\uc544\ubcf4\uc790.");
+        UpdateQuest();
+    }
+
+    void World::ChooseDialogue(size_t choice)
+    {
+        Perf::Scope scope(Perf::Cpu::Interaction);
+        if (!dialogue.Active() || choice >= dialogue.pages[dialogue.page].choices.size())
+        {
+            return;
+        }
+        Actor* source = level.Scene().Find(dialogue.source);
+        Npc* person = dynamic_cast<Npc*>(source);
+        if (!source || (person && person->health <= 0) ||
+            Distance(level.Player().WorldPosition(), source->WorldPosition()) >= (person ? 1.5f : 1.8f) ||
+            (person && !level.ClearLine(level.Player().WorldPosition(), source->WorldPosition())))
+        {
+            EndDialogue();
+            return;
+        }
+        DialogueChoice selected = dialogue.pages[dialogue.page].choices[choice];
+        if (selected.effect == DialogueEffect::AcceptQuest && !briefed)
+        {
+            briefed = true;
+            ReactToPlayer(
+                L"\uc7a5\ubd80\uc640 \uc218\ubb38 \uc5f4\uc1e0\ub97c \ucc3e\uc544\uc624\uae30\ub85c \uc57d\uc18d\ud588\ub2e4. \ubbf8\ub77c\ub294 \ubc30\uc218\ub85c\ub97c \ubc1b\uce5c\ub2e4. \uc7a5\ubd80\ub97c \ub204\uad6c\uc5d0\uac8c \ub118\uae38\uc9c0\ub294 \uc544\uc9c1 \uc815\ud558\uc9c0 \uc54a\uc558\ub2e4.");
+            UpdateQuest();
+        }
+        else if (selected.effect == DialogueEffect::CompleteQuest)
+        {
+            CompleteFirstQuest();
+        }
+        else if (selected.effect == DialogueEffect::ShareKnowledge && person)
+        {
+            Npc& npc = *person;
+            if (Holder(ledger) == level.Player().Id() || copied)
+            {
+                npc.knowledge |= Knowledge::Ledger;
+                npc.lastLedger = level.Player().WorldPosition();
+                npc.knownLedgerHolder =
+                    Holder(ledger) == level.Player().Id() ? level.Player().Id() : InvalidActorId;
+            }
+            if (Holder(key) == level.Player().Id())
+            {
+                npc.knowledge |= Knowledge::Key;
+            }
+            Event(
+                npc.name +
+                    L"\uc5d0\uac8c \ub0b4\uac00 \ucc3e\uc740 \ubb3c\uac74 \uc774\uc57c\uae30\ub97c \uc804\ud588\ub2e4.",
+                false);
+        }
+        if (selected.next < 0 || size_t(selected.next) >= dialogue.pages.size())
+        {
+            EndDialogue();
+        }
+        else
+        {
+            dialogue.page = size_t(selected.next);
+        }
+    }
+
+    void World::BeginDialogue(Npc* npc)
+    {
+        Perf::Scope scope(Perf::Cpu::Interaction);
+        EndDialogue();
+        dialogue.source = npc ? npc->Id() : sites[2];
+        std::wstring name = npc ? npc->name : L"\uc7a5\ud130 \uac8c\uc2dc\ud310";
+        const auto add = [&](const std::wstring& speaker, const std::wstring& text)
+        {
+            dialogue.pages.push_back({speaker, text, {}});
+        };
+        const auto option = [&](size_t page, const std::wstring& text, int next, DialogueEffect effect)
+        {
+            dialogue.pages[page].choices.push_back({text, next, effect});
+        };
+        if (npc && npc->affinity < -20)
+        {
+            add(name,
+                L"\uac70\uae30\uc11c \uba48\ucdb0. \ub2f9\uc2e0\uc774 \ud55c \uc9d3\uc744 \uc78a\uc740 \uc904 \uc54c\uc544? \uc9c0\uae08\uc740 \ub9d0 \uc11e\uace0 \uc2f6\uc9c0 \uc54a\uc544.");
+            option(0, L"\uc54c\uaca0\uc5b4. \ubb3c\ub7ec\ub0a0\uac8c.", -1, DialogueEffect::None);
+            return;
+        }
+        if ((!npc || npc->variant == 0) && !briefed)
+        {
+            add(name,
+                npc ? L"\ubc1c\ubc11 \uc870\uc2ec\ud574. \ubc24\uc0c8 \ube44\uac00 \uc3df\uc544\uc838\uc11c \uad6c\uc2dc\uac00\uc9c0 \ubc30\uc218\ub85c\uac00 \ubb34\ub108\uc84c\uc5b4. \ube44\ub294 \uadf8\ucce4\ub294\ub370 \uc61b \uc218\ubb38\uc774 \uc7a0\uaca8 \uc788\uc5b4\uc11c \ub0ae\uc740 \uace8\ubaa9\uc73c\ub85c \ubb3c\uc774 \ub2e4\uc2dc \ubc00\ub824\ub4e4\uace0 \uc788\uc5b4."
+                    : L"\uad6c\uc2dc\uac00\uc9c0 \ubc30\uc218\ub85c \ubd95\uad34. \uc7a0\uae34 \uace8\ubaa9\uc758 \ubb3c\uae38\uc744 \uc5f4 \uc0ac\ub78c\uc744 \uad6c\ud568. \ud604\uc7a5\uc5d0\uc11c \uc77c\ud558\ub294 \uae30\uc220\uc790 \ubbf8\ub77c\uc5d0\uac8c \ub3c4\uc6c0\uc744 \uc904 \uac83.");
+            add(L"\ub098",
+                L"\uadf8\ub7fc \uc218\ubb38\ubd80\ud130 \uc5f4\uba74 \ub418\uaca0\ub124. \uadf8\ub7f0\ub370 \uc65c \ub2e4\ub4e4 \uc7a5\ubd80 \uc774\uc57c\uae30\ub97c \ud558\uc9c0?");
+            add(name,
+                L"\ubb34\ub108\uc9c4 \ubcbd \uc548\uc5d0\uc11c \uc624\ub798\ub41c \ud654\ubb3c \uc0c1\uc790\uac00 \ub4dc\ub7ec\ub0ac\uac70\ub4e0. \uc5f4\ub450 \ud574 \uc804 \uac00\ub77c\uc549\uc740 \ubc00\uc218\uc120\uc758 \uc9d0\uc774\ub798. \uc61b \uc218\ubb38 \uc5f4\uc1e0\uc640 \uc7a5\ubd80\uac00 \uc788\ub2e4\ub294\ub370, \uc0ac\ub77c\uc9c4 \uc0ac\ub78c\ub4e4\uc758 \uc774\ub984\uc774 \uc801\ud600 \uc788\ub300.");
+            add(name,
+                L"\ub09c \uc5ec\uae30\uc11c \uc218\ub85c\ub97c \ubc1b\uccd0\uc57c \ud574. \ub300\uc2e0 \uc7a5\ubd80\uc640 \uc5f4\uc1e0\ub97c \ucc59\uaca8 \uc904\ub798? \uc7a5\ubd80\ub294 \ubb3c\uc744 \ube7c\uae30 \uc804\uc5d0 \uac74\uc838\uc57c \ud574. \uc5f4\uc1e0\ub85c \ubb3c\uae38\uae4c\uc9c0 \uc5f4\uc5b4 \uc8fc\uba74 \ud488\uc0af 20\ub0e5\uc744 \uc904\uac8c.");
+            option(
+                3,
+                L"\ub9e1\uc744\uac8c. \ubc30\uc218\ub85c\uc5d0\uc11c \uc7a5\ubd80\uc640 \uc5f4\uc1e0\ub97c \ucc3e\uc544\uc62c\uac8c.",
+                -1,
+                DialogueEffect::AcceptQuest);
+            option(3,
+                   L"\uc7a5\ubd80\ub294 \ub204\uad6c\uc5d0\uac8c \ub118\uaca8\uc57c \ud558\ub294\ub370?",
+                   4,
+                   DialogueEffect::None);
+            option(
+                3,
+                L"\uc544\uc9c1 \uc57d\uc18d\uc740 \ubabb \ud558\uaca0\uc5b4. \ub098\uc911\uc5d0 \uc62c\uac8c.",
+                -1,
+                DialogueEffect::None);
+            add(name,
+                L"\uadf8\uac74 \ub124\uac00 \ub0b4\uc6a9\uc744 \ubcf4\uace0 \uc815\ud574. \uac00\uc871\ub4e4\uc5d0\uac8c \uc54c\ub9ac\uc790\ub294 \uc0ac\ub78c\ub3c4, \uad00\uccad\uc5d0 \ub9e1\uae30\uc790\ub294 \uc0ac\ub78c\ub3c4 \uc788\uc5b4. \uac12\uc744 \uce58\ub974\uaca0\ub2e4\ub294 \uc911\uac1c\uc0c1\ub3c4 \uc788\uace0. \ub204\uad6c\ub97c \ubbff\ub4e0 \uc0ac\ubcf8\uc740 \ub0a8\uaca8 \ub46c.");
+            option(
+                4,
+                L"\uc77c\ub2e8 \ub458 \ub2e4 \ucc3e\uc544\uc62c\uac8c. \ucc98\ubd84\uc740 \uadf8 \ub4a4\uc5d0 \uc815\ud558\uaca0\uc5b4.",
+                -1,
+                DialogueEffect::AcceptQuest);
+            option(4, L"\uc0dd\uac01\ud560 \uc2dc\uac04\uc774 \ud544\uc694\ud574.", -1, DialogueEffect::None);
+            return;
+        }
+        if ((!npc || npc->variant == 0) && questStep == 5)
+        {
+            add(name,
+                npc ? L"\ubb3c \ube60\uc9c0\ub294 \uc18c\ub9ac \ub4e4\ub9ac\uc9c0? \uc544\uae4c\uae4c\uc9c0\ub9cc \ud574\ub3c4 \ubabb \uc9c0\ub098\uac00\ub358 \uace8\ubaa9\uc73c\ub85c \uc0ac\ub78c\ub4e4\uc774 \uc9d0\uc744 \uc62e\uae30\uace0 \uc788\uc5b4. \ub124\uac00 \uc5f4\uc5b4 \uc900 \uae38\uc774\uc57c."
+                    : L"\ubc30\uc218\ub85c \ubcf5\uad6c \ud655\uc778. \uad6c\uc2dc\uac00\uc9c0 \uace8\ubaa9\uc758 \ud1b5\ud589\uc774 \ub2e4\uc2dc \uc5f4\ub838\ub2e4. \uc791\uc5c5\uc744 \ub9c8\uce5c \uc0ac\ub78c\uc740 \uc644\ub8cc \ubcf4\uace0 \ud6c4 \ud488\uc0af\uc744 \ubc1b\uc544 \uac08 \uac83.");
+            add(L"\ub098",
+                L"\uc5f4\uc1e0\ub85c \uc218\ubb38\uc744 \uc5f4\uc5c8\uc5b4. \uc7a5\ubd80\ub294\u2026 " +
+                    Consequence());
+            add(name,
+                L"\uc0ac\ub78c\ub9c8\ub2e4 \ub124 \uacb0\uc815\uc744 \ub2e4\ub974\uac8c \ub9d0\ud558\uaca0\uc9c0. \uadf8\ub798\ub3c4 \uc624\ub298 \uc9d1\uc73c\ub85c \ub3cc\uc544\uac08 \uae38\uc774 \uc0dd\uae34 \uc0ac\ub78c\uc740 \uc788\uc5b4. \uc57d\uc18d\ud55c \ud488\uc0af 20\ub0e5\uc744 \ubc1b\uc544. \ubc14\uae65\uc5d0\uc11c \uc77c\uac10\uc744 \ucc3e\uc73c\ub824\uba74 \uc194\ubc14\ub78c \uc0ac\ub0e5\uafbc \uac70\uc810\uc5d0 \uac00 \ubd10.");
+            option(
+                2,
+                L"\uc77c\uc744 \ub9c8\ucce4\uc5b4. \uc57d\uc18d\ud55c \ud488\uc0af\uc744 \ubc1b\uc744\uac8c. (20\ub0e5 / \uacbd\ud5d8\uce58 120)",
+                -1,
+                DialogueEffect::CompleteQuest);
+            option(
+                2,
+                L"\uc544\uc9c1 \ub458\ub7ec\ubcfc \uacf3\uc774 \uc788\uc5b4. \ubcf4\uace0\ub294 \ub098\uc911\uc5d0 \ud560\uac8c.",
+                -1,
+                DialogueEffect::None);
+            return;
+        }
+        add(name,
+            npc ? npc->line
+                : L"\uc7a5\ud130 \uac8c\uc2dc\ud310\uc758 \uae00\uc740 \ube57\ubb3c\uc5d0 \uc816\uc5b4 \uc788\ub2e4.");
+        std::wstring context;
+        std::wstring answer;
+        if (npc && npc->variant == 0 && returned)
+        {
+            context =
+                L"\uace8\ubaa9\uc73c\ub85c \uc9d0\uc744 \uc62e\uae30\ub294 \uc0ac\ub78c\ub4e4 \ubcf4\uc5ec? \uac01\uc790 \ub124 \uc774\uc57c\uae30\ub97c \ub2e4\ub974\uac8c \ud558\uaca0\uc9c0\ub9cc, \uc801\uc5b4\ub3c4 \uc624\ub298\uc740 \ub3cc\uc544\uac08 \uae38\uc774 \uc0dd\uacbc\uc5b4.";
+            answer =
+                L"\uc774\uc81c \ub124 \uc77c\ub3c4 \ubd10\uc57c\uc9c0. \ud070\uae38\uc744 \ub530\ub77c \uc194\ubc14\ub78c \uc0ac\ub0e5\uafbc \uac70\uc810\uc73c\ub85c \uac00 \ubd10. \uc232\uc5d0\uc11c \uba39\uace0\uc0ac\ub294 \uc0ac\ub78c\ub4e4\ud55c\ud14c \ubc14\uae65 \uc0ac\uc815\uc744 \ub4e4\uc744 \uc218 \uc788\uc744 \uac70\uc57c.";
+        }
+        else if (npc && npc->variant == 0)
+        {
+            context =
+                L"\uc5f4\uc1e0\ub294 \uc218\ubb38\uc5d0, \uc7a5\ubd80\ub294 \uc0ac\ub78c\ub4e4\uc5d0\uac8c \ud544\uc694\ud55c \ubb3c\uac74\uc774\uc57c. \ub458\uc744 \ud55c\uaebc\ubc88\uc5d0 \ud574\uacb0\ud558\ub824\uace0 \uc11c\ub450\ub974\uc9c0 \ub9c8. \uc7a5\ubd80\ub97c \uac74\uc9c4 \ub4a4 \uac8c\uc2dc\ud310\uc5d0\uc11c \uc0ac\ubcf8\ubd80\ud130 \ub0a8\uaca8.";
+            answer =
+                gateOpen
+                    ? L"\ubb3c\uae38\uc740 \uc5f4\ub838\uc5b4. \uc7a5\ubd80\ub97c \uc5b4\ub5bb\uac8c \ucc98\ub9ac\ud588\ub294\uc9c0\uae4c\uc9c0 \uc815\ub9ac\ub418\uba74 \ub2e4\uc2dc \uc640. \uc57d\uc18d\ud55c \ud488\uc0af\uc740 \ucc59\uaca8 \ub458\uac8c."
+                    : L"\ubc30\uc218\ub85c \uc548\ucabd \ud654\ubb3c \uc0c1\uc790\ubd80\ud130 \uc0b4\ud3b4\ubd10. \uc7a5\ubd80\uc640 \uc5f4\uc1e0\ub97c \ud558\ub098\uc529 \ucc59\uae34 \ub2e4\uc74c \uc61b \uc218\ubb38\uc73c\ub85c \uac00\uba74 \ub3fc. \uc5f4\uc1e0\ub97c \ub9e1\uae38 \uc0dd\uac01\uc774\uba74 \ub098\ub098 \ud558\ub78c\uc5d0\uac8c \uba3c\uc800 \ub9d0\ud574.";
+        }
+        else if (npc && npc->variant == 1)
+        {
+            context =
+                L"\ub0b4 \ub3d9\uc0dd\ub3c4 \uadf8\ub54c \uc0ac\ub77c\uc84c\uc5b4. \uad00\uccad \uae30\ub85d\uc5d0\ub294 \uc774\ub984 \uc606\uc5d0 \uc2e4\uc885\uc774\ub77c\uace0 \ud55c \uc904 \uc801\ud600 \uc788\ub354\ub77c. \uc5f4\ub450 \ud574\uac00 \uc9c0\ub0ac\ub294\ub370\ub3c4 \ub204\uac00 \ub9c8\uc9c0\ub9c9\uc73c\ub85c \ubd24\ub294\uc9c0\uc870\ucc28 \ubab0\ub77c.";
+            answer =
+                recordChoice == RecordChoice::Public
+                    ? L"\ub124\uac00 \uc774\ub984\uc744 \uaebc\ub0b4 \uc900 \ub355\uc5d0 \uc11c\ub85c \ub9d0\uc744 \ub9de\ucdb0 \ubcfc \uc218 \uc788\uac8c \ub410\uc5b4. \uace0\ub9d9\ub2e4\ub294 \uc0ac\ub78c\ub9cc \uc788\ub294 \uac74 \uc544\ub2c8\uc57c. \uc544\uc9c1 \uc228\uace0 \uc2f6\uc740 \uac00\uc871\ub3c4 \uc788\uac70\ub4e0."
+                    : L"\ucc3e\uac8c \ub418\uba74 \uc0ac\ubcf8\uc744 \ub0a8\uaca8 \uc918. \uc6d0\ubcf8\uc744 \uc5b4\ub514\uc5d0 \ub9e1\uae30\ub4e0 \uc774\ub984\uae4c\uc9c0 \uc0ac\ub77c\uc9c0\uac8c \ud558\uc9c4 \ub9d0\uc544 \uc918. \uadf8\ub807\ub2e4\uace0 \uc900\ube44\ub3c4 \uc5c6\uc774 \uc0ac\ub78c\ub4e4 \uc55e\uc5d0\uc11c \uc77d\ub294 \uac74\u2026 \uac81\uc774 \ub098.";
+        }
+        else if (npc && npc->variant == 2)
+        {
+            context =
+                L"\ub204\uac00 \ub204\uad6c\ub97c \ubc84\ub838\ub2e4\ub294 \ub9d0\uc774 \uc7a5\ud130\uc5d0 \ub3cc\uace0 \uc788\uc18c. \uc544\uc9c1 \ud655\uc778\ub3c4 \uc548 \ub41c \ub9d0 \ub54c\ubb38\uc5d0 \uc774\uc6c3\ub07c\ub9ac \uc0bf\ub300\uc9c8\uc744 \ud574. \ub098\ub294 \uadf8\uac78 \ub9c9\uc73c\ub7ec \uc654\uc18c.";
+            answer =
+                controlled
+                    ? L"\uc7a5\ubd80\ub294 \uc811\uc218\ud588\uc18c. \ud604\uc7a5\uc740 \ub2f9\ubd84\uac04 \ud1b5\uc81c\ud560 \uac70\uc694. \uac00\uc871\ub4e4\uc774 \ub2f5\ub2f5\ud574\ud558\ub294 \uac74 \uc54c\uc9c0\ub9cc, \uc870\uc0ac \uc804\uc5d0 \ud6fc\uc190\ub418\ub294 \uc99d\uac70\ubd80\ud130 \ub9c9\uc544\uc57c \ud558\uc624."
+                    : L"\uad00\uccad\uc5d0 \uc6d0\ubcf8\uc744 \ub9e1\uae30\uba74 \ub300\uac00\ub85c 30\ub0e5\uc744 \uc9c0\uae09\ud558\uaca0\uc18c. \ub300\uc2e0 \ud604\uc7a5 \ucd9c\uc785\uc740 \uc81c\ud55c\ub420 \uac70\uc694. \uc548\uc815\uc774 \ud544\uc694\ud558\ub2e4\ub294 \ub0b4 \ub9d0\uacfc, \uac00\uc871\ub4e4\uc758 \uc54c \uad8c\ub9ac \uc0ac\uc774\uc5d0\uc11c \ud310\ub2e8\ud558\uc2dc\uc624. \uacb0\uc815\ud588\ub2e4\uba74 \uc7a5\ud130\uc5d0\uc11c \ub0b4 \uacc1\uc5d0 \uc640 T\ub85c \ub118\uae30\uc2dc\uc624.";
+        }
+        else if (npc && npc->variant == 3)
+        {
+            context =
+                L"\uc57d\uac12\uc774 \ub610 \uc62c\ub790\ub354\ub77c. \uc9c4\uc2e4\uc744 \uc548\ub2e4\uace0 \ubc25\uc774 \uc0dd\uae30\ub294 \uac74 \uc544\ub2c8\uc796\uc544. \uadf8\ub807\ub2e4\uace0 \ubaa8\ub978 \ucc99\ud558\ub294 \uac12\uc774 \uc2fc \uac83\ub3c4 \uc544\ub2c8\uace0.";
+            answer =
+                recordChoice == RecordChoice::Sold
+                    ? L"\uc6d0\ubcf8\uc740 \ub0b4\uac00 \uac00\uc838\uac14\uc9c0. \uc57d\uc18d\ud55c \ub3c8\ub3c4 \uc92c\uace0. \uadf8 \uc774\ub984\ub4e4\uc774 \uc5b4\ub514\ub85c \ud758\ub7ec\uac08\uc9c0\ub294\u2026 \uac70\ub798\uac00 \ub05d\ub09c \ub4a4\uae4c\uc9c0 \ubcf4\uc7a5\ud55c \uac74 \uc544\ub2c8\uc57c."
+                    : L"\uc6d0\ubcf8\uc774\uba74 40\ub0e5. \uad00\uccad\ubcf4\ub2e4 \ub354 \uccd0\uc904\uac8c. \ub2e4\ub9cc \uadf8 \ub4a4\uc5d0 \ub204\uad6c \uc190\uc5d0 \ub4e4\uc5b4\uac08\uc9c0\ub294 \ubb3b\uc9c0 \ub9c8. \ud314 \uc0dd\uac01\uc774 \uc815\ud574\uc9c0\uba74 \uc7a5\ud130\uc5d0\uc11c \ub0b4 \uacc1\uc5d0 \uc640 T\ub85c \uac70\ub798\ud574.";
+        }
+        else if (npc && npc->variant == 4)
+        {
+            context =
+                L"\uc6b0\ub9ac \uc9d1\ub3c4 \uc800 \ub0ae\uc740 \uace8\ubaa9\uc5d0 \uc788\uc5b4. \uc5b4\uba38\ub2c8\uac00 \ubb3c \ub4e4\uae30 \uc804\uc5d0 \uc300\ub3c5\ubd80\ud130 \uc62e\uae30\ub7ac\ub294\ub370, \uc218\ubb38\ub9cc \uc5f4\uba74 \uad1c\ucc2e\uc744 \uc904 \uc54c\uc558\uc5b4. \uc5f4\uc1e0\uac00 \uc5c6\uc5b4\uc11c \uc544\ubb34\uac83\ub3c4 \ubabb \ud588\uc9c0\ub9cc.";
+            answer =
+                gateOpen
+                    ? L"\uc774\uc81c \uc9d1\uc5d0 \uac08 \uc218 \uc788\uc5b4. \uae38\uc774 \uc5f4\ub9b0 \uac78 \ubcf4\ub2c8\uae4c, \uc218\ubb38\uc744 \uace0\uce58\ub294 \uc77c\uc774 \uadf8\ub0e5 \uc1f3\ub369\uc774 \ub9cc\uc9c0\ub294 \uac74 \uc544\ub2c8\ub77c\ub294 \uc0dd\uac01\uc774 \ub4e4\uc5b4."
+                    : L"\uc5f4\uc1e0\uac00 \uc788\uc73c\uba74 \uc9c1\uc811 \uc5f4\uc5b4\ub3c4 \ub3fc. \ubb34\uc12d\uac70\ub098 \ub2e4\ub978 \uc77c\uc744 \ubd10\uc57c \ud558\uba74 \uc7a5\ud130\uc5d0\uc11c \ub0b4 \uacc1\uc5d0 \uc640 T\ub85c \ub9e1\uaca8 \uc918. \uc7a5\ubd80\ub294 \ubb3c\uc5d0 \uc4f8\ub9ac\uae30 \uc804\uc5d0 \uba3c\uc800 \ucc59\uae30\uace0.";
+        }
+        else if (npc && npc->job == Job::Hunter)
+        {
+            context =
+                L"\uc0ac\ub0e5\uc740 \ucde8\ubbf8\uac00 \uc544\ub2c8\uc57c. \uac00\uc8fd\uc744 \ud314\uc544\uc57c \uc57d\ub3c4 \uc0ac\uace0 \uc300\ub3c4 \uc0ac\uc9c0. \uc694\uc0cc \uc9d0\uc2b9\ubcf4\ub2e4 \uc232\uae38\uc5d0\uc11c \ub9cc\ub098\ub294 \uc0ac\ub78c\uc774 \ub354 \ubb34\uc11c\uc6b8 \ub54c\ub3c4 \uc788\uc5b4.";
+            answer =
+                L"\ub9c8\uc744 \ubc16 \uc194\ubc14\ub78c \uac70\uc810\ubd80\ud130 \ucc3e\uc544\ubd10. \ud070\uae38\uc744 \ub193\uce58\uc9c0 \ub9d0\uace0. \uac00\uc8fd\uc740 \uc7a5\ud130 \uc0c1\uc778\uc5d0\uac8c \ud314 \uc218 \uc788\uc5b4. \ub2e4\ucce4\uc73c\uba74 \uc57d\ubd80\ud130 \ucc59\uaca8. \uc8fd\uc73c\uba74 \ud488\uc0af\uc774\uace0 \ubb50\uace0 \uc5c6\uc73c\ub2c8\uae4c.";
+        }
+        else if (npc && (npc->job == Job::Merchant || npc->job == Job::Broker))
+        {
+            context =
+                L"\uc5ed\ubcd1 \ub3cc\uace0 \uae38\uc774 \ub9c9\ud600\uc11c \ubb3c\uac74 \uad6c\ud558\ub294 \uac83\ub3c4 \uc77c\uc774\uc57c. \uac12\uc774 \uc62c\ub790\ub2e4\uace0 \ub098\ub9cc \ud0d3\ud558\uc9c0\ub294 \ub9c8. \ub098\ub3c4 \uc624\ub298 \ud314\uc544\uc57c \ub0b4\uc77c \uc7a5\uc744 \uc5f4\uc9c0.";
+            answer =
+                L"\uc7a5\ud130\uc5d0\uc11c T\ub85c \uac70\ub798\ud560 \uc218 \uc788\uc5b4. \uac00\uc8fd\uc740 6\ub0e5\uc5d0 \uc0ac\uace0, \ud68c\ubcf5\uc57d\uc740 8\ub0e5\uc774\uc57c. \uadf8\ub0e5 \uc774\uc57c\uae30\ub9cc \ud588\ub2e4\uace0 \ubb3c\uac74\uc744 \uac00\uc838\uac00\uc9c4 \uc54a\uc73c\ub2c8 \ud544\uc694\ud55c \uac78 \uc0dd\uac01\ud574 \ubd10.";
+        }
+        else if (npc && npc->job == Job::Raider)
+        {
+            context =
+                L"\ub9c8\uc744 \uc0ac\ub78c\ub4e4\uc740 \uc6b0\ub9ac\uac00 \uc232\uc5d0\uc11c \ubb58 \uba39\uace0 \uc0ac\ub294\uc9c0 \uad00\uc2ec\ub3c4 \uc5c6\uc9c0. \uadf8\ub807\ub2e4\uace0 \uc6b0\ub9ac\uac00 \ud558\ub294 \uc77c\uc774 \ub5b3\ub5b3\ud558\ub2e4\ub294 \uac74 \uc544\ub2c8\uc57c.";
+            answer =
+                L"\uc774 \uadfc\ucc98\uc5d0\uc120 \uc8fc\uba38\ub2c8\ub97c \uc798 \uac04\uc218\ud574. \uad81\ud574\uc11c \ube7c\uc557\ub294 \uc0ac\ub78c\ub3c4, \uadf8\ub0e5 \uc26c\uc6cc\uc11c \ube7c\uc557\ub294 \uc0ac\ub78c\ub3c4 \uc788\uc73c\ub2c8\uae4c.";
+        }
+        else if (npc && npc->job == Job::Scholar)
+        {
+            context =
+                L"\uc5ed\ubcd1\ubcf4\ub2e4 \uba3c\uc800 \ud37c\uc9c0\ub294 \uac8c \uc18c\ubb38\uc774\uc9c0. \ub204\uac00 \uc4f4 \uae30\ub85d\uc778\uc9c0, \ub204\uac00 \uc9c0\uc6e0\ub294\uc9c0\ub3c4 \ubaa8\ub974\uba74\uc11c \uc885\uc774\uc5d0 \uc801\ud614\ub2e4\ub294 \uc774\uc720\ub85c \ubbff\uac8c \ub418\ub2c8\uae4c.";
+            answer =
+                L"\uc7a5\ubd80\uc758 \uc774\ub984\uc774 \uc9c4\uc9dc\ub77c\uace0 \ud574\ub3c4 \uadf8 \uc774\ub984\uc744 \uc54c\ub9b4 \uad8c\ub9ac\uac00 \ub124\uac8c \uc788\ub294\uc9c0\ub294 \ub2e4\ub978 \ubb38\uc81c\uc57c. \uadf8\ub798\ub3c4 \uac10\ucd94\ub294 \uac8c \ub298 \uc870\uc2ec\uc2a4\ub7ec\uc6b4 \uc120\ud0dd\uc778 \uac74 \uc544\ub2c8\uaca0\uc9c0.";
+        }
+        else
+        {
+            context =
+                L"\ube44\uac00 \uadf8\ucce4\ub2e4\uace0 \uc0b4\ub9bc\uc774 \uc800\uc808\ub85c \ub9c8\ub974\ub294 \uac74 \uc544\ub2c8\ub354\ub77c. \uc816\uc740 \uc774\ubd88 \ub110\uace0, \uc300 \ucc59\uae30\uace0\u2026 \uc544\ud508 \uc2dd\uad6c\uac00 \uc788\uc73c\uba74 \ubb3c \ud55c \ubc14\uac00\uc9c0\ub3c4 \uc544\uc26c\uc6cc.";
+            answer =
+                gateOpen
+                    ? L"\uc0c8\ub85c \uc5f4\ub9b0 \uace8\ubaa9\uc73c\ub85c \ub3cc\uc544\uac00\ub2c8\uae4c \ud6e8\uc52c \ube68\ub77c. \ub124\uac00 \ubb58 \uacb0\uc815\ud588\ub294\uc9c0\ub294 \ub2e4 \ubab0\ub77c\ub3c4, \uc624\ub298 \uae38\uc744 \uc4f8 \uc218 \uc788\uac8c \ub41c \uac74 \uc54c\uc544."
+                    : L"\ubbf8\ub77c\uac00 \uc218\ub85c\ub97c \ubd99\uc7a1\uace0 \uc788\uc5b4. \ubb3c\uae38\uc774 \uc5f4\ub9ac\uba74 \uc9d1\uc73c\ub85c \ub3cc\uc544\uac08 \uc218 \uc788\uc744 \ud150\ub370. \ub098\ub294 \uc7a5\ubd80\ubcf4\ub2e4 \uc624\ub298 \uc800\ub141\uc774 \uba3c\uc800 \uac71\uc815\uc774\uc57c.";
+        }
+        add(name, context);
+        option(1, L"\uc870\uae08 \ub354 \ub4e4\ub824\uc918.", 2, DialogueEffect::None);
+        const bool canShare =
+            npc && (Holder(ledger) == level.Player().Id() || copied || Holder(key) == level.Player().Id());
+        if (canShare)
+        {
+            option(
+                1,
+                L"\ub0b4\uac00 \ucc3e\uc740 \ubb3c\uac74 \uc774\uc57c\uae30\ub97c \ud574\uc904\uac8c. (\uc815\ubcf4 \uc804\ub2ec)",
+                3,
+                DialogueEffect::ShareKnowledge);
+        }
+        option(1, L"\uc774\uc57c\uae30 \uace0\ub9c8\uc6cc. \uac00 \ubcfc\uac8c.", -1, DialogueEffect::None);
+        add(name, answer);
+        option(2,
+               L"\uc54c\uaca0\uc5b4. \uc5b4\ub5bb\uac8c \ud560\uc9c0\ub294 \ub0b4\uac00 \uc815\ud560\uac8c.",
+               -1,
+               DialogueEffect::None);
+        add(name,
+            L"\ub124\uac00 \uc9c1\uc811 \ubd24\ub2e4\ub294 \uac70\uc9c0? \uadf8\uac74 \uae30\uc5b5\ud574 \ub458\uac8c. \ub2e4\ub978 \uc0ac\ub78c\uc5d0\uac8c \uc774\uc57c\uae30\ud558\uae30 \uc804\uc5d4 \ud55c \ubc88 \ub354 \uc0dd\uac01\ud574.");
+        option(3, L"\uc5ec\uae30\uae4c\uc9c0 \uc774\uc57c\uae30\ud560\uac8c.", -1, DialogueEffect::None);
+    }
+
     void World::Talk()
     {
+        if (dialogue.Active())
+        {
+            return;
+        }
         UpdateQuest();
         Npc* npc = Nearest();
         // Talking at the marked quest giver must not select a slightly closer bystander.
@@ -1557,31 +1859,6 @@ namespace Harbor
                 level.ClearLine(level.Player().WorldPosition(), questGiver->WorldPosition()))
             {
                 npc = questGiver;
-            }
-        }
-        if (npc && npc->health > 0 && npc->variant == 0)
-        {
-            if (!briefed)
-            {
-                briefed = true;
-                npc->line =
-                    L"\ubc30\uc218\ub85c\uc5d0 \uc7a5\ubd80\uc640 \uc5f4\uc1e0\uac00 \ub098\uc654\uc5b4. \ub458 \ub2e4 \ucc59\uaca8 \uc918. \ub098\ub294 \ubb3c\uae38\uc774 \ub354 \ubb34\ub108\uc9c0\uc9c0 \uc54a\uac8c \ubc1b\uce60\uac8c.";
-                ReactToPlayer(
-                    L"\ubbf8\ub77c\uc5d0\uac8c \uc870\uc0ac \uc57d\uc18d \u2192 \ubbf8\ub77c\uac00 \ubc30\uc218\ub85c \uc218\ub9ac\ub97c \uc2dc\uc791\ud55c\ub2e4. \uc7a5\ubd80\uc758 \ucc98\ubd84\uc740 \ub2f9\uc2e0\uc774 \uc815\ud55c\ub2e4.");
-                UpdateQuest();
-                return;
-            }
-            if (questStep == 5)
-            {
-                returned = true;
-                level.stats.GainExperience(120);
-                level.stats.coins += 20;
-                npc->line =
-                    L"\ub2f9\uc2e0\uc774 \ubb3c\uae38\uc744 \uc5f4\uc5b4\uc11c \uc8fc\ubbfc\ub4e4\uc774 \ub2e4\uc2dc \uace8\ubaa9\uc744 \uc4f8 \uc218 \uc788\uc5b4. \uc7a5\ubd80\ub97c \ub9e1\uae34 \uc77c\uc740 \uc0ac\ub78c\ub9c8\ub2e4 \ub2e4\ub974\uac8c \uae30\uc5b5\ud560 \uac70\uc57c.";
-                ReactToPlayer(
-                    L"\uccab \uc758\ub8b0 \uc644\ub8cc \u2192 \uacbd\ud5d8\uce58 120, 20\ub0e5. \uc8fc\ubbfc\ub4e4\uc758 \uc774\ub3d9\uacfc \ub300\uc0ac\uac00 \ub2f9\uc2e0\uc758 \uacb0\uc815\uc744 \uae30\uc5b5\ud55c\ub2e4.");
-                UpdateQuest();
-                return;
             }
         }
         if (!npc)
@@ -1607,28 +1884,8 @@ namespace Harbor
         }
         else
         {
-            level.message =
-                npc->name + L": " +
-                (npc->affinity < -20
-                     ? L"\ub2e4\uac00\uc624\uc9c0 \ub9c8. \ub2f9\uc2e0 \uc5bc\uad74\uc740 \uc78a\uc9c0 \uc54a\uc558\uc5b4."
-                     : npc->line) +
-                L"  [" + ActionLabel(npc->action) + L"]";
-            if (Holder(ledger) == level.Player().Id() || copied)
-            {
-                npc->knowledge |= Knowledge::Ledger;
-                npc->lastLedger = level.Player().WorldPosition();
-                npc->knownLedgerHolder =
-                    Holder(ledger) == level.Player().Id() ? level.Player().Id() : InvalidActorId;
-            }
-            if (Holder(key) == level.Player().Id())
-            {
-                npc->knowledge |= Knowledge::Key;
-            }
-            if (npc->knowledge & Knowledge::Plans)
-            {
-                level.message +=
-                    L"  \uc218\ubb38\uc740 \uc5f4\uc1e0\ub9cc \uc788\uc73c\uba74 \uc5f4 \uc218 \uc788\uc5b4. \ubcf4\uad00\uc18c\uc758 \uae30\ub85d\uc740 \uba3c\uc800 \uaebc\ub0b4.";
-            }
+            BeginDialogue(npc);
+            return;
         }
         level.messageTime = 8;
     }
@@ -1727,25 +1984,15 @@ namespace Harbor
 
     void World::InteractSite()
     {
+        if (dialogue.Active())
+        {
+            return;
+        }
         UpdateQuest();
         Position hero = level.Player().WorldPosition();
         if (Distance(hero, Site(2)) < 1.8f && (!briefed || questStep == 5))
         {
-            if (!briefed)
-            {
-                briefed = true;
-                ReactToPlayer(
-                    L"\uac8c\uc2dc\ud310 \uc758\ub8b0 \uc218\ub77d \u2192 \ubbf8\ub77c\uac00 \ubc30\uc218\ub85c\ub97c \ubc1b\uce5c\ub2e4. \ud604\uc7a5\uc5d0\uc11c \uc7a5\ubd80\uc640 \uc5f4\uc1e0\ub97c \ucc59\uaca8 \uc624\uc790.");
-            }
-            else
-            {
-                returned = true;
-                level.stats.GainExperience(120);
-                level.stats.coins += 20;
-                ReactToPlayer(
-                    L"\uac8c\uc2dc\ud310\uc5d0 \uc758\ub8b0 \uc644\ub8cc \ubcf4\uace0 \u2192 \uacbd\ud5d8\uce58 120, 20\ub0e5. \uc774\uc81c \uba3c \uac70\uc810\uc73c\ub85c \ub098\uac00\ubcf4\uc790.");
-            }
-            UpdateQuest();
+            BeginDialogue(nullptr);
             return;
         }
         for (ActorId artifact : {ledger, key})

@@ -30,6 +30,7 @@ void Renderer::QueueInstance(Instance instance, GLuint texture)
         m_ModelInstances.push_back(instance);
         return;
     }
+    std::copy(m_SurfaceData.begin(), m_SurfaceData.end(), instance.surface);
     if (texture && texture != m_QueueTexture)
     {
         Perf::Count(Perf::Counter::TextureFlush);
@@ -110,8 +111,9 @@ void Renderer::Flush()
                                   offsetof(Instance, corners) + 4 * sizeof(float),
                                   offsetof(Instance, color),
                                   offsetof(Instance, uv),
-                                  offsetof(Instance, material)};
-        for (GLuint i = 0; i < 5; ++i)
+                                  offsetof(Instance, material),
+                                  offsetof(Instance, surface)};
+        for (GLuint i = 0; i < 6; ++i)
         {
             glEnableVertexAttribArray(i);
             glVertexAttribPointer(i,
@@ -127,6 +129,14 @@ void Renderer::Flush()
     glUniform2f(m_BatchLocations.screen, m_TargetWidth, m_TargetHeight);
     glUniform1f(m_BatchLocations.time, m_Time);
     glUniform1i(m_BatchLocations.texture, 0);
+    glUniform4f(m_BatchLocations.worldView,
+                m_CameraX,
+                m_CameraY,
+                float(m_WindowSizeX) * .5f,
+                float(m_WindowSizeY) * .52f);
+    glUniform1i(m_BatchLocations.worldShading, m_WorldShading ? 1 : 0);
+    glUniform1i(m_BatchLocations.lightCount, m_LightCount);
+    glUniform4fv(m_BatchLocations.lights, 8, m_Lights.data());
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, m_QueueTexture);
     // Instance order is queue order: never regroup translucent primitives by material.
@@ -153,6 +163,7 @@ void Renderer::DrawPost(GLuint target, GLuint source, GLuint glow, int mode, int
     glUniform1i(m_PostScene, 0);
     glUniform1i(m_PostGlow, 1);
     glUniform1i(m_PostMode, mode);
+    glUniform1f(m_PostTime, m_Time);
     glUniform2f(m_PostPixel, 4.0f / m_WindowSizeX, 4.0f / m_WindowSizeY);
     glBindVertexArray(m_PostVAO);
     SubmitDrawArrays(GL_TRIANGLES, 0, 6);

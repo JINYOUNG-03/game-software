@@ -26,7 +26,7 @@ foreach ($forbidden in @('SceneGraph', 'SnapshotJson()', 'Perf::Scope', 'Perf::C
 if ($server.Contains('Access-Control-Allow-Origin: *') -or $js.Contains('innerHTML'))
 { throw 'Monitor must be local/read-only and render game text with textContent.' }
 foreach ($contract in @('worldMonitor.Start()', 'worldMonitor.Stop()',
-                       'worldMonitor.Tick(harbor, paused || helpVisible, dt)'))
+                       'worldMonitor.Tick(harbor, paused || helpVisible || harbor.Conversation().Active(), dt)'))
 {
     if (-not $game.Contains($contract)) { throw "Missing monitor lifecycle hook: $contract" }
 }

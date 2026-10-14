@@ -94,6 +94,7 @@ namespace Level
         void Update(float dt);
         void MovePlayer(float screenX, float screenY, float dt);
         bool Attack();
+        bool ConsumeAttackImpact();
         bool DamageEnemy(Enemy& enemy, int damage, bool playerCredit);
         void DamagePlayer(int damage);
         void MoveActor(Actor& actor, float dx, float dy);
@@ -189,6 +190,8 @@ namespace Level
         bool generating = false;
         std::mt19937 random;
         float attackCooldown = 0;
+        bool attackImpactPending = false;
+        bool attackImpactReady = false;
         float navigationTime = 0;
         float invulnerability = 0;
 
@@ -201,6 +204,9 @@ namespace Level
         void AddProp(const Position& position, int kind, bool blocksMovement = false);
         void AddLoot(const Position& position, LootKind kind, int amount);
         void UpdateActorModels();
+        void ResolveAttackImpact();
+        void RefreshTerrainAppearance();
+        void BuildHarborScenery();
         Position ToGrid(const Position& world) const;
         Position ToWorld(const Position& grid) const;
         void Kill(Enemy& enemy, bool playerCredit);

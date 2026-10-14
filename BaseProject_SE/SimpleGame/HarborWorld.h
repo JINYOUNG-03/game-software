@@ -111,6 +111,40 @@ namespace Harbor
         bool ready = false;
     };
 
+    enum class DialogueEffect
+    {
+        None,
+        AcceptQuest,
+        CompleteQuest,
+        ShareKnowledge
+    };
+
+    struct DialogueChoice
+    {
+        std::wstring text;
+        int next = -1;
+        DialogueEffect effect = DialogueEffect::None;
+    };
+
+    struct DialoguePage
+    {
+        std::wstring speaker;
+        std::wstring text;
+        std::vector<DialogueChoice> choices;
+    };
+
+    struct DialogueState
+    {
+        ActorId source = InvalidActorId;
+        std::vector<DialoguePage> pages;
+        size_t page = 0;
+
+        bool Active() const
+        {
+            return page < pages.size();
+        }
+    };
+
     class World
     {
       public:
@@ -122,6 +156,15 @@ namespace Harbor
         void Update(float dt);
         void PlayerAttack();
         void Talk();
+        void AdvanceDialogue();
+        void ChooseDialogue(size_t choice);
+        void EndDialogue();
+
+        const DialogueState& Conversation() const
+        {
+            return dialogue;
+        }
+
         void Trade();
         void InteractSite();
         void Reveal();
@@ -175,6 +218,7 @@ namespace Harbor
         RecordChoice recordChoice = RecordChoice::Undecided;
         int questStep = 0;
         std::wstring consequence;
+        DialogueState dialogue;
 
         Level::Position Site(int index) const;
         ActorId Holder(ActorId artifact) const;
@@ -195,5 +239,7 @@ namespace Harbor
         void ReactToPlayer(const std::wstring& result);
         void UpdateQuest();
         void ChooseRecord(RecordChoice choice);
+        void BeginDialogue(Npc* npc);
+        void CompleteFirstQuest();
     };
 } // namespace Harbor

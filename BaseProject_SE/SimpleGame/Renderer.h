@@ -49,7 +49,8 @@ class Renderer
                   float y3,
                   float r,
                   float g,
-                  float b);
+                  float b,
+                  float a = 1);
 
     void SetTime(float time)
     {
@@ -61,6 +62,23 @@ class Renderer
         m_Material = material;
     }
 
+    void SetSurfaceData(const std::array<float, 4>& data)
+    {
+        m_SurfaceData = data;
+    }
+
+    void SetWorldCamera(float x, float y)
+    {
+        m_CameraX = x;
+        m_CameraY = y;
+    }
+
+    void SetWorldLights(const std::array<float, 32>& lights, int count)
+    {
+        m_Lights = lights;
+        m_LightCount = count;
+    }
+
     void DrawEllipse(float x, float y, float w, float h, float r, float g, float b, float a);
     void DrawSolidRect(float x, float y, float width, float height, float r, float g, float b, float a);
     void DrawSolidDiamond(float x, float y, float width, float height, float r, float g, float b, float a);
@@ -70,7 +88,7 @@ class Renderer
     bool HasModel(const std::string& name) const;
     void BeginModel(const std::string& name);
     void EndModel();
-    void DrawModel(const std::string& name, float x, float y);
+    void DrawModel(const std::string& name, float x, float y, bool mirrorX = false);
     void DrawScene(const SceneGraph& scene, ScenePass pass, const std::function<void(const Actor&)>& draw);
 
     void SetScreenOffset(float x, float y)
@@ -95,9 +113,10 @@ class Renderer
         float color[4]{};
         float uv[4]{0, 0, 1, 1};
         float material = 0;
+        float surface[4]{};
     };
 
-    static_assert(sizeof(Instance) == sizeof(float) * 17, "Instance data must not contain padding.");
+    static_assert(sizeof(Instance) == sizeof(float) * 21, "Instance data must not contain padding.");
 
     struct GpuBatch
     {
@@ -116,9 +135,16 @@ class Renderer
     struct ProgramLocations
     {
         GLint screen = -1, time = -1, texture = -1;
+        GLint worldView = -1, worldShading = -1, lights = -1, lightCount = -1;
     } m_BatchLocations;
 
     GLint m_PostScene = -1, m_PostGlow = -1, m_PostPixel = -1, m_PostMode = -1;
+    GLint m_PostTime = -1;
+    std::array<float, 4> m_SurfaceData{{0, 0, -1, 0}};
+    std::array<float, 32> m_Lights{};
+    int m_LightCount = 0;
+    float m_CameraX = 0, m_CameraY = 0;
+    bool m_WorldShading = false;
     GLuint m_PostVAO = 0;
     std::array<GpuBatch, 64> m_GpuBatches;
     size_t m_BatchSlot = 0;

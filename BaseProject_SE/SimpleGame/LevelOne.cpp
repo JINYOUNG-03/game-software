@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "LevelOne.h"
 #include "Profiler.h"
+#include "CharacterPresentation.h"
 
 #include <algorithm>
 #include <cmath>
@@ -107,6 +108,8 @@ namespace Level
         hero.drawable = true;
         hero.model = "hero0";
         hero.shadowWidth = 30;
+        hero.shadowHeight = 65;
+        hero.visualHeight = WorldLayout::CharacterVisualHeight;
         for (auto effect : {ActorEffect::SwordTrail, ActorEffect::PlayerHurt})
         {
             Actor& child = scene.Create(hero.Id(), "PlayerEffect", ActorKind::Effect);
@@ -167,7 +170,23 @@ namespace Level
         prop.variant = kind;
         prop.drawable = true;
         prop.model = "prop" + std::to_string(kind);
-        prop.shadowWidth = kind <= 1 ? 105.0f : 48.0f;
+        prop.shadowWidth = kind <= 1                   ? 112.0f
+                           : (kind == 7 || kind >= 16) ? 65.0f
+                           : kind == 8 || kind == 15   ? 0.0f
+                                                       : 34.0f;
+        prop.shadowHeight = kind <= 1 ? 105.0f : (kind == 7 || kind >= 16) ? 112.0f : 30.0f;
+        if (kind == 15)
+        {
+            prop.pass = ScenePass::Ground;
+        }
+        if (kind <= 1)
+        {
+            Actor& light = scene.Create(prop.Id(), "WindowLight", ActorKind::Effect);
+            light.drawable = true;
+            light.pass = ScenePass::Effects;
+            light.variant = int(ActorEffect::WarmLight);
+            light.SetLocalPosition({-.15f, .15f, 36});
+        }
         prop.SetBlocksMovement(blocksMovement);
         if (kind <= 1 || kind == 5)
         {
@@ -194,7 +213,19 @@ namespace Level
     {
         Perf::Scope scope(Perf::Cpu::Animation);
         int frame = moving ? int(walkPhase * 8 / 6.2831853f) % 8 : 0;
-        Player().model = "hero" + std::to_string(frame);
+        if (attackAnimation > 0)
+        {
+            int pose = CharacterPresentation::AttackFrame(attackAnimation);
+            int direction = CharacterPresentation::AttackDirection(facingY);
+            const char* prefix = direction < 0   ? "hero_attack_up"
+                                 : direction > 0 ? "hero_attack_down"
+                                                 : "hero_attack";
+            Player().model = prefix + std::to_string(pose);
+        }
+        else
+        {
+            Player().model = "hero" + std::to_string(frame);
+        }
         for (Enemy* enemy : scene.Actors<Enemy>(ActorKind::Enemy))
         {
             int pose = enemy->moving ? int(enemy->phase * 9 * 8 / 6.2831853f) % 8 : 0;
@@ -404,6 +435,7 @@ namespace Level
         Player().SetWorldPosition(ToWorld(Camp));
         moving = false;
         attackAnimation = 0;
+        attackImpactPending = attackImpactReady = false;
         attackCooldown = 0;
         invulnerability = 2;
         navigationTime = 0;
@@ -433,7 +465,9 @@ namespace Level
                         reserved = reserved || Distance(p, destination) < 8;
                     }
                     float dx = (x - cx) / rx, dy = (y - cy) / ry;
-                    if (!reserved && dx * dx + dy * dy < 1)
+                    float shoreline = 1.0f + .09f * std::sin(float(x) * .61f + float(lake)) +
+                                      .07f * std::cos(float(y) * .73f - float(lake) * .9f);
+                    if (!reserved && dx * dx + dy * dy < shoreline)
                     {
                         tiles[y * MapSize + x].terrain = Terrain::Water;
                     }
@@ -560,7 +594,8 @@ namespace Level
             }
             if (!reserved)
             {
-                addBlock(x, y, 7);
+                int tree = (x * 13 + y * 7) % 5;
+                addBlock(x, y, tree < 2 ? 7 : tree < 4 ? 16 : 17);
             }
         }
 
@@ -630,8 +665,10 @@ namespace Level
                 tile.model = "tile" + std::to_string(tile.variant);
             }
         }
+        BuildHarborScenery();
         generating = false;
         RefreshActorObstacles();
+        RefreshTerrainAppearance();
         UpdateVisibleChunks();
         UpdateActorModels();
         BuildNavigation();
@@ -656,7 +693,135 @@ namespace Level
                 Perf::Count(Perf::Counter::TerrainTilesChanged);
             }
         }
+        RefreshActorObstacles();
+        RefreshTerrainAppearance();
         navigationTime = 0;
+    }
+
+    void FirstLevel::RefreshTerrainAppearance()
+    {
+        Perf::Scope scope(Perf::Cpu::TerrainAppearance);
+        // Rebuild only after generation or a terrain mutation, never from the render loop.
+        const auto water = [&](int x, int y)
+        {
+            return x >= 0 && y >= 0 && x < MapSize && y < MapSize && At(x, y).terrain == Terrain::Water;
+        };
+        const auto road = [&](int x, int y)
+        {
+            return x >= 0 && y >= 0 && x < MapSize && y < MapSize && At(x, y).terrain == Terrain::Road;
+        };
+        for (ActorId id : scene.FindByKind(ActorKind::Terrain, false))
+        {
+            Actor& tile = scene.Get(id);
+            Position p = ToGrid(tile.WorldPosition());
+            int x = int(std::floor(p.x)), y = int(std::floor(p.y));
+            bool isWater = water(x, y), isRoad = road(x, y);
+            int waterMask = 0, roadMask = 0;
+            const int dx[] = {-1, 1, 0, 0};
+            const int dy[] = {0, 0, -1, 1};
+            for (int edge = 0; edge < 4; ++edge)
+            {
+                if (water(x + dx[edge], y + dy[edge]) != isWater)
+                {
+                    waterMask |= 1 << edge;
+                }
+                if (road(x + dx[edge], y + dy[edge]) != isRoad)
+                {
+                    roadMask |= 1 << edge;
+                }
+            }
+            float depth = 0;
+            if (isWater)
+            {
+                int distance = 4;
+                for (int yy = -3; yy <= 3; ++yy)
+                {
+                    for (int xx = -3; xx <= 3; ++xx)
+                    {
+                        if (!water(x + xx, y + yy))
+                        {
+                            distance = (std::min)(distance, std::abs(xx) + std::abs(yy));
+                        }
+                    }
+                }
+                depth = float(distance) * .25f;
+                if (waterMask)
+                {
+                    Perf::Count(Perf::Counter::ShorelineTiles);
+                }
+            }
+            bool wetLane = x >= WorldLayout::TownOffsetX + 26 && x < WorldLayout::TownOffsetX + 31 &&
+                           y >= WorldLayout::TownOffsetY + 19 && y < WorldLayout::TownOffsetY + 27;
+            tile.surfaceData = {{float(waterMask), float(roadMask), depth, wetLane ? 1.0f : 0.0f}};
+            Perf::Count(Perf::Counter::TerrainAppearanceTiles);
+        }
+    }
+
+    void FirstLevel::BuildHarborScenery()
+    {
+        Perf::Scope scope(Perf::Cpu::SceneryBuild);
+        // Decoration never changes collision, road connectivity or navigation fields.
+        const auto place = [&](const Position& position, int kind)
+        {
+            AddProp(position, kind);
+            Perf::Count(Perf::Counter::SceneryProps);
+        };
+        for (int y = 2; y < MapSize - 2; ++y)
+        {
+            for (int x = 2; x < MapSize - 2; ++x)
+            {
+                if (At(x, y).terrain != Terrain::Grass || At(x, y).blocked)
+                {
+                    continue;
+                }
+                bool shore = At(x - 1, y).terrain == Terrain::Water ||
+                             At(x + 1, y).terrain == Terrain::Water ||
+                             At(x, y - 1).terrain == Terrain::Water || At(x, y + 1).terrain == Terrain::Water;
+                unsigned pattern = (unsigned(x) * 73856093u) ^ (unsigned(y) * 19349663u) ^ seed;
+                if (shore && pattern % 4 == 0)
+                {
+                    place({x + .5f, y + .5f, 0}, pattern % 3 == 0 ? 9 : 8);
+                }
+            }
+        }
+        for (const Position& p : {WorldLayout::Town(10.5f, 8.5f),
+                                  WorldLayout::Town(20.5f, 14.5f),
+                                  WorldLayout::Town(9.5f, 26.5f)})
+        {
+            place(p, 11); // herb drying frames
+        }
+        place(WorldLayout::Town(17.5f, 8.5f), 12);
+        place(WorldLayout::Town(11.5f, 20.5f), 12);
+        place(WorldLayout::Town(17.5f, 9.5f), 13);
+        place(WorldLayout::Town(24.5f, 19.5f), 13);
+        place(WorldLayout::Town(12.5f, 8.5f), 14);
+        place(WorldLayout::Town(25.5f, 24.5f), 9);
+        for (int x = 25; x <= 30; ++x)
+        {
+            if (At(x + WorldLayout::TownOffsetX, 17 + WorldLayout::TownOffsetY).terrain == Terrain::Road)
+            {
+                place(WorldLayout::Town(x + .5f, 17.5f), 15);
+            }
+        }
+        // A moored boat remains a water prop, not a false walkable platform.
+        const Position boat = WorldLayout::Town(34.5f, 22.5f);
+        if (At(int(boat.x), int(boat.y)).terrain == Terrain::Water)
+        {
+            place(boat, 10);
+        }
+        for (const Position& p : {WorldLayout::Town(29.5f, 10.5f),
+                                  WorldLayout::Town(34.5f, 25.5f),
+                                  WorldLayout::HunterCamp(),
+                                  WorldLayout::OldShrine()})
+        {
+            int cx = int(p.x) / WorldLayout::ChunkSize, cy = int(p.y) / WorldLayout::ChunkSize;
+            Actor& mist = scene.Create(
+                propChunks[cy * WorldLayout::ChunksPerSide + cx], "HarborMist", ActorKind::Effect);
+            mist.drawable = true;
+            mist.pass = ScenePass::Effects;
+            mist.variant = int(ActorEffect::HarborMist);
+            mist.SetWorldPosition({p.x, p.y, 18});
+        }
     }
 
     void FirstLevel::UpdateVisibleChunks()
@@ -722,11 +887,20 @@ namespace Level
         {
             return;
         }
-        facingX = sx / length;
-        facingY = sy / length;
+        if (attackAnimation <= 0)
+        {
+            facingX = sx / length;
+            facingY = sy / length;
+            if (std::abs(facingX) > .1f)
+            {
+                Player().mirrorModel = facingX < 0;
+            }
+        }
         Position before = Player().WorldPosition();
-        float dx = (facingX / 96 + facingY / 48) * MoveSpeed * dt;
-        float dy = (facingY / 48 - facingX / 96) * MoveSpeed * dt;
+        // Travel still follows WASD while the current swing keeps its original direction.
+        float moveX = sx / length, moveY = sy / length;
+        float dx = (moveX / 96 + moveY / 48) * MoveSpeed * dt;
+        float dy = (moveY / 48 - moveX / 96) * MoveSpeed * dt;
         Move(Player(), dx, dy);
         moving = Distance(before, Player().WorldPosition()) > .0001f;
         if (moving)
@@ -800,7 +974,23 @@ namespace Level
             return false;
         }
         attackCooldown = .48f;
-        attackAnimation = .22f;
+        attackAnimation = CharacterPresentation::AttackDuration;
+        attackImpactPending = true;
+        attackImpactReady = false;
+        UpdateActorModels();
+        return true;
+    }
+
+    bool FirstLevel::ConsumeAttackImpact()
+    {
+        bool ready = attackImpactReady;
+        attackImpactReady = false;
+        return ready;
+    }
+
+    void FirstLevel::ResolveAttackImpact()
+    {
+        Perf::Scope scope(Perf::Cpu::Combat);
         for (Enemy* instance : scene.Actors<Enemy>(ActorKind::Enemy))
         {
             Enemy& enemy = *instance;
@@ -822,7 +1012,6 @@ namespace Level
             }
             DamageEnemy(enemy, stats.Attack(), true);
         }
-        return true;
     }
 
     bool FirstLevel::DamageEnemy(Enemy& enemy, int damage, bool playerCredit)
@@ -852,6 +1041,8 @@ namespace Level
         hurtFlash = .22f;
         if (stats.health <= 0)
         {
+            attackAnimation = 0;
+            attackImpactPending = attackImpactReady = false;
             Player().SetWorldPosition(ToWorld(Camp));
             stats.health = stats.MaxHealth();
             invulnerability = 3;
@@ -1046,6 +1237,16 @@ namespace Level
         Perf::Scope scope(Perf::Cpu::WorldUpdate);
         attackCooldown = (std::max)(0.0f, attackCooldown - dt);
         attackAnimation = (std::max)(0.0f, attackAnimation - dt);
+        if (attackImpactPending && attackAnimation <= CharacterPresentation::AttackDuration -
+                                                          CharacterPresentation::AttackImpactTime)
+        {
+            attackImpactPending = false;
+            if (Player().IsActive())
+            {
+                ResolveAttackImpact();
+                attackImpactReady = true;
+            }
+        }
         hurtFlash = (std::max)(0.0f, hurtFlash - dt);
         invulnerability = (std::max)(0.0f, invulnerability - dt);
         messageTime -= dt;

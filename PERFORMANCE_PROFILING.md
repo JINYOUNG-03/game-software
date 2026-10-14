@@ -19,6 +19,19 @@
   기본 1,024×1,024, 최대 16페이지. 글리프 실패/페이지 한도는 glyph_failure로 집계한다.
 - 후처리는 가로·세로 각각 1/4 해상도에서 밝기 추출과 분리 블러를 수행한 후 합성한다.
   후처리 호출 수는 4회지만 전체 픽셀 연산량을 줄인다.
+- 지형은 타일당 1개 인스턴스다. 물결·잔물결·물가/길 가장자리·젖은 흙의 세부 표현은
+  카메라 이동에 고정된 월드 좌표 셰이더로 계산한다. 인스턴스 stride는 표면 데이터 포함 84 bytes다.
+- 물가/길의 4방향 연결 마스크와 수심은 생성·수문 개방 후에만 계산한다.
+  매 프레임 전체 지형을 순회하거나 주변 타일을 조회하지 않는다.
+- 주변 창문/등불 조명은 가시 Effect Actor 중 화면 중심에 가까운 최대 8개를 선택해
+  기존 배치의 uniform으로 전달한다. 광원별 추가 FBO/드로우 패스는 없다.
+  이는 스타일화한 2D 광원이며 노멀맵/PBR/광원별 그림자 구현이 아니다.
+- 기와 처마·흙벽·잎/천의 바람·안개·방향성 그림자·생활 소품은 기존 도형 경로를 유지한다.
+  모델 외형 revision 6(`harbor_models_v6.cache`), 파일 포맷 2로 이전 외형을 자동 무효화한다.
+  세분화한 캐릭터와 좌우 반전도 같은 모델 템플릿·인스턴싱 경로를 사용한다.
+  캐시에는 12단계×3방향 공격 외형을 포함한 248개 모델이 들어간다(로더 한도 256).
+  NPC 식별용 모자·등짐·도구도 캐시 생성 때만 구성한다. 타격 시점의 전투는 combat,
+  공격 자세 갱신은 animation, 칼 궤적 제출은 render_effects의 기존 구간에서 확인한다.
 - uniform 위치는 초기화 시 캐싱한다. OpenGL 상태/버퍼 설정은 개별 도형이 아니라 배치 단위다.
 
 ## 출력과 보존
@@ -33,6 +46,8 @@
 - world_state: 월드 시간 2분(실시간 약 2초)마다 NPC 행동·체력·재산·목표 가중치·지식·장부 소유권 표본.
   일시정지 중에는 월드 시간이 멈추며 이 표본도 생성하지 않는다.
   시작 안내 및 H 도움말도 월드를 정지시키며 scene_state.paused에 반영한다.
+  3장면 도입과 NPC 대화도 같은 일시정지 상태에 포함하며 로컬 모니터에는 계속 표본을 게시한다.
+  대화 생성·진행·선택 처리는 interaction, 대화 텍스트는 render_ui/text로 계측한다.
   상황별 안내 계산은 기존 quest_update로 계측하고, 텍스트·이름표 비용은 text/render_ui에서 확인한다.
 - session: Debug/Release, GL 버전, GPU 정보, 스키마.
 - log_segment / session_end: 순환 저장 및 종료 상태.
@@ -48,7 +63,7 @@
 
 모든 CPU/GPU 시간은 ms, 크기는 bytes, 누적 이벤트는 count 단위다.
 안정적인 영문 snake_case 키를 사용한다. 스키마를 바꾸면 schema_version을 올린다.
-현재 스키마는 5이며 분석기는 기존 스키마 1·2·3·4 로그도 읽는다.
+현재 스키마는 7이며 분석기는 기존 스키마 1·2·3·4·5·6 로그도 읽는다.
 
 | 필드 | 의미 |
 |---|---|
@@ -94,9 +109,16 @@
 | counters.monitor_snapshots / monitor_snapshot_bytes | 모니터에 게시한 표본 수 / 인코딩한 JSON bytes |
 | counters.monitor_requests / monitor_response_bytes / monitor_errors | 네트워크 스레드에서 완료 후 게임 스레드가 회수한 요청 수 / 실제 전송한 HTTP 헤더+본문 bytes / 수신·전송·검증 오류 수 |
 | counters.monitor_io_microseconds | 네트워크 요청 처리의 경과 microseconds. 소켓 대기를 포함하며 CPU 순수 실행 시간 또는 프레임 CPU 시간과 합산하지 않는다 |
+| cpu_ms.terrain_appearance / counters.terrain_appearance_tiles | 생성·배수 후 표면 마스크/수심 재계산 시간 / 방문 지형 수. 프레임별 작업이 아님 |
+| counters.shoreline_tiles | 해당 재계산에서 육지와 맞닿은 물 타일 수. 누적 카운트이므로 월드의 고유 개수와 구분 |
+| cpu_ms.scenery_build / counters.scenery_props | 초기 물가/생활 소품 배치 시간 / 추가한 비충돌 소품 수 |
+| cpu_ms.lighting / counters.lights_considered / counters.lights_selected | 프레임별 가시 광원 선별 시간 / 후보 수 / 실제 선택 수(최대 8) |
+| counters.shadow_casters | 이번 프레임에 방향성 그림자와 접지 그림자를 생성한 Actor 수 |
+| cpu_ms.character_build / counters.character_models_built | 외형 캐시 재생성 중 캐릭터 도형 생성 시간 / 생성 모델 수. model_build의 자식 구간이므로 합산하지 않는다 |
+| counters.character_instances / mirrored_character_instances | 프레임에 제출한 캐릭터 도형 인스턴스 수 / 그중 좌우 반전한 도형 수. NPC 인구나 드로우콜 수가 아님 |
 
 로컬 HTML 모니터는 WORLD_MONITOR.md를 따른다. 브라우저가 수신하는 모니터 스키마 1은
-프로파일링 스키마 5와 별개다. 최대 1초 간격으로 게시하고, 구독이 5초간 없으면 생성하지 않는다.
+프로파일링 스키마 7과 별개다. 최대 1초 간격으로 게시하고, 구독이 5초간 없으면 생성하지 않는다.
 일시정지 중에도 모니터 표본과 전송 통계는 갱신한다. 네트워크 스레드는 프로파일러의
 프레임 배열에 직접 접근하지 않고 atomic 통계를 게임 스레드에서 회수한다.
 world_state에도 이름·집계·최근 사건이 추가되며 영문 키와 단위는 기존 규약을 유지한다.

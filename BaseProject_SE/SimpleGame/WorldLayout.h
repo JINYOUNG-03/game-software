@@ -11,6 +11,7 @@ namespace WorldLayout
     constexpr int TownOffsetX = 40;
     constexpr int TownOffsetY = 56;
     constexpr int NpcAppearanceCount = 18;
+    constexpr float CharacterVisualHeight = 88;
     constexpr float MarketRadius = 18.0f;
     constexpr float RaiderTerritoryRadius = 26.0f;
 

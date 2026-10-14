@@ -87,10 +87,15 @@ void Renderer::Initialize(int windowSizeX, int windowSizeY)
     m_BatchLocations.screen = glGetUniformLocation(m_SolidRectShader, "u_Screen");
     m_BatchLocations.time = glGetUniformLocation(m_SolidRectShader, "u_Time");
     m_BatchLocations.texture = glGetUniformLocation(m_SolidRectShader, "u_Texture");
+    m_BatchLocations.worldView = glGetUniformLocation(m_SolidRectShader, "u_WorldView");
+    m_BatchLocations.worldShading = glGetUniformLocation(m_SolidRectShader, "u_WorldShading");
+    m_BatchLocations.lights = glGetUniformLocation(m_SolidRectShader, "u_Lights[0]");
+    m_BatchLocations.lightCount = glGetUniformLocation(m_SolidRectShader, "u_LightCount");
     m_PostScene = glGetUniformLocation(m_PostShader, "u_Scene");
     m_PostGlow = glGetUniformLocation(m_PostShader, "u_Glow");
     m_PostPixel = glGetUniformLocation(m_PostShader, "u_Pixel");
     m_PostMode = glGetUniformLocation(m_PostShader, "u_Mode");
+    m_PostTime = glGetUniformLocation(m_PostShader, "u_Time");
     CreateVertexBufferObjects();
     glGenVertexArrays(1, &m_PostVAO);
     glBindVertexArray(m_PostVAO);
@@ -115,6 +120,8 @@ void Renderer::BeginFrame(float r, float g, float b, float a)
     m_QueueTexture = 0;
     m_TargetWidth = float(m_WindowSizeX);
     m_TargetHeight = float(m_WindowSizeY);
+    m_WorldShading = true;
+    m_SurfaceData = {{0, 0, -1, 0}};
 
     SetScreenOffset(0, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, m_Framebuffer);
@@ -301,6 +308,8 @@ void Renderer::DrawEllipse(float x, float y, float w, float h, float r, float g,
 void Renderer::EndWorld(float time)
 {
     Flush();
+    m_WorldShading = false;
+    m_SurfaceData = {{0, 0, -1, 0}};
     Perf::Scope scope(Perf::Cpu::Postprocess);
     glDisable(GL_BLEND);
     const int lowWidth = m_WindowSizeX / 4, lowHeight = m_WindowSizeY / 4;
@@ -321,17 +330,27 @@ void Renderer::EndWorld(float time)
     Perf::Profiler::Get().GpuMark("postprocess");
 }
 
-void Renderer::DrawQuad(
-    float x0, float y0, float x1, float y1, float x2, float y2, float x3, float y3, float r, float g, float b)
+void Renderer::DrawQuad(float x0,
+                        float y0,
+                        float x1,
+                        float y1,
+                        float x2,
+                        float y2,
+                        float x3,
+                        float y3,
+                        float r,
+                        float g,
+                        float b,
+                        float a)
 {
     if (!m_RecordingModel.empty())
     {
-        m_Models[m_RecordingModel].push_back({2, m_Material, {{x0, y0, x1, y1, x2, y2, x3, y3, r, g, b, 1}}});
+        m_Models[m_RecordingModel].push_back({2, m_Material, {{x0, y0, x1, y1, x2, y2, x3, y3, r, g, b, a}}});
         return;
     }
     Instance item{};
     const float corners[] = {x0, y0, x1, y1, x2, y2, x3, y3};
-    const float color[] = {r, g, b, 1};
+    const float color[] = {r, g, b, a};
     std::copy(corners, corners + 8, item.corners);
     std::copy(color, color + 4, item.color);
     item.material = float(m_Material);
