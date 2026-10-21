@@ -37,6 +37,20 @@ assert.equal(D.delta(npc, undefined, "health"), "");
 assert.equal(D.delta(npc, npc, "coins"), "");
 assert.equal(D.settlementName(fixture.world, "muyeon"), "무연항");
 assert.equal(D.settlementName(fixture.world, "wilderness"), "마을 밖");
+assert.equal(D.moodSummary(null), "분위기 표본 수집 중");
+assert.equal(D.moodSummary({ observed_seconds: 0 }), "분위기 표본 수집 중");
+assert.equal(D.moodSummary({ observed_seconds: 20, percent: { quiet: 25, busy: 50, restless: 25, conflict: 0 } }),
+    "일상 유지 25.0% / 장터 활기 50.0% / 소문에 술렁임 25.0%");
+assert.equal(D.actions.travel, "마을 간 왕래");
+const villageIds = ["muyeon", "solbaram", "gingil", "eunsol", "deulsaem"];
+const expandedNpcs = Array.from({ length: 100 }, (_, i) => ({ ...npc, actor_id: 1000 + i,
+    home_settlement_id: villageIds[Math.floor(i / 20)], action: i % 20 >= 18 ? "travel" : "trade" }));
+const expanded = { ...fixture, world: { ...fixture.world, npcs: expandedNpcs,
+    settlements: villageIds.map(id => ({ ...fixture.world.settlements[0], id })),
+    counts: { npcs_total: 100, npcs_alive: 100, npcs_dead: 0, monsters_total: 100, monsters_alive: 98, monsters_dead_or_inactive: 2 } } };
+assert.equal(D.validateSnapshot(expanded).world.settlements.length, 5);
+for (const id of villageIds) assert.equal(D.selectNpcs(expandedNpcs, { settlement: id }).length, 20);
+assert.equal(D.selectNpcs(expandedNpcs, { action: "travel" }).length, 10);
 assert.equal(D.validateSnapshot({ ...fixture, world: { ...fixture.world, npcs: [], settlements: [], recent_events: [],
     counts: { npcs_total: 0, npcs_alive: 0, npcs_dead: 0, monsters_total: 0, monsters_alive: 0, monsters_dead_or_inactive: 0 } } }).world.npcs.length, 0);
 console.log(JSON.stringify({ event: "monitor_data_tests", passed: true, game_build_performed: false,

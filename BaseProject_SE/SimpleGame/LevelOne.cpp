@@ -443,9 +443,10 @@ namespace Level
         stats.health = stats.MaxHealth();
 
         std::uniform_int_distribution<int> coordinate(3, MapSize - 4);
-        const std::array<Position, 4> destinations = {WorldLayout::HunterCamp(),
+        const std::array<Position, 5> destinations = {WorldLayout::HunterCamp(),
                                                       WorldLayout::Waystation(),
                                                       WorldLayout::OldShrine(),
+                                                      WorldLayout::VillageCenter(4),
                                                       WorldLayout::RaiderCamp()};
         for (int lake = 0; lake < 56; ++lake)
         {
@@ -459,7 +460,7 @@ namespace Level
                 for (int x = minX; x <= maxX; ++x)
                 {
                     Position p = {x + .5f, y + .5f, 0};
-                    bool reserved = WorldLayout::InStoryDistrict(p);
+                    bool reserved = WorldLayout::InStoryDistrict(p) || WorldLayout::InVillage(p);
                     for (const Position& destination : destinations)
                     {
                         reserved = reserved || Distance(p, destination) < 8;
@@ -517,6 +518,20 @@ namespace Level
         }
         road(WorldLayout::HunterCamp(), WorldLayout::OldShrine());
         road(WorldLayout::OldShrine(), WorldLayout::RaiderCamp());
+        for (int village = 0; village < WorldLayout::VillageCount; ++village)
+        {
+            Position c = WorldLayout::VillageCenter(village);
+            road(c, WorldLayout::VillageCenter(WorldLayout::VillageNeighbour(village)));
+            if (village == 0)
+            {
+                continue;
+            }
+            for (int offset = -12; offset <= 12; offset += 6)
+            {
+                road({c.x - 15, c.y + float(offset), 0}, {c.x + 15, c.y + float(offset), 0});
+                road({c.x + float(offset), c.y - 15, 0}, {c.x + float(offset), c.y + 15, 0});
+            }
+        }
         for (int route = 0; route < 20; ++route)
         {
             road(Camp, {float(coordinate(random)), float(coordinate(random)), 0});
@@ -583,11 +598,32 @@ namespace Level
             AddProp({destination.x - 3, destination.y + 3, 0}, 6);
             AddProp({destination.x + 3, destination.y + 3, 0}, 6);
         }
+        for (int village = 1; village < WorldLayout::VillageCount; ++village)
+        {
+            Position c = WorldLayout::VillageCenter(village);
+            for (int y = -9; y <= 9; y += 6)
+            {
+                for (int x = -9; x <= 9; x += 6)
+                {
+                    addBlock(int(c.x) + x, int(c.y) + y, (x + y + village) % 3 == 0 ? 0 : 1);
+                }
+            }
+            AddProp({c.x - 5, c.y - 3, 0}, 2);
+            AddProp({c.x + 5, c.y - 3, 0}, 2);
+            AddProp({c.x, c.y + 5, 0}, 6);
+            AddProp({c.x - 15, c.y, 0}, 3);
+            AddProp({c.x + 15, c.y, 0}, 3);
+            for (int offset : {-12, 0, 12})
+            {
+                AddProp({c.x + float(offset), c.y + 2, 0}, 5);
+                AddProp({c.x + float(offset), c.y - 5, 0}, 11);
+            }
+        }
         for (int attempt = 0; attempt < 19500; ++attempt)
         {
             int x = coordinate(random), y = coordinate(random);
             Position p = {x + .5f, y + .5f, 0};
-            bool reserved = WorldLayout::InStoryDistrict(p);
+            bool reserved = WorldLayout::InStoryDistrict(p) || WorldLayout::InVillage(p);
             for (const Position& destination : destinations)
             {
                 reserved = reserved || Distance(p, destination) < 7;
@@ -600,21 +636,21 @@ namespace Level
         }
 
         // Keep a spawn list of valid centers. No unbounded rejection loops.
-        std::vector<Position> candidates;
+        spawnCandidates.clear();
         for (int y = 2; y < MapSize - 2; ++y)
         {
             for (int x = 2; x < MapSize - 2; ++x)
             {
                 Position p = ToWorld({x + .5f, y + .5f, 0});
-                if (!InCamp(x, y) && Walkable(p.x, p.y) && Distance(p, ToWorld(Camp)) > 6)
+                if (WorldLayout::BetweenVillages(p) && Walkable(p.x, p.y))
                 {
-                    candidates.push_back(p);
+                    spawnCandidates.push_back(p);
                 }
             }
         }
-        std::shuffle(candidates.begin(), candidates.end(), random);
+        std::shuffle(spawnCandidates.begin(), spawnCandidates.end(), random);
         std::vector<Position> beastHomes;
-        for (const auto& p : candidates)
+        for (const auto& p : spawnCandidates)
         {
             bool crowded = false;
             for (const Position& home : beastHomes)
@@ -642,7 +678,7 @@ namespace Level
             enemy.kind = int(random() % 3);
             enemy.health = enemy.maxHealth = 42 + enemy.kind * 18;
             enemy.phase = float(random() % 100) / 10;
-            if (beastHomes.size() == 192)
+            if (beastHomes.size() == WorldLayout::MonsterCount)
             {
                 break;
             }
@@ -929,7 +965,8 @@ namespace Level
     void FirstLevel::Kill(Enemy& enemy, bool playerCredit)
     {
         enemy.health = 0;
-        enemy.respawn = 14;
+        enemy.respawn = WorldLayout::RespawnDelaySeconds;
+        enemy.deathPosition = enemy.WorldPosition();
         enemy.moving = false;
         enemy.SetVisible(false);
         if (!playerCredit)
@@ -964,6 +1001,51 @@ namespace Level
             Notify(L"\uacbd\ud5d8\uce58 +" + std::to_wstring(reward) +
                    L" \u00b7 \ub5a8\uc5b4\uc9c4 \uc804\ub9ac\ud488\uc740 E\ub85c \ucc59\uae30\uc790.");
         }
+    }
+
+    bool FirstLevel::RespawnEnemy(Enemy& enemy)
+    {
+        Perf::Scope scope(Perf::Cpu::EnemyRespawn);
+        if (spawnCandidates.empty())
+        {
+            return false;
+        }
+        auto enemies = scene.Actors<Enemy>(ActorKind::Enemy);
+        auto people = scene.Actors<Actor>(ActorKind::Npc);
+        size_t start = size_t(random()) % spawnCandidates.size();
+        for (size_t attempt = 0; attempt < 128 && attempt < spawnCandidates.size(); ++attempt)
+        {
+            const Position& p = spawnCandidates[(start + attempt) % spawnCandidates.size()];
+            Perf::Count(Perf::Counter::RespawnCandidates);
+            if (!WorldLayout::BetweenVillages(p) || !Walkable(p.x, p.y) ||
+                Distance(p, enemy.deathPosition) < 12 || Distance(p, Player().WorldPosition()) < 20)
+            {
+                continue;
+            }
+            bool occupied = false;
+            for (const Enemy* other : enemies)
+            {
+                occupied = occupied || (other != &enemy && other->health > 0 &&
+                                        Distance(p, other->WorldPosition()) < 2.5f);
+            }
+            for (const Actor* person : people)
+            {
+                occupied = occupied || Distance(p, person->WorldPosition()) < 3;
+            }
+            if (occupied)
+            {
+                continue;
+            }
+            enemy.SetWorldPosition(p);
+            enemy.home = enemy.LocalPosition();
+            enemy.SetVisible(true);
+            enemy.health = enemy.maxHealth;
+            enemy.cooldown = 1;
+            enemy.moving = false;
+            Perf::Count(Perf::Counter::EnemyRespawns);
+            return true;
+        }
+        return false;
     }
 
     bool FirstLevel::Attack()
@@ -1284,12 +1366,10 @@ namespace Level
                 if (enemy.health <= 0)
                 {
                     enemy.respawn -= dt;
-                    if (enemy.respawn <= 0 && Distance(Player().WorldPosition(), enemy.HomePosition()) > 3)
+                    if (enemy.respawn <= 0 && !RespawnEnemy(enemy))
                     {
-                        enemy.SetWorldPosition(enemy.HomePosition());
-                        enemy.SetVisible(true);
-                        enemy.health = enemy.maxHealth;
-                        enemy.cooldown = 1;
+                        // Retry cheaply rather than forcing a spawn in a village or on a character.
+                        enemy.respawn = .5f;
                     }
                     continue;
                 }

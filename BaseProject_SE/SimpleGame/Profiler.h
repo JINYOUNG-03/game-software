@@ -61,6 +61,9 @@ namespace Perf
         SceneryBuild,
         Lighting,
         CharacterBuild,
+        RumorUpdate,
+        VillageStatistics,
+        EnemyRespawn,
         Count
     };
     enum class Counter
@@ -123,6 +126,12 @@ namespace Perf
         CharacterModelsBuilt,
         CharacterInstances,
         MirroredCharacterInstances,
+        RumorCandidates,
+        RumorTransfers,
+        CourierDepartures,
+        VillageMoodSamples,
+        RespawnCandidates,
+        EnemyRespawns,
         Count
     };
 

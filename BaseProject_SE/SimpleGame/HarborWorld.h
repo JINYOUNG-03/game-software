@@ -30,7 +30,8 @@ namespace Harbor
         Return,
         Patrol,
         Dead,
-        Defend
+        Defend,
+        Travel
     };
 
     enum Knowledge
@@ -51,6 +52,14 @@ namespace Harbor
 
     struct Npc : public Actor
     {
+        int appearance = 0;
+        int homeVillage = 0;
+        bool courier = false;
+        int travelVillage = -1;
+        float courierWait = 0;
+        ActorId lastRumorSender = InvalidActorId;
+        double lastRumorMinute = 0;
+        int rumorsReceived = 0;
         std::wstring name;
         std::wstring line;
         Job job = Job::Resident;
@@ -183,7 +192,7 @@ namespace Harbor
         static const wchar_t* JobLabel(Job job);
         static const wchar_t* ActionLabel(Action action);
 
-        const std::array<ActorId, 8>& LandmarkIds() const
+        const std::array<ActorId, 9>& LandmarkIds() const
         {
             return sites;
         }
@@ -195,7 +204,17 @@ namespace Harbor
         ActorId ledger = InvalidActorId;
         ActorId key = InvalidActorId;
         ActorId barrier = InvalidActorId;
-        std::array<ActorId, 8> sites{};
+        std::array<ActorId, 9> sites{};
+
+        struct VillageStatistics
+        {
+            std::array<double, 8> moodSeconds{};
+            double observedSeconds = 0;
+            std::uint64_t rumorDeliveries = 0;
+        };
+
+        std::array<VillageStatistics, WorldLayout::VillageCount> villageStatistics{};
+        float statisticsTime = 0;
         std::array<int, 4> trust{};
         std::deque<std::wstring> history;
         std::mt19937 random;
@@ -238,6 +257,9 @@ namespace Harbor
         Npc* Person(int definitionId) const;
         void ReactToPlayer(const std::wstring& result);
         void UpdateQuest();
+        void SpreadRumors(const std::vector<Npc*>& npcs);
+        int VillageMood(int village, const std::vector<const Npc*>& npcs) const;
+        void UpdateVillageStatistics(float dt, const std::vector<Npc*>& npcs);
         void ChooseRecord(RecordChoice choice);
         void BeginDialogue(Npc* npc);
         void CompleteFirstQuest();

@@ -26,7 +26,7 @@ $appearanceCount = [int](Read-Constant 'NpcAppearanceCount')
 $townX = Read-Constant 'TownOffsetX'
 $townY = Read-Constant 'TownOffsetY'
 $radius = Read-Constant 'RaiderTerritoryRadius'
-if ($mapSize -ne 256 -or $mapSize % $chunkSize -ne 0) { throw 'Map/chunk size contract failed.' }
+if ($mapSize -ne 384 -or $mapSize % $chunkSize -ne 0) { throw 'Map/chunk size contract failed.' }
 $bandit = [regex]::Match($layoutSource, '(?s)RaiderCamp\(\).*?return \{([0-9.]+)f,\s*([0-9.]+)f')
 if (-not $bandit.Success) { throw 'Raider camp position missing.' }
 $campX = [double]::Parse($bandit.Groups[1].Value, [Globalization.CultureInfo]::InvariantCulture)

@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <locale>
 #include <sstream>
+#include <map>
 
 namespace Harbor
 {
@@ -65,44 +66,23 @@ namespace Harbor
             float radius;
         };
 
-        const std::array<Settlement, 5>& Settlements()
+        const std::array<Settlement, WorldLayout::VillageCount>& Settlements()
         {
-            static const std::array<Settlement, 5> places = {
-                {{"muyeon", L"\ubb34\uc5f0\ud56d", "village", WorldLayout::Town(21, 20), 24},
-                 {"hunter_camp",
-                  L"\uc194\ubc14\ub78c \uc0ac\ub0e5\uafbc \uac70\uc810",
-                  "outpost",
-                  WorldLayout::HunterCamp(),
-                  18},
-                 {"waystation", L"\uae34\uae38 \uc8fc\ub9c9", "waystation", WorldLayout::Waystation(), 18},
-                 {"old_shrine", L"\uc61b \uc0b0\uc0ac", "shrine", WorldLayout::OldShrine(), 18},
-                 {"raider_camp",
-                  L"\ubd89\uc740\uace8 \uc57c\uc601\uc9c0",
-                  "raider_camp",
-                  WorldLayout::RaiderCamp(),
-                  WorldLayout::RaiderTerritoryRadius}}};
+            static const std::array<Settlement, WorldLayout::VillageCount> places = {
+                {{"muyeon", WorldLayout::VillageName(0), "village", WorldLayout::VillageCenter(0), 18},
+                 {"solbaram", WorldLayout::VillageName(1), "village", WorldLayout::VillageCenter(1), 18},
+                 {"gingil", WorldLayout::VillageName(2), "village", WorldLayout::VillageCenter(2), 18},
+                 {"eunsol", WorldLayout::VillageName(3), "village", WorldLayout::VillageCenter(3), 18},
+                 {"deulsaem", WorldLayout::VillageName(4), "village", WorldLayout::VillageCenter(4), 18}}};
             return places;
         }
 
+        const char* MoodKeys[] = {
+            "conflict", "wounded", "flooded", "controlled", "restless", "busy", "quiet", "uninhabited"};
+
         int SettlementAt(const Level::Position& position)
         {
-            if (WorldLayout::InVillage(position))
-            {
-                return 0;
-            }
-            int found = -1;
-            float nearest = 100000;
-            const auto& places = Settlements();
-            for (size_t i = 1; i < places.size(); ++i)
-            {
-                float distance = Distance(position, places[i].center);
-                if (distance <= places[i].radius && distance < nearest)
-                {
-                    nearest = distance;
-                    found = int(i);
-                }
-            }
-            return found;
+            return WorldLayout::VillageAt(position);
         }
 
         const char* SettlementId(int index)
@@ -136,7 +116,8 @@ namespace Harbor
                                    "return",
                                    "patrol",
                                    "dead",
-                                   "defend"};
+                                   "defend",
+                                   "travel"};
             return names[int(action)];
         }
     } // namespace
@@ -167,7 +148,8 @@ namespace Harbor
                                   L"\uadc0\ud658",
                                   L"\uc21c\ucc30",
                                   L"\uc0ac\ub9dd",
-                                  L"\ub9de\uc11c\uae30"};
+                                  L"\ub9de\uc11c\uae30",
+                                  L"\ub9c8\uc744 \uac04 \uc774\ub3d9"};
         return names[int(action)];
     }
 
@@ -249,6 +231,15 @@ namespace Harbor
         logTime = 0;
         for (Npc* npc : level.Scene().Actors<Npc>(ActorKind::Npc))
         {
+            if (npc->homeVillage != 0 || npc->courier)
+            {
+                continue;
+            }
+            if (npc->variant >= 5 && (Distance(npc->WorldPosition(), level.Player().WorldPosition()) > 6 ||
+                                      !level.ClearLine(npc->WorldPosition(), level.Player().WorldPosition())))
+            {
+                continue;
+            }
             npc->thinkTime = 0;
             npc->path.clear();
             npc->waypoint = 0;
@@ -529,6 +520,8 @@ namespace Harbor
         worldRoot = level.Scene().Create(level.Scene().Root().Id(), "Harbor").Id();
         minutes = 360;
         logTime = gossipTime = 0;
+        statisticsTime = 0;
+        villageStatistics = {};
         trust.fill(0);
         history.clear();
         gateOpen = published = controlled = repaired = copied = ledgerWet = false;
@@ -552,12 +545,13 @@ namespace Harbor
             {L"\uc61b \uc218\ubb38", WorldLayout::Town(23.5f, 24.5f), "sluice"},
             {L"\uc870\ud569 \uc0ac\ubb34\uc18c \u00b7 \uc7a5\ud130", WorldLayout::VillageSpawn(), "notice"},
             {L"\ud3d0\uc120 \ubd80\ub450", WorldLayout::Town(28.5f, 17.5f), "wreck"},
-            {L"\uc194\ubc14\ub78c \uc0ac\ub0e5\uafbc \uac70\uc810", WorldLayout::HunterCamp(), "notice"},
-            {L"\uae34\uae38 \uc8fc\ub9c9", WorldLayout::Waystation(), "notice"},
-            {L"\uc61b \uc0b0\uc0ac", WorldLayout::OldShrine(), "notice"},
+            {WorldLayout::VillageName(1), WorldLayout::HunterCamp(), "notice"},
+            {WorldLayout::VillageName(2), WorldLayout::Waystation(), "notice"},
+            {WorldLayout::VillageName(3), WorldLayout::OldShrine(), "notice"},
             {L"\ubd89\uc740\uace8 \uc57c\uc601\uc9c0 \u00b7 \uc704\ud5d8",
              WorldLayout::RaiderCamp(),
-             "bandit_sign"}};
+             "bandit_sign"},
+            {WorldLayout::VillageName(4), WorldLayout::VillageCenter(4), "notice"}};
         for (int i = 0; i < int(sites.size()); ++i)
         {
             Landmark& node = level.Scene().Create<Landmark>(worldRoot, "HarborSite", ActorKind::Prop);
@@ -694,55 +688,84 @@ namespace Harbor
              3,
              {13, 15, 0},
              L"\uac12\uc740 \uc0ac\uc815\uc5d0 \ub530\ub77c \ub2ec\ub77c\uc838. \ubbff\uc744 \ub9cc\ud55c \uc190\ub2d8\ud55c\ud150 \uc870\uae08 \uae4e\uc544 \uc8fc\uace0."}};
-        for (int i = 0; i < int(sizeof(people) / sizeof(*people)); ++i)
+        std::array<int, WorldLayout::VillageCount> residentSlots{};
+        const int civilianLooks[] = {0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 17};
+        for (int i = 0; i < WorldLayout::VillageCount * WorldLayout::NpcsPerVillage; ++i)
         {
-            const auto& source = people[i];
+            int village = 0;
+            if (i < WorldLayout::NpcAppearanceCount)
+            {
+                village = i == 7 || i == 8 ? 4 : i == 5 || i == 6 || i == 16 ? 1 : 0;
+            }
+            else
+            {
+                while (residentSlots[village] >= WorldLayout::NpcsPerVillage)
+                {
+                    ++village;
+                }
+            }
+            int slot = residentSlots[village]++;
+            bool courier = slot >= WorldLayout::NpcsPerVillage - 2;
+            int appearance = i < WorldLayout::NpcAppearanceCount ? i
+                             : courier                           ? (slot % 2 ? 17 : 9)
+                                                                 : civilianLooks[slot % 16];
+            const auto& source = people[appearance];
             Npc& npc = level.Scene().Create<Npc>(level.NpcRoot(), "HarborResident", ActorKind::Npc);
-            npc.name = source.name;
+            npc.name = i < WorldLayout::NpcAppearanceCount
+                           ? source.name
+                           : std::wstring(WorldLayout::VillageName(village)) + L" " + source.name + L" " +
+                                 std::to_wstring(slot + 1);
             npc.line = source.line;
+            if (i >= WorldLayout::NpcAppearanceCount)
+            {
+                npc.line =
+                    courier
+                        ? L"\uc7a5\ud130\ub97c \uc624\uac00\uba70 \ubb3c\uac74\ub3c4 \ud314\uace0 \uc0ac\ub78c\ub4e4 \uc18c\uc2dd\ub3c4 \ub4e3\uace0 \uc788\uc5b4."
+                        : L"\uba39\uace0\uc0b4\ub824\uba74 \uc7a5\ud130\uc5d0\ub3c4 \ub098\uac00\uace0 \uc9d1\uc548\uc77c\ub3c4 \ub3cc\ubd10\uc57c\uc9c0.";
+            }
             npc.job = source.job;
             npc.faction = source.faction;
-            Position home = WorldLayout::Town(source.p.x, source.p.y);
-            if (source.job == Job::Raider)
+            npc.appearance = appearance;
+            npc.homeVillage = village;
+            npc.courier = courier;
+            npc.travelVillage = WorldLayout::VillageNeighbour(village);
+            npc.courierWait = 3 + float(slot % 3);
+            Position c = WorldLayout::VillageCenter(village);
+            Position home = {c.x - 12 + float(slot % 5) * 6, c.y - 12 + float(slot / 5) * 6, 0};
+            if (i < 5)
             {
-                Position camp = WorldLayout::RaiderCamp();
-                home = {camp.x + (i == 7 ? -4.0f : 5.0f), camp.y + (i == 7 ? -3.0f : 4.0f), 0};
-            }
-            else if (i == 5 || i == 6 || i == 16)
-            {
-                home = {WorldLayout::HunterCamp().x + (i == 5   ? -4.0f
-                                                       : i == 6 ? 3.0f
-                                                                : 0),
-                        WorldLayout::HunterCamp().y + (i == 16 ? 4.0f : -2.0f),
-                        0};
-            }
-            else if (i >= 9)
-            {
-                home = WorldLayout::Town(7.5f + float((i - 9) % 3) * 6, 8.5f + float((i - 9) / 3) * 7);
+                home = WorldLayout::Town(source.p.x, source.p.y);
             }
             npc.home = Reachable(home);
-            npc.SetWorldPosition(npc.home);
-            npc.destination = npc.home;
+            Position initial = npc.home;
+            if (npc.job == Job::Raider)
+            {
+                Position camp = WorldLayout::RaiderCamp();
+                initial = Reachable({camp.x + (i == 7 ? -4.0f : 5.0f), camp.y - 3, 0});
+                npc.home = initial;
+            }
+            npc.SetWorldPosition(initial);
+            npc.destination = initial;
             npc.lastLedger = Site(0);
             npc.variant = i;
             npc.drawable = true;
-            npc.model = "citizen" + std::to_string(i) + "_0";
+            npc.model = "citizen" + std::to_string(appearance) + "_0";
             npc.shadowWidth = 30;
             npc.shadowHeight = 62;
-            npc.visualHeight = CharacterPresentation::NpcVisualHeight(i);
-            npc.coins = IsMerchant(npc) ? 180 : 25 + i * 2;
+            npc.visualHeight = CharacterPresentation::NpcVisualHeight(appearance);
+            npc.coins = IsMerchant(npc) ? 180 : 25 + slot * 2;
             if (i < 5 && !IsMerchant(npc))
             {
                 npc.coins = 60;
             }
             npc.maxHealth = npc.job == Job::Guard ? 160 : 100;
             npc.health = npc.maxHealth;
-            npc.thinkTime = i * .09f;
+            npc.thinkTime = float(i % 20) * .09f;
             npc.scheduled = i >= 5;
             npc.wealthWeight = npc.job == Job::Hunter || IsMerchant(npc) ? 1.6f : .8f;
             npc.enlightenmentWeight = npc.job == Job::Scholar ? 2.5f : .3f;
             npc.raidWeight = npc.job == Job::Raider ? 1.8f : 0;
-            npc.raidCooldown = npc.job == Job::Raider ? 35 + (i - 7) * 20.0f : 0;
+            npc.raidCooldown = npc.job == Job::Raider ? 35 + float(i - 7) * 20 : 0;
             Actor& status = level.Scene().Create(npc.Id(), "NpcHealth", ActorKind::Effect);
             status.pass = ScenePass::Effects;
             status.variant = int(ActorEffect::NpcStatus);
@@ -873,7 +896,32 @@ namespace Harbor
         {
             set(Action::Investigate, Site(1));
         }
-        else if (npc.variant >= 9 && npc.job != Job::Hunter && briefed)
+        else if (npc.courier)
+        {
+            Position destination = WorldLayout::VillageMarket(npc.travelVillage);
+            if (Distance(npc.WorldPosition(), destination) < 1.2f)
+            {
+                if (npc.courierWait > 0)
+                {
+                    set(Action::Trade, destination);
+                }
+                else
+                {
+                    npc.travelVillage = npc.travelVillage == npc.homeVillage
+                                            ? WorldLayout::VillageNeighbour(npc.homeVillage)
+                                            : npc.homeVillage;
+                    npc.courierWait = 4;
+                    Perf::Count(Perf::Counter::CourierDepartures);
+                    set(Action::Travel, WorldLayout::VillageMarket(npc.travelVillage));
+                }
+            }
+            else
+            {
+                set(Action::Travel, destination);
+            }
+        }
+        else if (npc.variant >= 9 && npc.homeVillage == 0 && npc.job != Job::Hunter && briefed &&
+                 (recordChoice != RecordChoice::Public || (npc.knowledge & Knowledge::Published)))
         {
             Position gathering =
                 gateOpen ? WorldLayout::Town(27.5f + float(npc.variant % 3), 21.5f + float(npc.variant % 4))
@@ -885,6 +933,13 @@ namespace Harbor
                     ? Action::Trade
                     : Action::Rest,
                 Reachable(gathering));
+        }
+        else if (IsMerchant(npc))
+        {
+            Position stall = WorldLayout::VillageMarket(npc.homeVillage);
+            stall.x += float(npc.variant % 3 - 1) * .8f;
+            stall.y += float((npc.variant / 3) % 3 - 1) * .8f;
+            set(Action::Trade, stall);
         }
         else if (npc.job == Job::Guard)
         {
@@ -907,7 +962,7 @@ namespace Harbor
                 }
                 float d = Distance(npc.WorldPosition(), candidate->WorldPosition());
                 if (npc.job != Job::Raider && IsMerchant(*candidate) && d < merchantDistance &&
-                    Distance(candidate->WorldPosition(), Site(2)) < WorldLayout::MarketRadius)
+                    WorldLayout::InVillage(candidate->WorldPosition()))
                 {
                     merchant = candidate;
                     merchantDistance = d;
@@ -968,8 +1023,8 @@ namespace Harbor
             {
                 if (Distance(npc.WorldPosition(), npc.destination) < 1 || npc.action != Action::Patrol)
                 {
-                    Position center =
-                        npc.job == Job::Raider ? WorldLayout::RaiderCamp() : WorldLayout::HunterCamp();
+                    Position center = npc.job == Job::Raider ? WorldLayout::RaiderCamp()
+                                                             : WorldLayout::VillageCenter(npc.homeVillage);
                     int radius = npc.job == Job::Raider ? 13 : 35;
                     Position destination =
                         Reachable({center.x + float(int(random() % (radius * 2 + 1)) - radius),
@@ -988,7 +1043,14 @@ namespace Harbor
             }
             else
             {
-                set(Action::Study, npc.job == Job::Apprentice ? Site(2) : npc.home);
+                bool visitingMarket = (int(minutes / 12) + npc.variant) % 2 != 0;
+                Position meeting = WorldLayout::VillageMarket(npc.homeVillage);
+                meeting.x += float(npc.variant % 3 - 1) * .8f;
+                meeting.y += float((npc.variant / 3) % 3 - 1) * .8f;
+                set(npc.job == Job::Scholar ? Action::Study
+                    : visitingMarket        ? Action::Trade
+                                            : Action::Rest,
+                    visitingMarket ? meeting : npc.home);
             }
         }
         if (Distance(npc.WorldPosition(), npc.destination) > .5f)
@@ -1123,7 +1185,7 @@ namespace Harbor
     {
         Perf::Scope scope(Perf::Cpu::NpcTrade);
         if (!IsMerchant(buyer) || buyer.health <= 0 || seller.hides <= 0 || buyer.coins < 6 ||
-            Distance(buyer.WorldPosition(), Site(2)) > WorldLayout::MarketRadius)
+            !WorldLayout::InVillage(buyer.WorldPosition()))
         {
             return;
         }
@@ -1142,10 +1204,12 @@ namespace Harbor
             return;
         }
         published = true;
-        // Public communication shares only the ledger's existence/content, not private possessions.
+        // Only witnesses at the market hear this; distant villages require a travelling witness.
+        Position origin = speaker ? speaker->WorldPosition() : Site(2);
         for (Npc* npc : level.Scene().Actors<Npc>(ActorKind::Npc))
         {
-            if (npc->health > 0)
+            if (npc->health > 0 && Distance(npc->WorldPosition(), origin) < 6 &&
+                level.ClearLine(npc->WorldPosition(), origin))
             {
                 npc->knowledge |= Knowledge::Ledger | Knowledge::Published;
             }
@@ -1202,18 +1266,30 @@ namespace Harbor
     void World::Step(Npc& npc, float dt)
     {
         Position before = npc.WorldPosition();
-        if (npc.waypoint < npc.path.size())
+        float budget = dt * (npc.action == Action::Raid ? 2.0f : npc.courier ? 3.6f : 1.65f);
+        for (int step = 0; step < 8 && npc.waypoint < npc.path.size() && budget > 0; ++step)
         {
+            Position current = npc.WorldPosition();
             Position target = npc.path[npc.waypoint];
-            float d = Distance(before, target);
+            float d = Distance(current, target);
             if (d < .12f)
             {
                 ++npc.waypoint;
             }
             else
             {
-                float amount = (std::min)(d, dt * (npc.action == Action::Raid ? 2.0f : 1.65f));
-                level.MoveActor(npc, (target.x - before.x) / d * amount, (target.y - before.y) / d * amount);
+                float amount = (std::min)(d, budget);
+                level.MoveActor(
+                    npc, (target.x - current.x) / d * amount, (target.y - current.y) / d * amount);
+                budget -= amount;
+                if (Distance(npc.WorldPosition(), target) < .12f)
+                {
+                    ++npc.waypoint;
+                }
+                else
+                {
+                    break;
+                }
             }
         }
         const Position after = npc.WorldPosition();
@@ -1228,12 +1304,16 @@ namespace Harbor
                 npc.mirrorModel = screenDirection < 0;
             }
         }
-        npc.model = "citizen" + std::to_string(npc.variant) + "_" +
+        npc.model = "citizen" + std::to_string(npc.appearance) + "_" +
                     std::to_string(npc.moving ? int(npc.phase * 8 / 6.2831853f) % 8 : 0);
         npc.cooldown = (std::max)(0.0f, npc.cooldown - dt);
         npc.threatTime = (std::max)(0.0f, npc.threatTime - dt);
         npc.raidCooldown = (std::max)(0.0f, npc.raidCooldown - dt);
         npc.raidWindow = (std::max)(0.0f, npc.raidWindow - dt);
+        if (npc.courier && Distance(after, WorldLayout::VillageMarket(npc.travelVillage)) < 1.2f)
+        {
+            npc.courierWait = (std::max)(0.0f, npc.courierWait - dt);
+        }
         if (npc.action == Action::Raid && npc.raidWindow <= 0)
         {
             npc.action = Action::Return;
@@ -1432,6 +1512,116 @@ namespace Harbor
         }
     }
 
+    void World::SpreadRumors(const std::vector<Npc*>& npcs)
+    {
+        Perf::Scope scope(Perf::Cpu::RumorUpdate);
+        using Cell = std::pair<int, int>;
+        std::map<Cell, std::vector<size_t>> neighbours;
+        std::vector<int> known;
+        known.reserve(npcs.size());
+        for (size_t i = 0; i < npcs.size(); ++i)
+        {
+            const Npc& npc = *npcs[i];
+            known.push_back(npc.knowledge);
+            if (npc.health > 0)
+            {
+                Position p = npc.WorldPosition();
+                neighbours[{int(std::floor(p.x / 4)), int(std::floor(p.y / 4))}].push_back(i);
+            }
+        }
+        for (size_t i = 0; i < npcs.size(); ++i)
+        {
+            const Npc& source = *npcs[i];
+            if (source.health <= 0 || !known[i])
+            {
+                continue;
+            }
+            Position p = source.WorldPosition();
+            int cx = int(std::floor(p.x / 4)), cy = int(std::floor(p.y / 4));
+            for (int y = -1; y <= 1; ++y)
+            {
+                for (int x = -1; x <= 1; ++x)
+                {
+                    auto bucket = neighbours.find({cx + x, cy + y});
+                    if (bucket == neighbours.end())
+                    {
+                        continue;
+                    }
+                    for (size_t target : bucket->second)
+                    {
+                        Npc& receiver = *npcs[target];
+                        Perf::Count(Perf::Counter::RumorCandidates);
+                        int learned = known[i] & ~receiver.knowledge;
+                        if (target == i || !learned || Distance(p, receiver.WorldPosition()) > 1.6f ||
+                            !level.ClearLine(p, receiver.WorldPosition()))
+                        {
+                            continue;
+                        }
+                        receiver.knowledge |= learned;
+                        if (learned & Knowledge::Ledger)
+                        {
+                            receiver.lastLedger = source.lastLedger;
+                            receiver.knownLedgerHolder = source.knownLedgerHolder;
+                        }
+                        receiver.lastRumorSender = source.Id();
+                        receiver.lastRumorMinute = minutes;
+                        ++receiver.rumorsReceived;
+                        int village = SettlementAt(receiver.WorldPosition());
+                        if (village >= 0)
+                        {
+                            ++villageStatistics[size_t(village)].rumorDeliveries;
+                        }
+                        Perf::Count(Perf::Counter::RumorTransfers);
+                    }
+                }
+            }
+        }
+    }
+
+    int World::VillageMood(int village, const std::vector<const Npc*>& npcs) const
+    {
+        int present = 0, conflict = 0, wounded = 0, trading = 0, news = 0;
+        for (const Npc* npc : npcs)
+        {
+            if (npc->health <= 0 || SettlementAt(npc->WorldPosition()) != village)
+            {
+                continue;
+            }
+            ++present;
+            conflict += npc->action == Action::Raid || npc->action == Action::Defend ? 1 : 0;
+            wounded += npc->health < npc->maxHealth / 2 ? 1 : 0;
+            trading += npc->action == Action::Trade ? 1 : 0;
+            news += (npc->knowledge & Knowledge::Published) ? 1 : 0;
+        }
+        return conflict                      ? 0
+               : wounded                     ? 1
+               : village == 0 && flood >= 25 ? 2
+               : village == 0 && controlled  ? 3
+               : news >= 3                   ? 4
+               : trading >= 3                ? 5
+               : present                     ? 6
+                                             : 7;
+    }
+
+    void World::UpdateVillageStatistics(float dt, const std::vector<Npc*>& npcs)
+    {
+        statisticsTime += dt;
+        if (statisticsTime < 1)
+        {
+            return;
+        }
+        Perf::Scope scope(Perf::Cpu::VillageStatistics);
+        const std::vector<const Npc*> observers(npcs.begin(), npcs.end());
+        for (int village = 0; village < WorldLayout::VillageCount; ++village)
+        {
+            auto& stats = villageStatistics[size_t(village)];
+            stats.moodSeconds[size_t(VillageMood(village, observers))] += statisticsTime;
+            stats.observedSeconds += statisticsTime;
+            Perf::Count(Perf::Counter::VillageMoodSamples);
+        }
+        statisticsTime = 0;
+    }
+
     void World::Update(float dt)
     {
         Perf::Scope scope(Perf::Cpu::NpcUpdate);
@@ -1461,37 +1651,10 @@ namespace Harbor
             if (gossipTime <= 0)
             {
                 gossipTime = 2;
-                for (Npc* a : npcs)
-                {
-                    if (a->health <= 0)
-                    {
-                        continue;
-                    }
-                    for (Npc* b : npcs)
-                    {
-                        if (b == a || b->health <= 0 ||
-                            Distance(a->WorldPosition(), b->WorldPosition()) > 1.6f ||
-                            !level.ClearLine(a->WorldPosition(), b->WorldPosition()))
-                        {
-                            continue;
-                        }
-                        if (a->knowledge & Knowledge::Ledger)
-                        {
-                            if (!(b->knowledge & Knowledge::Ledger))
-                            {
-                                b->knowledge |= Knowledge::Ledger;
-                                b->lastLedger = a->lastLedger;
-                                b->knownLedgerHolder = a->knownLedgerHolder;
-                            }
-                        }
-                        if (a->knowledge & Knowledge::Plans)
-                        {
-                            b->knowledge |= Knowledge::Plans;
-                        }
-                    }
-                }
+                SpreadRumors(npcs);
             }
         }
+        UpdateVillageStatistics(dt, npcs);
         logTime -= dt;
         if (logTime <= 0)
         {
@@ -1802,6 +1965,17 @@ namespace Harbor
                 L"\ub9c8\uc744 \uc0ac\ub78c\ub4e4\uc740 \uc6b0\ub9ac\uac00 \uc232\uc5d0\uc11c \ubb58 \uba39\uace0 \uc0ac\ub294\uc9c0 \uad00\uc2ec\ub3c4 \uc5c6\uc9c0. \uadf8\ub807\ub2e4\uace0 \uc6b0\ub9ac\uac00 \ud558\ub294 \uc77c\uc774 \ub5b3\ub5b3\ud558\ub2e4\ub294 \uac74 \uc544\ub2c8\uc57c.";
             answer =
                 L"\uc774 \uadfc\ucc98\uc5d0\uc120 \uc8fc\uba38\ub2c8\ub97c \uc798 \uac04\uc218\ud574. \uad81\ud574\uc11c \ube7c\uc557\ub294 \uc0ac\ub78c\ub3c4, \uadf8\ub0e5 \uc26c\uc6cc\uc11c \ube7c\uc557\ub294 \uc0ac\ub78c\ub3c4 \uc788\uc73c\ub2c8\uae4c.";
+        }
+        else if (npc && npc->homeVillage != 0)
+        {
+            context =
+                (npc->knowledge & Knowledge::Published)
+                    ? L"\ubb34\uc5f0\ud56d\uc5d0\uc11c \uc61b \uc7a5\ubd80\ub97c \uacf5\uac1c\ud588\ub2e4\uba70? \uc5ec\uae30\uae4c\uc9c0 \uc628 \uc0ac\ub78c\uc774 \uc804\ud574 \uc92c\uc5b4. \ub204\uad6c\ub294 \uc9c4\uc2e4\uc744 \ubc18\uae30\uace0 \ub204\uad6c\ub294 \uc774\ub984\uc774 \ub4dc\ub7ec\ub0a0\uae4c \uac81\ub0b8\ub2e4\ub354\ub77c."
+                    : L"\ubb34\uc5f0\ud56d\uc758 \uc790\uc138\ud55c \uc0ac\uc815\uc740 \uc544\uc9c1 \ubabb \ub4e4\uc5c8\uc5b4. \uae38\uc744 \uac74\ub108\uc628 \uc0ac\ub78c\uc774 \uc788\uc5b4\uc57c \uc18c\uc2dd\ub3c4 \ub2ff\uc9c0. \uc5ec\uae30\uc120 \uc7a5\uc0ac\ud558\uace0 \uc544\ud508 \uc2dd\uad6c \ucc59\uae30\uae30\ub3c4 \ubc14\ube60.";
+            answer =
+                npc->courier
+                    ? L"\uc774\uc6c3 \uc7a5\ud130\uae4c\uc9c0 \uc9c1\uc811 \uac78\uc5b4\uac00. \ub4e4\uc740 \uc774\uc57c\uae30\ub3c4 \uac70\uae30\uc11c \ub9cc\ub09c \uc0ac\ub78c\ud55c\ud14c\ub9cc \uc804\ud558\uc9c0. \ub0b4\uac00 \ub3cc\uc544\uc624\uae30 \uc804\uc5d0 \uc77c\uc774 \ub2ec\ub77c\uc84c\uc744 \uc218\ub3c4 \uc788\uc5b4."
+                    : L"\ud070\uae38\uc5d0 \uc9d0\uc2b9\uc774 \ub9ce\uc544\uc84c\uc5b4. \uc7a5\uc0ac\uafbc\ub4e4\uc774 \uc624\uac00\uc57c \uba39\uc744\uac70\ub9ac\ub3c4 \uc18c\uc2dd\ub3c4 \ub4e4\uc5b4\uc624\ub294\ub370, \ud63c\uc790 \ub5a0\ub098\uae30\ub294 \uac81\ub098\ub354\ub77c.";
         }
         else if (npc && npc->job == Job::Scholar)
         {
@@ -2116,9 +2290,11 @@ namespace Harbor
     std::wstring World::AreaName() const
     {
         Position hero = level.Player().WorldPosition();
-        if (WorldLayout::InVillage(hero))
+        int village = WorldLayout::VillageAt(hero);
+        if (village >= 0)
         {
-            return L"\ubb34\uc5f0\ud56d \u00b7 \ub9c8\uc744 \ubcf4\ud638 \uad6c\uc5ed (\uc8fc\ubbfc\uc758 \uc790\ub3d9 \uc57d\ud0c8 \uc5c6\uc74c)";
+            return std::wstring(WorldLayout::VillageName(village)) +
+                   L" \u00b7 \ub9c8\uc744 \ubcf4\ud638 \uad6c\uc5ed";
         }
         if (Distance(hero, WorldLayout::RaiderCamp()) < WorldLayout::RaiderTerritoryRadius + 8)
         {
@@ -2250,14 +2426,20 @@ namespace Harbor
                 << ",\"dialogue\":" << JsonWide(npc->line) << ",\"faction\":" << npc->faction
                 << ",\"active\":" << (npc->IsActive() ? "true" : "false")
                 << ",\"alive\":" << (npc->health > 0 ? "true" : "false") << ",\"home_settlement_id\":\""
-                << SettlementId(SettlementAt(npc->home)) << "\",\"current_settlement_id\":\""
+                << SettlementId(npc->homeVillage) << "\",\"current_settlement_id\":\""
                 << SettlementId(SettlementAt(p)) << "\",\"job\":\"" << JobKey(npc->job) << "\",\"action\":\""
                 << ActionKey(npc->action) << "\",\"health\":" << npc->health
                 << ",\"max_health\":" << npc->maxHealth << ",\"coins\":" << npc->coins
                 << ",\"hides\":" << npc->hides << ",\"food\":" << npc->food
                 << ",\"enlightenment\":" << npc->enlightenment << ",\"experience\":" << npc->experience
                 << ",\"affinity\":" << npc->affinity << ",\"witnessed_karma\":" << npc->karma
-                << ",\"knowledge_mask\":" << npc->knowledge << ",\"raid_weight\":" << npc->raidWeight
+                << ",\"knowledge_mask\":" << npc->knowledge << ",\"appearance_id\":" << npc->appearance
+                << ",\"is_courier\":" << (npc->courier ? "true" : "false")
+                << ",\"travel_destination_settlement_id\":\"" << SettlementId(npc->travelVillage) << "\""
+                << ",\"last_rumor_sender_actor_id\":" << npc->lastRumorSender
+                << ",\"last_rumor_world_minute\":" << npc->lastRumorMinute
+                << ",\"rumor_messages_received\":" << npc->rumorsReceived
+                << ",\"raid_weight\":" << npc->raidWeight
                 << ",\"raid_cooldown_seconds\":" << npc->raidCooldown << ",\"home_x\":" << npc->home.x
                 << ",\"home_y\":" << npc->home.y
                 << ",\"known_ledger_holder_actor_id\":" << npc->knownLedgerHolder
@@ -2292,9 +2474,11 @@ namespace Harbor
                 }
             }
         }
-        out << "],\"counts\":{\"npcs_total\":" << npcs.size() << ",\"npcs_alive\":" << aliveNpcs
-            << ",\"npcs_dead\":" << npcs.size() - size_t(aliveNpcs) << ",\"monsters_total\":" << monstersTotal
-            << ",\"monsters_alive\":" << monstersAlive
+        out << "],\"counts\":{\"villages_total\":" << WorldLayout::VillageCount
+            << ",\"npcs_per_village_target\":" << WorldLayout::NpcsPerVillage
+            << ",\"monsters_target\":" << WorldLayout::MonsterCount << ",\"npcs_total\":" << npcs.size()
+            << ",\"npcs_alive\":" << aliveNpcs << ",\"npcs_dead\":" << npcs.size() - size_t(aliveNpcs)
+            << ",\"monsters_total\":" << monstersTotal << ",\"monsters_alive\":" << monstersAlive
             << ",\"monsters_dead_or_inactive\":" << monstersTotal - monstersAlive
             << ",\"monsters_alive_by_kind\":[" << monstersByKind[0] << ',' << monstersByKind[1] << ','
             << monstersByKind[2] << "]},\"settlements\":[";
@@ -2304,12 +2488,12 @@ namespace Harbor
             const auto& place = places[i];
             int residents = 0, deadResidents = 0, present = 0, visitors = 0;
             int wounded = 0, conflicts = 0, trading = 0, wealth = 0, health = 0, maxHealth = 0;
-            int ledgerKnown = 0, plansKnown = 0, publishedKnown = 0;
+            int ledgerKnown = 0, plansKnown = 0, publishedKnown = 0, localNews = 0;
             std::array<int, 4> factions{};
             std::array<double, 4> weights{}; // health, wealth, enlightenment, raid
             for (const Npc* npc : npcs)
             {
-                bool home = SettlementAt(npc->home) == int(i);
+                bool home = npc->homeVillage == int(i);
                 bool here = SettlementAt(npc->WorldPosition()) == int(i);
                 if (home && npc->health <= 0)
                 {
@@ -2326,6 +2510,7 @@ namespace Harbor
                     wounded += npc->health < npc->maxHealth / 2 ? 1 : 0;
                     conflicts += npc->action == Action::Raid || npc->action == Action::Defend ? 1 : 0;
                     trading += npc->action == Action::Trade ? 1 : 0;
+                    localNews += (npc->knowledge & Knowledge::Published) ? 1 : 0;
                 }
                 if (!home)
                 {
@@ -2347,13 +2532,7 @@ namespace Harbor
                 weights[2] += npc->enlightenmentWeight;
                 weights[3] += npc->raidWeight;
             }
-            const char* mood = conflicts                ? "conflict"
-                               : wounded                ? "wounded"
-                               : i == 0 && flood >= 25  ? "flooded"
-                               : i == 0 && controlled   ? "controlled"
-                               : i == 0 && published    ? "restless"
-                               : !residents && !present ? "uninhabited"
-                                                        : "quiet";
+            const char* mood = MoodKeys[VillageMood(int(i), npcs)];
             size_t dominant = 0;
             for (size_t w = 1; w < weights.size(); ++w)
             {
@@ -2377,8 +2556,24 @@ namespace Harbor
                 << "\",\"goal_weight_totals\":{\"health\":" << weights[0] << ",\"wealth\":" << weights[1]
                 << ",\"enlightenment\":" << weights[2] << ",\"raid\":" << weights[3]
                 << "},\"rumors\":{\"ledger_known\":" << ledgerKnown << ",\"plans_known\":" << plansKnown
-                << ",\"published_known\":" << publishedKnown << "},\"faction_population\":[" << factions[0]
-                << ',' << factions[1] << ',' << factions[2] << ',' << factions[3] << "]}";
+                << ",\"published_known\":" << publishedKnown << ",\"published_present\":" << localNews
+                << "},\"rumor_deliveries\":" << villageStatistics[i].rumorDeliveries
+                << ",\"faction_population\":[" << factions[0] << ',' << factions[1] << ',' << factions[2]
+                << ',' << factions[3] << "]"
+                << ",\"mood_statistics\":{\"sample_interval_seconds\":1,\"observed_seconds\":"
+                << villageStatistics[i].observedSeconds << ",\"seconds\":{";
+            for (size_t m = 0; m < villageStatistics[i].moodSeconds.size(); ++m)
+            {
+                out << (m ? "," : "") << '"' << MoodKeys[m] << "\":" << villageStatistics[i].moodSeconds[m];
+            }
+            out << "},\"percent\":{";
+            for (size_t m = 0; m < villageStatistics[i].moodSeconds.size(); ++m)
+            {
+                double observed = villageStatistics[i].observedSeconds;
+                out << (m ? "," : "") << '"' << MoodKeys[m]
+                    << "\":" << (observed > 0 ? villageStatistics[i].moodSeconds[m] * 100 / observed : 0);
+            }
+            out << "}}}";
         }
         out << "],\"objective\":" << JsonWide(Objective()) << ",\"consequence\":" << JsonWide(Consequence())
             << ",\"clock\":" << JsonWide(Clock()) << ",\"recent_events\":[";

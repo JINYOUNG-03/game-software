@@ -29,7 +29,7 @@ foreach ($contract in @('Player().mirrorModel = facingX < 0', 'attackAnimation >
     if (-not $level.Contains($contract)) { throw "Missing player animation contract: $contract" }
 }
 foreach ($contract in @('npc.mirrorModel = screenDirection < 0', 'npc.phase += travelled * 5.5f',
-                       'npc.visualHeight = CharacterPresentation::NpcVisualHeight(i)'))
+                       'npc.visualHeight = CharacterPresentation::NpcVisualHeight(appearance)'))
 {
     if (-not $world.Contains($contract)) { throw "Missing NPC animation contract: $contract" }
 }

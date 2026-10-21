@@ -5,9 +5,9 @@ const MonitorData = (() => {
     const jobs = { engineer: "수로 기술자", clerk: "조합 기록원", guard: "조사관", broker: "중개상",
         apprentice: "수습 수리공", hunter: "사냥꾼", raider: "약탈자", merchant: "상인", scholar: "학자", resident: "주민" };
     const actions = { rest: "몸 추스르기", hunt: "사냥", raid: "약탈", trade: "거래", study: "깨달음 찾기",
-        investigate: "조사", return: "귀환", patrol: "순찰", dead: "사망", defend: "맞서기" };
+        investigate: "조사", return: "귀환", patrol: "순찰", dead: "사망", defend: "맞서기", travel: "마을 간 왕래" };
     const moods = { conflict: "충돌 중", wounded: "부상자 발생", flooded: "침수 불안", controlled: "현장 통제",
-        restless: "소문에 술렁임", quiet: "일상 유지", uninhabited: "상주 인원 없음" };
+        restless: "소문에 술렁임", busy: "장터 활기", quiet: "일상 유지", uninhabited: "현장 인원 없음" };
     const kinds = { village: "마을", outpost: "사냥꾼 거점", waystation: "주막", shrine: "산사", raider_camp: "약탈자 야영지" };
     const tendencies = { survival: "생존", wealth: "재산", enlightenment: "깨달음", raiding: "약탈", none: "집계 대상 없음" };
     const factions = ["관청", "조합", "주민", "외지인"];
@@ -76,8 +76,14 @@ const MonitorData = (() => {
         return world.settlements.find(place => place.id === id)?.name || "마을 밖";
     }
 
+    function moodSummary(stats) {
+        if (!stats || number(stats.observed_seconds) <= 0) return "분위기 표본 수집 중";
+        return Object.entries(stats.percent || {}).filter(([, value]) => Number.isFinite(value) && value > 0)
+            .map(([key, value]) => `${moods[key] || key} ${value.toFixed(1)}%`).join(" / ");
+    }
+
     return { jobs, actions, moods, kinds, tendencies, factions, number, signed,
-        validateSnapshot, selectNpcs, knowledge, goal, delta, settlementName };
+        validateSnapshot, selectNpcs, knowledge, goal, delta, settlementName, moodSummary };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = MonitorData;
 
@@ -141,6 +147,9 @@ if (typeof document !== "undefined") {
             pair(list, "주요 성향", D.tendencies[place.tendency] || place.tendency);
             pair(list, "세력 구성", place.faction_population.map((count, i) => `${D.factions[i] || i} ${count}`).join(" / "));
             pair(list, "침수", `${place.flood_percent}%`);
+            pair(list, "소문 전달", `현장 누적 ${D.number(place.rumor_deliveries)}회 · 공개 소식 보유 현장 인원 ${D.number(place.rumors.published_present)}명`);
+            pair(list, "분위기 관측", `플레이 시간 ${D.number(place.mood_statistics?.observed_seconds).toFixed(0)}초 · 약 1초 표본`);
+            pair(list, "분위기 비율", D.moodSummary(place.mood_statistics));
             card.append(list);
             for (const [key, label] of [["ledger_known", "장부 소문"], ["plans_known", "수문 계획"], ["published_known", "공개 소식"]]) {
                 const row = element("div", undefined, "rumor");
@@ -178,6 +187,9 @@ if (typeof document !== "undefined") {
         pair(list, "태도 / 목격 평가", `플레이어 친밀도 ${npc.affinity} / 목격한 행위 평가 ${npc.witnessed_karma}`);
         pair(list, "약탈 대기", `${npc.raid_cooldown_seconds}초`);
         pair(list, "보유 지식", D.knowledge(npc.knowledge_mask));
+        pair(list, "마을 왕래", npc.is_courier ? `${D.settlementName(world, npc.travel_destination_settlement_id)} 방향 · 상인 겸 소문 전달` : "일반 주민");
+        const sender = world.npcs.find(person => person.actor_id === npc.last_rumor_sender_actor_id);
+        pair(list, "소문 전달 이력", `${D.number(npc.rumor_messages_received)}회 수신 · 최근 전달자 ${sender?.name || "없음"}`);
         panel.replaceChildren(element("h3", `${npc.name} · Actor ${npc.actor_id}`), list, element("p", npc.dialogue || "대사 없음"));
     }
 

@@ -61,6 +61,7 @@ namespace Level
         float phase = 0;
         float cooldown = 0;
         float respawn = 0;
+        Position deathPosition;
         float flash = 0;
         bool moving = false;
 
@@ -189,6 +190,7 @@ namespace Level
         mutable std::uint64_t collisionRevision = 0;
         bool generating = false;
         std::mt19937 random;
+        std::vector<Position> spawnCandidates;
         float attackCooldown = 0;
         bool attackImpactPending = false;
         bool attackImpactReady = false;
@@ -210,6 +212,7 @@ namespace Level
         Position ToGrid(const Position& world) const;
         Position ToWorld(const Position& grid) const;
         void Kill(Enemy& enemy, bool playerCredit);
+        bool RespawnEnemy(Enemy& enemy);
         void Notify(const std::wstring& text);
     };
 } // namespace Level

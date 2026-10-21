@@ -1909,14 +1909,15 @@ namespace
             marker(goal->WorldPosition(), 1, .85f, .15f, 8 + std::sin(elapsed * 4), true);
         }
         marker(PlayerPosition(), 1, 1, 1, 6, true);
-        std::wstring title =
-            worldMap ? L"\uc804\uccb4 \uc9c0\ub3c4 256x256 [M]" : L"\uc8fc\ubcc0 \uc9c0\ub3c4 64x64 [M]";
+        std::wstring title = worldMap ? L"\uc804\uccb4 \uc9c0\ub3c4 " + std::to_wstring(MapSize) + L"x" +
+                                            std::to_wstring(MapSize) + L" [M]"
+                                      : L"\uc8fc\ubcc0 \uc9c0\ub3c4 64x64 [M]";
         DrawText(1040, 38, title.c_str(), .97f, .89f, .67f);
         DrawText(1040, 290, L"\uae08\ube5b \ubaa9\ud45c / \ud770\uc0c9 \ub098", .97f, .9f, .7f);
         DrawText(1040,
                  313,
                  worldMap ? L"\ubd89\uc740 \uac70\uc810: \uc57d\ud0c8\uc790"
-                          : L"\uc804\uccb4 256x256 \uc911 \uc77c\ubd80",
+                          : L"\uc804\uccb4 \uc6d4\ub4dc \uc911 \uc77c\ubd80",
                  .83f,
                  .87f,
                  .71f);

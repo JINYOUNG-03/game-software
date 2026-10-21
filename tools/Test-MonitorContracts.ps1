@@ -32,7 +32,8 @@ foreach ($contract in @('worldMonitor.Start()', 'worldMonitor.Stop()',
 }
 foreach ($key in @('counts', 'settlements', 'name', 'rumors', 'mood', 'mood_source', 'population',
                   'npcs_present', 'goal_weight_totals', 'faction_population', 'recent_events',
-                  'home_settlement_id', 'current_settlement_id', 'monsters_alive', 'monsters_total'))
+                  'home_settlement_id', 'current_settlement_id', 'monsters_alive', 'monsters_total',
+                  'mood_statistics', 'observed_seconds', 'rumor_deliveries', 'last_rumor_sender_actor_id', 'is_courier'))
 {
     if (-not $world.Contains('\"' + $key + '\"')) { throw "Missing JSON state key: $key" }
 }

@@ -10,7 +10,7 @@
 - 렌더 큐는 최대 8,192개 사각형/마름모/임의 사각형을 순서대로 인스턴싱한다.
   색상, 재질, UV는 인스턴스 속성이다. 재질별 전역 재정렬은 하지 않는다.
 - 64개의 GPU 배치 슬롯에서 변하지 않은 데이터를 재사용한다. 변경 시 배치 단위 업로드한다.
-  256×256 월드의 지형·환경은 32×32 청크로 묶고 화면 주변 그룹만 탐색한다.
+  384×384 월드의 지형·환경은 32×32 청크 144개로 묶고 화면 주변 그룹만 탐색한다.
   모든 지형 Actor/충돌은 메모리에 유지한다. 디스크 스트리밍이나 메모리 해제는 아니다.
 - 미니맵 지형은 240×225 텍스처에 캐싱한다. 지형 위치/종류/표시/구성 변경 시 갱신한다.
   움직이는 마커는 매 프레임 별도로 그린다. 기본은 64×64 지역 지도이며 8타일씩 이동하는
@@ -63,7 +63,7 @@
 
 모든 CPU/GPU 시간은 ms, 크기는 bytes, 누적 이벤트는 count 단위다.
 안정적인 영문 snake_case 키를 사용한다. 스키마를 바꾸면 schema_version을 올린다.
-현재 스키마는 7이며 분석기는 기존 스키마 1·2·3·4·5·6 로그도 읽는다.
+현재 스키마는 8이며 분석기는 기존 스키마 1·2·3·4·5·6·7 로그도 읽는다.
 
 | 필드 | 의미 |
 |---|---|
@@ -116,9 +116,13 @@
 | counters.shadow_casters | 이번 프레임에 방향성 그림자와 접지 그림자를 생성한 Actor 수 |
 | cpu_ms.character_build / counters.character_models_built | 외형 캐시 재생성 중 캐릭터 도형 생성 시간 / 생성 모델 수. model_build의 자식 구간이므로 합산하지 않는다 |
 | counters.character_instances / mirrored_character_instances | 프레임에 제출한 캐릭터 도형 인스턴스 수 / 그중 좌우 반전한 도형 수. NPC 인구나 드로우콜 수가 아님 |
+| cpu_ms.rumor_update / counters.rumor_candidates / rumor_transfers | 2초 간격 근접 소문 처리 시간 / 공간 버킷 내 후보 검사 수 / 새 지식 전달 메시지 수(지식 비트 수가 아님) |
+| counters.courier_departures | 장터 체류를 마치고 다음 마을로 출발한 횟수. 최초 출발은 제외하며 고유 전달꾼 수가 아님 |
+| cpu_ms.village_statistics / counters.village_mood_samples | 약 1초 간격 마을 분위기 집계 시간 / 집계한 마을 표본 수 |
+| cpu_ms.enemy_respawn / counters.respawn_candidates / enemy_respawns | 몹 재생성 탐색 시간 / 검사한 캐시 후보 수 / 성공한 재생성 수 |
 
 로컬 HTML 모니터는 WORLD_MONITOR.md를 따른다. 브라우저가 수신하는 모니터 스키마 1은
-프로파일링 스키마 7과 별개다. 최대 1초 간격으로 게시하고, 구독이 5초간 없으면 생성하지 않는다.
+프로파일링 스키마 8과 별개다. 최대 1초 간격으로 게시하고, 구독이 5초간 없으면 생성하지 않는다.
 일시정지 중에도 모니터 표본과 전송 통계는 갱신한다. 네트워크 스레드는 프로파일러의
 프레임 배열에 직접 접근하지 않고 atomic 통계를 게임 스레드에서 회수한다.
 world_state에도 이름·집계·최근 사건이 추가되며 영문 키와 단위는 기존 규약을 유지한다.
@@ -138,7 +142,12 @@ raid_cooldown_seconds는 재약탈 대기 초다. action=defend는 반격이며 
 world_state는 진단용 전지적 표본이다. 게임 AI는 이 로그를 읽지 않으며 시야/대화/소문으로
 얻은 knowledge_mask와 known_ledger_holder_actor_id, 마지막 목격 위치를 사용한다.
 knowledge_mask 비트는 ledger=1, key=2, plans=4, published=8이다.
-actor_id는 실행 내 식별자, definition_id는 0~17 고정 인물 식별자다(0~4는 미라/도윤/세라트/이안/하람).
+actor_id는 실행 내 식별자, definition_id는 0~99 인물 식별자다(0~4는 미라/도윤/세라트/이안/하람).
+appearance_id 0~17은 공유 외형이며 인물 ID와 다르다. 등록 거주지는 home_settlement_id를 사용한다.
+is_courier/travel_destination_settlement_id는 왕래 인원과 목적 마을, last_rumor_sender_actor_id/
+last_rumor_world_minute/rumor_messages_received는 실제 근접 전달 이력이다.
+settlements.mood_statistics.seconds/percent는 일시정지를 제외한 약 1초 표본의 세션 누적 시간·비율이다.
+소문 처리는 story_update, 마을 집계는 npc_update, 몹 재생성은 ai의 자식 구간이므로 중첩 시간을 더하지 않는다.
 world_minute는 첫날 자정부터의 누적 게임 분, health는 HP, coins는 화폐 수,
 food/hides는 보유 수량, enlightenment/experience는 누적 성장 수치다.
 affinity/witnessed_karma/faction_trust는 -100~100, 목표 weight는 무차원 상대 우선도다.
