@@ -6,6 +6,7 @@
 // Shared by cached poses, gameplay impact timing and the existing SwordTrail Actor.
 namespace CharacterPresentation
 {
+    constexpr float HumanWidthScale = 1.40f;
     constexpr int AttackFrames = 12;
     constexpr float AttackDuration = .38f;
     constexpr float AttackImpactTime = AttackDuration * .55f;

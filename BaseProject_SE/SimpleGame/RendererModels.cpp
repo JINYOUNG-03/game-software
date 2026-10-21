@@ -7,6 +7,7 @@
 #include <wrl/client.h>
 #include "Renderer.h"
 #include "Profiler.h"
+#include "CharacterPresentation.h"
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -250,16 +251,19 @@ void Renderer::DrawModel(const std::string& name, float x, float y, bool mirrorX
         return;
     }
     Perf::Count(Perf::Counter::ResourceLookupHit);
-    if (name.compare(0, 4, "hero") == 0 || name.compare(0, 7, "citizen") == 0)
+    const bool character = name.compare(0, 4, "hero") == 0 || name.compare(0, 7, "citizen") == 0;
+    if (character)
     {
         Perf::Count(Perf::Counter::CharacterInstances);
     }
     const auto& r = sprite->rect;
+    const float widthScale = character || name == "corpse" ? CharacterPresentation::HumanWidthScale : 1.0f;
     const float color[] = {1, 1, 1, 1};
     const bool terrain = sprite->material >= 23 && sprite->material <= 25;
-    QueueRect(x + r[0] + r[2] * .5f,
+    // Scale local offsets with the width so the Actor's world foot anchor never drifts.
+    QueueRect(x + (r[0] + r[2] * .5f) * widthScale,
               y + r[1] + r[3] * .5f,
-              r[2] + (terrain ? 1.0f : 0),
+              r[2] * widthScale + (terrain ? 1.0f : 0),
               r[3] + (terrain ? .5f : 0),
               color,
               int(sprite->material),
@@ -281,13 +285,14 @@ void Renderer::DrawResourceSwordTrail(int frame, int direction, float x, float y
     }
     const auto& a = current->weapon;
     const auto& b = previous->weapon;
-    DrawQuad(x + a[0],
+    const float widthScale = CharacterPresentation::HumanWidthScale;
+    DrawQuad(x + a[0] * widthScale,
              y + a[1],
-             x + a[2],
+             x + a[2] * widthScale,
              y + a[3],
-             x + b[2],
+             x + b[2] * widthScale,
              y + b[3],
-             x + b[0],
+             x + b[0] * widthScale,
              y + b[1],
              .84f,
              .91f,

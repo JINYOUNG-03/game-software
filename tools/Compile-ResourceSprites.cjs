@@ -292,10 +292,155 @@ function sample(asset, clip, phase)
     return globals;
 }
 
+function subtract(a, b)
+{
+    return a.map((v, i) => v - b[i]);
+}
+
+function add(a, b)
+{
+    return a.map((v, i) => v + b[i]);
+}
+
+function dot(a, b)
+{
+    return a.reduce((sum, v, i) => sum + v * b[i], 0);
+}
+
+function cross(a, b)
+{
+    return [ a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0] ];
+}
+
+function normalize(v)
+{
+    const length = Math.hypot(...v);
+    assert(length > 1e-8, "Degenerate sword pose basis");
+    return v.map(n => n / length);
+}
+
+function rotationBetween(from, to)
+{
+    const a = normalize(from), b = normalize(to), cosine = Math.max(-1, Math.min(1, dot(a, b)));
+    if (cosine < -.99999)
+    {
+        const axis = normalize(cross(a, Math.abs(a[0]) < .8 ? [ 1, 0, 0 ] : [ 0, 1, 0 ]));
+        return trs(undefined, [...axis, 0 ]);
+    }
+    const q = [...cross(a, b), 1 + cosine ], length = Math.hypot(...q);
+    return trs(undefined, q.map(n => n / length));
+}
+
+// Model-space sword keys replace the supplied punch only for the armed protagonist.
+// Shoulder/elbow/wrist matrices drive the actual skinned arm, not a detached sword overlay.
+const swordKeys = [
+    {time : 0, hand : [ -.34, 1.04, .17 ], blade : [ -.08, .12, .99 ], twist : 0, guard : 0},
+    {time : .30, hand : [ -.40, 1.55, .08 ], blade : [ -.55, .78, .30 ], twist : -12, guard : 1},
+    {time : .42, hand : [ -.37, 1.52, .17 ], blade : [ -.55, .70, .45 ], twist : -10, guard : 1},
+    {time : .56, hand : [ -.16, 1.30, .40 ], blade : [ .15, -.15, .98 ], twist : 9, guard : 1},
+    {time : .72, hand : [ .10, 1.12, .18 ], blade : [ .78, -.58, .18 ], twist : 20, guard : .8},
+    {time : 1, hand : [ -.34, 1.04, .17 ], blade : [ -.08, .12, .99 ], twist : 0, guard : 0}
+];
+
+function swordPose(phase)
+{
+    const time = Math.max(0, Math.min(1, phase));
+    let index = 0;
+    while (index + 1 < swordKeys.length - 1 && swordKeys[index + 1].time <= time)
+    {
+        index++;
+    }
+    const a = swordKeys[index], b = swordKeys[index + 1];
+    const linear = (time - a.time) / (b.time - a.time);
+    const t = linear * linear * (3 - 2 * linear);
+    const mix = (x, y) => x + (y - x) * t;
+    return {
+        hand : a.hand.map((v, i) => mix(v, b.hand[i])),
+        blade : normalize(a.blade.map((v, i) => mix(v, b.blade[i]))),
+        twist : mix(a.twist, b.twist),
+        guard : mix(a.guard, b.guard)
+    };
+}
+
+function poseSwordArm(asset, globals, phase)
+{
+    const {doc} = asset, pose = swordPose(phase);
+    const node = name => {
+        const index = doc.nodes.findIndex(n => n.name === name);
+        assert(index >= 0, `Missing sword skeleton node ${name}`);
+        return index;
+    };
+    const position = index => globals[index].slice(12, 15);
+    const root = position(node("root"));
+    const spine = node("spine"), pivot = position(spine);
+    const torso = mul(trs(pivot), mul(axis(1, pose.twist), trs(pivot.map(v => -v))));
+
+    function twist(index)
+    {
+        globals[index] = mul(torso, globals[index]);
+        for (const child of doc.nodes[index].children ?? [])
+        {
+            twist(child);
+        }
+    }
+
+    twist(spine);
+
+    function solve(side, target, pole, blade)
+    {
+        const upper = node("upper_arm." + side), lower = node("forearm." + side), hand = node("hand." + side);
+        const shoulder = position(upper), elbow = position(lower), wrist = position(hand);
+        const lengthA = Math.hypot(...subtract(elbow, shoulder));
+        const lengthB = Math.hypot(...subtract(wrist, elbow));
+        const vector = subtract(target, shoulder), direction = normalize(vector);
+        const distance = Math.max(Math.abs(lengthA - lengthB) + .001,
+                                  Math.min(lengthA + lengthB - .001, Math.hypot(...vector)));
+        const reach = add(shoulder, direction.map(v => v * distance));
+        const along = (lengthA * lengthA - lengthB * lengthB + distance * distance) / (2 * distance);
+        const height = Math.sqrt(Math.max(0, lengthA * lengthA - along * along));
+        const bend = normalize(subtract(pole, direction.map(v => v * dot(pole, direction))));
+        const bent = add(shoulder, add(direction.map(v => v * along), bend.map(v => v * height)));
+
+        function aim(index, origin, before, after)
+        {
+            const matrix = mul(rotationBetween(before, after), globals[index]);
+            matrix.splice(12, 3, ...origin);
+            globals[index] = matrix;
+        }
+
+        aim(upper, shoulder, subtract(elbow, shoulder), subtract(bent, shoulder));
+        aim(lower, bent, subtract(wrist, elbow), subtract(reach, bent));
+        aim(hand, reach, subtract(wrist, elbow), subtract(reach, bent));
+        if (blade)
+        {
+            // The source hand's -Z points forward; its +Y follows the fingers.
+            const z = blade.map(v => -v);
+            const x = normalize(cross(subtract(reach, bent), z)), y = cross(z, x);
+            globals[hand] = [...x, 0, ...y, 0, ...z, 0, ...reach, 1 ];
+        }
+    }
+
+    // The root's vertical walk bob is retained; no new horizontal root motion is introduced.
+    solve("R", add(root, pose.hand), [ -1, -.05, -.35 ], pose.blade);
+    if (pose.guard > 0)
+    {
+        const wrist = position(node("hand.L"));
+        const guard = add(root, [ .29, 1.23, .20 ]);
+        solve("L", wrist.map((v, i) => v + (guard[i] - v) * pose.guard), [ 1, -.1, -.3 ]);
+    }
+    return globals;
+}
+
 function geometry(part, defaultClip, phase)
 {
     const asset = load(part.asset), {doc, accessor, materials} = asset;
-    const globals = sample(asset, part.clip ?? defaultClip, part.phase ?? phase);
+    const clip = part.clip ?? defaultClip, progress = part.phase ?? phase;
+    const sword = part.weapon && clip === "sword_slash";
+    const globals = sample(asset, sword ? "idle" : clip, sword ? 0 : progress);
+    if (part.weapon)
+    {
+        poseSwordArm(asset, globals, sword ? progress : 0);
+    }
     const outer = transform(part), triangles = [];
     doc.nodes.forEach((node, ni) => {
         if (node.mesh === undefined)
@@ -358,26 +503,26 @@ function geometry(part, defaultClip, phase)
         const hand = doc.nodes.findIndex(n => n.name === "hand.R");
         assert(hand >= 0);
         // A resource beam is reshaped into a blade, grip and guard and bound to the animated hand.
-        const socket = mul(outer, globals[hand]);
+        const socket = mul(outer, mul(globals[hand], mul(trs([ 0, .06, 0 ]), axis(1, 180))));
         triangles.weapon = {hand : point(socket, [ 0, 0, 0 ]), tip : point(socket, [ 0, 0, .8 ])};
         for (const piece of [{
                  asset : "module_beam_2m",
-                 scale : [ .025, .10, .34 ],
+                 scale : [ .24, .06, .3545454545 ],
                  rotateY : 90,
-                 translate : [ 0, -.025, .36 ],
+                 translate : [ 0, -.0066, .41 ],
                  color : [ .66, .72, .71, 1 ]
              },
                              {
                                  asset : "module_beam_2m",
-                                 scale : [ .020, .11, .09 ],
+                                 scale : [ .13, .14, .0818181818 ],
                                  rotateY : 90,
-                                 translate : [ 0, -.025, -.07 ],
+                                 translate : [ 0, -.0154, -.07 ],
                                  color : [ .16, .09, .05, 1 ]
                              },
                              {
                                  asset : "module_beam_2m",
-                                 scale : [ .10, .11, .15 ],
-                                 translate : [ 0, -.025, .045 ],
+                                 scale : [ .10, .10, .15 ],
+                                 translate : [ 0, -.011, .025 ],
                                  color : [ .37, .25, .10, 1 ]
                              }])
         {
@@ -661,7 +806,7 @@ function compile()
                 for (let frame = 0; frame < 12; frame++)
                 {
                     const key = `hero_attack${frame}@${d}`;
-                    emit(key, [ {asset : humans[h], weapon : true} ], "attack", frame / 11, d);
+                    emit(key, [ {asset : humans[h], weapon : true} ], "sword_slash", frame / 11, d);
                     for (const prefix of ["hero_attack_up", "hero_attack_down"])
                         aliases.set(`${prefix}${frame}@${d}`, aliases.get(key));
                 }
@@ -786,8 +931,8 @@ function compile()
         revision,
         source_assets : [...usedSources ].map(([ id, sha256 ]) => ({id, sha256})),
         compiler_sha256 : crypto.createHash("sha256")
-                             .update(fs.readFileSync(__filename, "utf8").replace(/\r\n/g, "\n"))
-                             .digest("hex"),
+                              .update(fs.readFileSync(__filename, "utf8").replace(/\r\n/g, "\n"))
+                              .digest("hex"),
         atlas_sha256 : crypto.createHash("sha256").update(png).digest("hex"),
         bindings_sha256 : crypto.createHash("sha256").update(binary).digest("hex"),
         atlas_width : atlasWidth,
@@ -799,7 +944,8 @@ function compile()
             "four screen directions, eight walk samples, twelve attack samples, in-place root vertical only",
         projection : "screen_x=(glb_x-glb_z)*24; screen_y=(glb_x+glb_z)*12-glb_y*48",
         weapon :
-            "resource beam geometry shaped into blade/grip/guard, attached to hand.R; supplied attack is an unarmed clip",
+            "resource beam blade/grip/guard at hand.R palm; corrected -Z grip, authored sword_slash with two-bone arm IK",
+        sword_animation_revision : 1,
         game_build_performed : false,
         game_execution_performed : false,
         bindings : records.map(([ key, i ]) => ({
@@ -863,5 +1009,7 @@ module.exports = {
     raster,
     decodePng,
     encodePng,
-    recipes
+    recipes,
+    swordPose,
+    poseSwordArm
 };
