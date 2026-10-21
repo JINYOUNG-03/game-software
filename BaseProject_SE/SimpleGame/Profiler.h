@@ -64,6 +64,7 @@ namespace Perf
         RumorUpdate,
         VillageStatistics,
         EnemyRespawn,
+        ResourceLoad,
         Count
     };
     enum class Counter
@@ -132,6 +133,11 @@ namespace Perf
         VillageMoodSamples,
         RespawnCandidates,
         EnemyRespawns,
+        ResourceBytesRead,
+        ResourceAtlasBytes,
+        ResourceSpritesLoaded,
+        ResourceLookupHit,
+        ResourceLookupMiss,
         Count
     };
 

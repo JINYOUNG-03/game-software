@@ -38,11 +38,11 @@ void main()
     v_Color = a_Color;
     v_Surface = a_Surface;
     v_Material = int(a_Material);
-    if (u_WorldShading && (v_Material == 13 || v_Material == 14))
+    if (u_WorldShading && (v_Material == 13 || v_Material == 14 || v_Material == 26 || v_Material == 27))
     {
         vec2 center = gridPosition((lo + hi) * .5);
         float phase = dot(center, vec2(.71, .43));
-        p.x += sin(u_Time * 1.25 + phase) * (v_Material == 13 ? 1.2 : 2.0) * v_Local.y;
+        p.x += sin(u_Time * 1.25 + phase) * (v_Material == 13 || v_Material == 26 ? 1.2 : 2.0) * v_Local.y;
     }
     v_Screen = p;
     gl_Position = vec4(p.x / u_Screen.x * 2.0 - 1.0, 1.0 - p.y / u_Screen.y * 2.0, 0, 1);

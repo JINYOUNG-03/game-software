@@ -83,12 +83,11 @@ class Renderer
     void DrawSolidRect(float x, float y, float width, float height, float r, float g, float b, float a);
     void DrawSolidDiamond(float x, float y, float width, float height, float r, float g, float b, float a);
 
-    bool LoadModels(const std::wstring& path);
-    bool SaveModels(const std::wstring& path) const;
+    bool LoadResourceSprites(const std::wstring& directory);
+    float ModelVisualHeight(const std::string& name) const;
+    void DrawResourceSwordTrail(int frame, int direction, float x, float y, float strength);
     bool HasModel(const std::string& name) const;
-    void BeginModel(const std::string& name);
-    void EndModel();
-    void DrawModel(const std::string& name, float x, float y, bool mirrorX = false);
+    void DrawModel(const std::string& name, float x, float y, bool mirrorX = false, int direction = 1);
     void DrawScene(const SceneGraph& scene, ScenePass pass, const std::function<void(const Actor&)>& draw);
 
     void SetScreenOffset(float x, float y)
@@ -158,9 +157,6 @@ class Renderer
     std::vector<GLuint> m_FontPages;
     std::map<wchar_t, Glyph> m_Glyphs;
     int m_FontX = 1, m_FontY = 1, m_FontRow = 0;
-    std::map<std::string, std::vector<Instance>> m_CompiledModels;
-    bool m_CompileModel = false;
-    std::vector<Instance> m_ModelInstances;
     void QueueInstance(Instance instance, GLuint texture = 0);
     void QueueRect(float x,
                    float y,
@@ -187,15 +183,16 @@ class Renderer
     int m_OutputWidth = 1280, m_OutputHeight = 800;
     GLuint m_QuadBuffer = 0;
 
-    struct ModelPart
+    struct ResourceSprite
     {
-        int shape = 0;
-        int material = 0;
-        std::array<float, 12> values = {};
+        std::array<float, 8> rect{};   // local x/y/w/h and atlas u/v/du/dv, top-down PNG rows
+        std::array<float, 4> weapon{}; // projected hand and blade tip from the sampled skin pose
+        std::uint32_t material = 22;
     };
 
-    std::map<std::string, std::vector<ModelPart>> m_Models;
-    std::string m_RecordingModel;
+    std::map<std::string, ResourceSprite> m_ResourceSprites;
+    GLuint m_ResourceAtlas = 0;
+    const ResourceSprite* FindResourceSprite(const std::string& name, int direction) const;
     float m_OffsetX = 0;
     float m_OffsetY = 0;
     std::uint64_t m_FrameNumber = 0;

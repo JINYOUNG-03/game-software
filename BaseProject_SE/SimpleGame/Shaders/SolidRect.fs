@@ -55,15 +55,23 @@ void main()
 
     vec3 c = v_Color.rgb;
     float a = v_Color.a;
+    // Resource PNGs use straight RGBA and top-down rows (not the flipped minimap FBO).
+    if (v_Material >= 22 && v_Material <= 27)
+    {
+        vec4 sprite = texture(u_Texture, v_TexCoord);
+        c *= sprite.rgb;
+        a *= sprite.a;
+        if (a < .003) discard;
+    }
     vec2 p = v_Local;
     // Invert the diamond's local axes for neighbour masks, even if a parent moves the terrain root.
     // Waves/noise remain continuous in v_World; only the shoreline distance is tile-local.
     vec2 cell = clamp(vec2(p.x - p.y + .5, 1.5 - p.x - p.y), 0.0, 1.0);
     float broad = noise(v_World * .23);
-    if (v_Material == 1)
+    if (v_Material == 1 || v_Material == 23)
     {
         float meadow = noise(v_World * .72);
-        c = mix(vec3(.19, .29, .21), vec3(.32, .40, .26), meadow);
+        if (v_Material == 1) c = mix(vec3(.19, .29, .21), vec3(.32, .40, .26), meadow);
         c *= .88 + .18 * broad;
         float roadEdge = 1.0 - smoothstep(.01, .26, edgeDistance(cell, int(v_Surface.y)));
         float bank = 1.0 - smoothstep(.02, .32, edgeDistance(cell, int(v_Surface.x)));
@@ -72,7 +80,7 @@ void main()
         float flecks = smoothstep(.91, .98, hash(floor(v_World * 28.0)));
         c += vec3(.045, .054, .02) * flecks;
     }
-    else if (v_Material == 2)
+    else if (v_Material == 2 || v_Material == 24)
     {
         vec2 q = u_WorldShading && v_Surface.z >= 0.0
                  ? v_World * 2.6 : p * vec2(7, 5);
@@ -109,7 +117,7 @@ void main()
         c *= .76 + .28 * fibers;
         c *= .82 + .18 * p.y;
     }
-    else if (v_Material == 6)
+    else if (v_Material == 6 || v_Material == 25)
     {
         float depth = clamp(v_Surface.z, 0.0, 1.0);
         float shore = edgeDistance(cell, int(v_Surface.x));

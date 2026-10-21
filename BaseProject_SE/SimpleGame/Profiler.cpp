@@ -60,7 +60,8 @@ namespace Perf
                                   "character_build",
                                   "rumor_update",
                                   "village_statistics",
-                                  "enemy_respawn"};
+                                  "enemy_respawn",
+                                  "resource_load"};
         const char* CounterNames[] = {"draw_calls",
                                       "quad_instances",
                                       "glyph_instances",
@@ -124,7 +125,12 @@ namespace Perf
                                       "courier_departures",
                                       "village_mood_samples",
                                       "respawn_candidates",
-                                      "enemy_respawns"};
+                                      "enemy_respawns",
+                                      "resource_bytes_read",
+                                      "resource_atlas_bytes",
+                                      "resource_sprites_loaded",
+                                      "resource_lookup_hit",
+                                      "resource_lookup_miss"};
         static_assert(sizeof(CpuNames) / sizeof(*CpuNames) == size_t(Cpu::Count), "CPU schema mismatch");
         static_assert(sizeof(CounterNames) / sizeof(*CounterNames) == size_t(Counter::Count),
                       "Counter schema mismatch");
@@ -208,7 +214,7 @@ namespace Perf
         m_SummaryStart = std::chrono::steady_clock::now();
         std::ostringstream metadata;
         metadata
-            << "{\"schema_version\":8,\"event\":\"session\",\"build\":"
+            << "{\"schema_version\":9,\"event\":\"session\",\"build\":"
 #ifdef _DEBUG
             << "\"debug\""
 #else
@@ -329,7 +335,7 @@ namespace Perf
             std::ostringstream out;
             out.imbue(std::locale::classic());
             out << std::fixed << std::setprecision(4)
-                << "{\"schema_version\":8,\"event\":\"gpu_frame\",\"frame_id\":" << slot.frame
+                << "{\"schema_version\":9,\"event\":\"gpu_frame\",\"frame_id\":" << slot.frame
                 << ",\"readback_delay_frames\":" << m_Frame - slot.frame << ",\"gpu_interval_ms\":{";
             GLuint64 previous = 0, first = 0, stamp = 0;
             for (unsigned i = 0; i < slot.count; ++i)
@@ -377,7 +383,7 @@ namespace Perf
         auto encodeStart = std::chrono::steady_clock::now();
         std::ostringstream out;
         out.imbue(std::locale::classic());
-        out << std::fixed << std::setprecision(4) << "{\"schema_version\":8,\"event\":" << JsonString(event)
+        out << std::fixed << std::setprecision(4) << "{\"schema_version\":9,\"event\":" << JsonString(event)
             << ",\"frame_id\":" << m_Frame << ",\"frame_interval_ms\":" << m_Interval
             << ",\"over_budget_60fps\":" << (m_Interval > 16.6667 ? "true" : "false") << ",\"cpu_ms\":{";
         for (size_t i = 0; i < size_t(Cpu::Count); ++i)
@@ -430,7 +436,7 @@ namespace Perf
             std::ostringstream summary;
             summary.imbue(std::locale::classic());
             summary << std::fixed << std::setprecision(3)
-                    << "{\"schema_version\":8,\"event\":\"summary\",\"frame_id\":" << m_Frame
+                    << "{\"schema_version\":9,\"event\":\"summary\",\"frame_id\":" << m_Frame
                     << ",\"fps\":" << 1000 * m_FrameTimes.size() / sum
                     << ",\"frame_ms_mean\":" << sum / m_FrameTimes.size()
                     << ",\"frame_ms_p95\":" << m_FrameTimes[(m_FrameTimes.size() * 95 + 99) / 100 - 1]
@@ -451,7 +457,7 @@ namespace Perf
     {
         if (m_Enabled && m_Initialized)
         {
-            Queue("{\"schema_version\":8,\"event\":\"world_state\",\"frame_id\":" + std::to_string(m_Frame) +
+            Queue("{\"schema_version\":9,\"event\":\"world_state\",\"frame_id\":" + std::to_string(m_Frame) +
                   ",\"world\":" + state + "}");
         }
     }
@@ -506,7 +512,7 @@ namespace Perf
                                 std::ios::binary | std::ios::trunc);
                     m_FileFailed = !m_File;
                     const std::string marker =
-                        "{\"schema_version\":8,\"session_id\":" + JsonString(m_SessionId.c_str()) +
+                        "{\"schema_version\":9,\"session_id\":" + JsonString(m_SessionId.c_str()) +
                         ",\"event\":\"log_segment\",\"rotation\":" + std::to_string(m_Rotation) + "}";
                     m_File << m_SessionHeader << '\n' << marker << '\n';
                     m_FileBytes = m_SessionHeader.size() + marker.size() + 2;
@@ -557,7 +563,7 @@ namespace Perf
                     glDeleteQueries(GLsizei(slot.queries.size()), slot.queries.data());
                 }
             }
-            Queue("{\"schema_version\":8,\"event\":\"session_end\",\"gpu_unresolved_frames\":" +
+            Queue("{\"schema_version\":9,\"event\":\"session_end\",\"gpu_unresolved_frames\":" +
                   std::to_string(pending) + "}");
             {
                 std::lock_guard<std::mutex> lock(m_Mutex);

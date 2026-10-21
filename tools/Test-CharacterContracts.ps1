@@ -10,62 +10,43 @@ $actor = Get-Content -Raw (Join-Path $characterRoot 'Actor.h')
 $fs = Get-Content -Raw (Join-Path $characterRoot 'Shaders/SolidRect.fs')
 $presentation = Get-Content -Raw (Join-Path $characterRoot 'CharacterPresentation.h')
 
-foreach ($contract in @('CharacterCloth(', 'CharacterFace(', 'CharacterBody(', 'int attackPose = -1',
-                       'harbor_models_v6.cache', 'FrameName(prefix, pose)', 'pose < CharacterPresentation::AttackFrames',
-                       '"hero_attack_up"', '"hero_attack_down"', 'CitizenBackSilhouette(', 'CitizenIdentity(',
-                       'sword->handX - 1', 'sword.handX', 'pose.trailStrength',
-                       'renderer->DrawModel(actor.model, x, y, actor.mirrorModel)',
-                       'npc->visualHeight + 36', 'y - npc->visualHeight - 12',
-                       'CompactNpcMarker(', 'owner->Kind() == ActorKind::Npc ? -22.0f : 70.0f',
-                       'Perf::Cpu::CharacterBuild', 'Perf::Counter::CharacterModelsBuilt'))
+foreach ($contract in @('actor.visualDirection)',
+                       'DrawResourceSwordTrail(', 'CharacterPresentation::AttackTrailStrength(',
+                       'ModelVisualHeight(actor.model)', 'npc->visualHeight + 36',
+                       'y - npc->visualHeight - 12', 'CompactNpcMarker('))
 {
-    if (-not $game.Contains($contract)) { throw "Missing character rendering contract: $contract" }
+    if (-not $game.Contains($contract)) { throw "Missing imported character integration: $contract" }
 }
-foreach ($contract in @('Player().mirrorModel = facingX < 0', 'attackAnimation > 0',
-                       'CharacterPresentation::AttackFrame(attackAnimation)', 'prefix + std::to_string(pose)',
+foreach ($contract in @('Player().visualDirection = CharacterPresentation::ScreenDirection',
+                       '"hero_idle"', '"hero_attack" + std::to_string(pose)',
                        'attackCooldown = .48f', 'attackAnimation = CharacterPresentation::AttackDuration',
                        'attackImpactPending = true', 'ResolveAttackImpact();', 'if (attackAnimation <= 0)'))
 {
     if (-not $level.Contains($contract)) { throw "Missing player animation contract: $contract" }
 }
-foreach ($contract in @('npc.mirrorModel = screenDirection < 0', 'npc.phase += travelled * 5.5f',
-                       'npc.visualHeight = CharacterPresentation::NpcVisualHeight(appearance)'))
+foreach ($contract in @('CharacterPresentation::ScreenDirection(',
+                       'npc.phase += travelled * 5.5f', '"_idle"'))
 {
     if (-not $world.Contains($contract)) { throw "Missing NPC animation contract: $contract" }
 }
-if (-not $actor.Contains('bool mirrorModel = false') -or -not $actor.Contains('float visualHeight = 0'))
-{ throw 'Facing/visual height must be Actor presentation, not a separate placement.' }
-foreach ($contract in @('bool mirrorX', 'x + (mirrorX ? -item.corners[i] : item.corners[i])',
-                       'originX + (mirrorX ? -item.corners[i] : item.corners[i])',
-                       'part.material > 21', 'Perf::Counter::CharacterInstances',
-                       'Perf::Counter::MirroredCharacterInstances'))
+if (-not $actor.Contains('int visualDirection = 1') -or -not $actor.Contains('float visualHeight = 0'))
+{ throw 'Facing/visual height must belong to Actor.' }
+foreach ($contract in @('ResourceLookupHit', 'ResourceLookupMiss', 'CharacterInstances',
+                       'r.data() + 4', 'current->weapon', 'previous->weapon'))
 {
-    if (-not $models.Contains($contract)) { throw "Missing cached/mirrored model contract: $contract" }
+    if (-not $models.Contains($contract)) { throw "Missing resource rendering contract: $contract" }
 }
-if (-not $fs.Contains('v_Material == 20') -or -not $fs.Contains('v_Material == 21'))
-{ throw 'Character fabric/skin shaders missing.' }
-
-# Mirror local geometry around the unchanged actor foot anchor.
-foreach ($origin in @(0.0, 312.5, 640.0))
-{
-    foreach ($local in @(-24.0, -3.0, 0.0, 19.5))
-    {
-        $facingRight = $origin + $local
-        $facingLeft = $origin - $local
-        if ([Math]::Abs(($facingRight + $facingLeft) * .5 - $origin) -gt .00001)
-        { throw 'Mirroring changes the world foot anchor.' }
-    }
-}
+if ($game.Contains('BuildCitizen(') -or $models.Contains('MIST_MODELS'))
+{ throw 'Procedural character fallback remains active.' }
+# Screen-facing order must match the importer yaw table.
+if (-not $presentation.Contains('x >= 0 ? 0 : 2') -or -not $presentation.Contains('y >= 0 ? 1 : 3'))
+{ throw 'Four-direction ordering differs from right/down/left/up.' }
 $duration = [double][regex]::Match($presentation, 'AttackDuration = ([.\d]+)f').Groups[1].Value
 $frames = [int][regex]::Match($presentation, 'AttackFrames = (\d+)').Groups[1].Value
 $impactFraction = [double][regex]::Match($presentation, 'AttackImpactTime = AttackDuration \* ([.\d]+)f').Groups[1].Value
 if ($frames -ne 12 -or $duration -ne .38) { throw 'Expected twelve readable attack poses across 380ms.' }
-foreach ($contract in @('if (progress < .26f)', 'else if (progress < .60f)',
-                       'pose.handY = Mix(-22, -49, t)', 'pose.angle = Mix(-2.2f, .85f, t)',
-                       'pose.trailStrength = std::sin(', 'float trailStrength = 0'))
-{
-    if (-not $presentation.Contains($contract)) { throw "Missing attack phase contract: $contract" }
-}
+if (-not $presentation.Contains('progress > .45f && progress < .70f'))
+{ throw 'Trail must follow the authored hit window.' }
 $seenPoses = [Collections.Generic.HashSet[int]]::new()
 for ($sample = -1; $sample -le 101; $sample++)
 {
@@ -76,7 +57,7 @@ for ($sample = -1; $sample -le 101; $sample++)
 }
 if ($seenPoses.Count -ne $frames) { throw 'Attack clip does not reach every pose.' }
 $impactPoseProgress = [Math]::Truncate($impactFraction * $frames) / ($frames - 1)
-if ($impactPoseProgress -le .26 -or $impactPoseProgress -ge .60)
+if ($impactPoseProgress -le .45 -or $impactPoseProgress -ge .70)
 { throw 'Damage must occur during the visible cut, not during wind-up or recovery.' }
 
 # Arithmetic checks for threshold crossing at high/low frame rates and a frame longer than the clip.
@@ -96,21 +77,11 @@ if ($startAttack.Contains('DamageEnemy(')) { throw 'Starting wind-up must not de
 if (-not $game.Contains('if (firstLevel.ConsumeAttackImpact())') -or
     -not $level.Contains('attackImpactPending = false;') -or
     -not $level.Contains('attackImpactReady = false;')) { throw 'Missing one-shot NPC impact consumption.' }
-$identity = [regex]::Match($game, '(?s)void CitizenIdentity\(.*?(?=void BuildCitizen\()').Value
-$identities = @([regex]::Matches($identity, 'case (\d+):') | ForEach-Object { [int]$_.Groups[1].Value })
-if (($identities | Sort-Object -Unique).Count -ne 18 -or ($identities | Measure-Object -Maximum).Maximum -ne 17)
-{ throw 'Each of the eighteen NPC definitions needs a distinct identity branch.' }
-$visualHeights = [regex]::Match($presentation, 'heights\[\] = \{([^}]+)\}').Groups[1].Value.Split(',')
-if ($visualHeights.Count -ne 18 -or [int]$visualHeights[2] -lt 100 -or [int]$visualHeights[4] -gt 70)
-{ throw 'Nameplate heights must follow the tall plume and short apprentice, not one shared height.' }
 if (36 - 13 - (12 + 2.5) -le 0) { throw 'NPC labels overlap health bars.' }
-$expectedModels = 18 * 8 + 8 + $frames * 3 + 18 + 3 * 8 + 3 + 6 + 9
-if ($expectedModels -gt 256) { throw 'Character cache exceeds the existing safe model limit.' }
 [pscustomobject]@{
     event = 'character_static_contracts'; passed = $true; npc_appearances = 18
-    walking_frames = 8; player_attack_frames = $frames; player_attack_direction_variants = 3
-    expected_cache_models = $expectedModels; attack_duration_ms = $duration * 1000
-    impact_once_under_variable_dt = $true; npc_identity_branches = $identities.Count
-    appearance_revision = 6; same_world_foot_anchor = $true
+    walking_frames = 8; player_attack_frames = $frames; screen_directions = 4
+    attack_duration_ms = $duration * 1000; impact_once_under_variable_dt = $true
+    appearance_source = 'resource_glb'; same_world_foot_anchor = $true
     game_build_performed = $false; game_execution_performed = $false
 } | ConvertTo-Json

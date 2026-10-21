@@ -39,9 +39,13 @@ if ($campX + $radius -ge $mapSize -or $campY + $radius -ge $mapSize)
 { throw 'Raid territory exceeds the world bounds.' }
 
 $people = [regex]::Match($npcSource, '(?s)const Definition people\[\] = \{(.*?)for \(int i = 0;').Groups[1].Value
-$outfits = [regex]::Match($renderSource, '(?s)static const Outfit outfits.*?= \{(.*?)const Outfit& outfit').Groups[1].Value
+$resourceReport = Get-Content -Raw (Join-Path $openWorldRoot 'resource/haedong_runtime/import_report.json') | ConvertFrom-Json
 if ([regex]::Matches($people, 'Job::\w+').Count -ne $appearanceCount) { throw 'NPC/appearance count mismatch.' }
-if ([regex]::Matches($outfits, '\{\s*\.\d').Count -ne $appearanceCount) { throw 'Outfit palette count mismatch.' }
+for ($look = 0; $look -lt $appearanceCount; $look++)
+{
+    if (-not ($resourceReport.bindings.key -contains "citizen$($look)_idle@1"))
+    { throw "Missing imported NPC appearance: $look" }
+}
 foreach ($contract in @('attacker.job == Job::Raider', '!WorldLayout::InVillage(target.WorldPosition())',
                        'victim->variant >= 5', 'Action::Defend', 'npc.action == Action::Raid'))
 {
@@ -119,9 +123,9 @@ foreach ($camera in @(@(53.5,68.5), @($campX,$campY), @(31.5,32.5), @(128.5,128.
         {
             $screenX = (($x - $y) - ($camera[0] - $camera[1])) * 48
             $screenY = (($x + $y + 1) - ($camera[0] + $camera[1])) * 24
-            # Include chimney effects at z=103, not just the ground.
-            $isVisible = $screenX -gt -800 -and $screenX -lt 800 -and
-                         $screenY -gt -516 -and $screenY -lt (564 + 103)
+            # Include imported roofs and chimney effects, not just ground centres.
+            $isVisible = $screenX -gt -900 -and $screenX -lt 900 -and
+                         $screenY -gt -516 -and $screenY -lt (644 + 220)
             if (-not $isVisible) { continue }
             $minX = [Math]::Floor($x / $chunkSize) * $chunkSize
             $minY = [Math]::Floor($y / $chunkSize) * $chunkSize

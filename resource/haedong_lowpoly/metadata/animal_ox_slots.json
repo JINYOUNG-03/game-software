@@ -1,0 +1,67 @@
+{
+  "id": "animal_ox",
+  "skeleton": "ox_v1",
+  "slots": [
+    {
+      "slot": "body",
+      "glb": "glb/parts/animal_ox__body.glb",
+      "objects": [
+        "body",
+        "neck"
+      ]
+    },
+    {
+      "slot": "head",
+      "glb": "glb/parts/animal_ox__head.glb",
+      "objects": [
+        "head",
+        "muzzle",
+        "nose",
+        "jaw",
+        "eye.L",
+        "ear.L",
+        "eye.R",
+        "ear.R"
+      ]
+    },
+    {
+      "slot": "horns",
+      "glb": "glb/parts/animal_ox__horns.glb",
+      "objects": [
+        "horn.L",
+        "horn.R"
+      ]
+    },
+    {
+      "slot": "front_legs",
+      "glb": "glb/parts/animal_ox__front_legs.glb",
+      "objects": [
+        "front.L_leg",
+        "front.L_hoof",
+        "front.L_cloven_seam",
+        "front.R_leg",
+        "front.R_hoof",
+        "front.R_cloven_seam"
+      ]
+    },
+    {
+      "slot": "hind_legs",
+      "glb": "glb/parts/animal_ox__hind_legs.glb",
+      "objects": [
+        "hind.L_leg",
+        "hind.L_hoof",
+        "hind.L_cloven_seam",
+        "hind.R_leg",
+        "hind.R_hoof",
+        "hind.R_cloven_seam"
+      ]
+    },
+    {
+      "slot": "tail",
+      "glb": "glb/parts/animal_ox__tail.glb",
+      "objects": [
+        "tail"
+      ]
+    }
+  ]
+}

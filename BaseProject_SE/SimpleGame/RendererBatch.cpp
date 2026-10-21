@@ -25,11 +25,6 @@ bool Renderer::CreateTarget(GLuint& fbo, GLuint& texture, int width, int height)
 
 void Renderer::QueueInstance(Instance instance, GLuint texture)
 {
-    if (m_CompileModel)
-    {
-        m_ModelInstances.push_back(instance);
-        return;
-    }
     std::copy(m_SurfaceData.begin(), m_SurfaceData.end(), instance.surface);
     if (texture && texture != m_QueueTexture)
     {

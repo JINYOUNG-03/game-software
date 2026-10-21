@@ -110,7 +110,7 @@ namespace
 
     bool Visible(float x, float y)
     {
-        return x > -160 && x < ScreenWidth + 160 && y > -100 && y < ScreenHeight + 180;
+        return x > -260 && x < ScreenWidth + 260 && y > -100 && y < ScreenHeight + 260;
     }
 
     void InitializeKoreanFont()
@@ -144,1311 +144,90 @@ namespace
         firstLevel.messageTime = 7;
     }
 
-    void DrawTree(float x, float y, int species = 7)
+    bool InitializeModels()
     {
-        renderer->SetMaterial(3);
-        renderer->DrawQuad(x - 5, y, x + 6, y, x + 2, y - 100, x - 5, y - 102, .27f, .24f, .16f);
-        renderer->DrawQuad(x, y - 50, x + 3, y - 54, x + 28, y - 82, x + 25, y - 83, .24f, .22f, .15f);
-        renderer->DrawQuad(x, y - 64, x - 3, y - 66, x - 23, y - 86, x - 24, y - 82, .24f, .22f, .15f);
-        renderer->SetMaterial(13);
-        if (species == 16)
-        {
-            // Broad, asymmetric pine tiers rather than repeated diamond crowns.
-            for (int tier = 0; tier < 4; ++tier)
-            {
-                float width = 69.0f - float(tier) * 10;
-                float yy = y - 50 - float(tier) * 18;
-                renderer->DrawSolidRect(x + (tier % 2 ? -9 : 6),
-                                        yy,
-                                        width,
-                                        27,
-                                        .16f + float(tier) * .018f,
-                                        .29f + float(tier) * .019f,
-                                        .22f,
-                                        1);
-                renderer->DrawSolidRect(x - 18, yy - 6, width * .57f, 24, .22f, .36f, .26f, 1);
-            }
-        }
-        else
-        {
-            const float lobes[][4] = {{-22, -66, 53, 46},
-                                      {19, -63, 55, 42},
-                                      {-7, -91, 62, 49},
-                                      {24, -88, 43, 37},
-                                      {-27, -92, 38, 34},
-                                      {0, -111, 41, 32}};
-            for (int i = 0; i < 6; ++i)
-            {
-                const auto& l = lobes[i];
-                renderer->DrawSolidRect(x + l[0],
-                                        y + l[1],
-                                        l[2],
-                                        l[3],
-                                        .20f + float(i % 3) * .024f,
-                                        .32f + float(i % 3) * .027f,
-                                        species == 17 ? .25f : .20f,
-                                        1);
-            }
-            if (species == 17)
-            {
-                for (int i = -3; i <= 3; ++i)
-                {
-                    renderer->DrawSolidRect(
-                        x + float(i) * 11, y - 48 + float(std::abs(i)) * 3, 10, 55, .23f, .36f, .27f, .92f);
-                }
-            }
-        }
-        renderer->SetMaterial(0);
-    }
-
-    void DrawHouse(float x, float y, bool straw)
-    {
-        renderer->SetMaterial(2);
-        renderer->DrawQuad(x - 62, y - 17, x + 11, y + 17, x + 59, y - 10, x - 12, y - 43, .36f, .38f, .33f);
-        renderer->DrawQuad(x - 62, y - 17, x + 11, y + 17, x + 11, y + 23, x - 62, y - 11, .25f, .28f, .25f);
-        renderer->SetMaterial(12);
-        renderer->DrawQuad(x - 53,
-                           y - 20,
-                           x + 10,
-                           y + 7,
-                           x + 10,
-                           y - 49,
-                           x - 53,
-                           y - 76,
-                           straw ? .58f : .73f,
-                           straw ? .50f : .68f,
-                           straw ? .34f : .53f);
-        renderer->DrawQuad(x + 10,
-                           y + 7,
-                           x + 51,
-                           y - 15,
-                           x + 51,
-                           y - 71,
-                           x + 10,
-                           y - 49,
-                           straw ? .39f : .51f,
-                           straw ? .37f : .51f,
-                           straw ? .27f : .43f);
-        renderer->SetMaterial(3);
-        for (int i = 0; i < 4; ++i)
-        {
-            float px = x - 52 + float(i) * 20, py = y - 47 + float(i) * 8.5f;
-            renderer->DrawQuad(
-                px - 2, py - 28, px + 2, py - 26, px + 2, py + 27, px - 2, py + 25, .27f, .22f, .15f);
-        }
-        renderer->DrawQuad(x - 54, y - 52, x + 11, y - 24, x + 11, y - 29, x - 54, y - 57, .30f, .23f, .15f);
-        renderer->SetMaterial(0);
-        // Paper lattice windows: warm interiors, dark frames, visible depth.
-        for (int i = 0; i < 2; ++i)
-        {
-            float px = x - 43 + float(i) * 34, py = y - 44 + float(i) * 14;
-            renderer->DrawQuad(px, py - 15, px + 20, py - 7, px + 20, py + 12, px, py + 4, .23f, .20f, .14f);
-            renderer->DrawQuad(
-                px + 2, py - 12, px + 18, py - 5, px + 18, py + 9, px + 2, py + 2, .88f, .70f, .39f);
-            for (int k = 1; k <= 3; ++k)
-            {
-                float xx = px + float(k) * 4.5f;
-                renderer->DrawSolidRect(xx, py - 4 + float(k) * 1.8f, 1, 15, .34f, .27f, .17f, 1);
-            }
-        }
-        // Deep shade immediately below the eaves, independent of postprocessing.
-        renderer->DrawQuad(
-            x - 56, y - 75, x + 12, y - 46, x + 12, y - 37, x - 56, y - 66, .09f, .13f, .13f, .35f);
-        renderer->SetMaterial(straw ? 5 : 4);
-        renderer->DrawQuad(x - 17,
-                           y - 116,
-                           x + 3,
-                           y - 126,
-                           x + 88,
-                           y - 90,
-                           x + 69,
-                           y - 80,
-                           straw ? .47f : .24f,
-                           straw ? .42f : .34f,
-                           straw ? .27f : .36f);
-        renderer->DrawQuad(x - 74,
-                           y - 74,
-                           x - 17,
-                           y - 116,
-                           x + 69,
-                           y - 80,
-                           x + 12,
-                           y - 35,
-                           straw ? .65f : .29f,
-                           straw ? .55f : .39f,
-                           straw ? .34f : .40f);
-        renderer->SetMaterial(3);
-        renderer->DrawQuad(x - 78, y - 77, x + 12, y - 43, x + 12, y - 35, x - 74, y - 70, .25f, .23f, .18f);
-        renderer->DrawQuad(x + 12, y - 43, x + 73, y - 84, x + 70, y - 75, x + 12, y - 35, .19f, .21f, .19f);
-        renderer->SetMaterial(0);
-        renderer->DrawQuad(
-            x - 20, y - 117, x + 70, y - 81, x + 73, y - 85, x - 17, y - 121, .43f, .48f, .43f);
-        if (!straw)
-        {
-            for (int i = 0; i < 10; ++i)
-            {
-                float xx = x - 72 + float(i) * 8.5f, yy = y - 73 + float(i) * 3.5f;
-                renderer->DrawEllipse(xx, yy, 5, 4, .47f, .51f, .43f, 1);
-            }
-        }
-        for (int k = 0; k < 3; ++k)
-        {
-            float xx = x - 60 + float(k) * 11, yy = y + float(k) * 4;
-            renderer->DrawEllipse(xx, yy - 8, 14, 19, .30f, .23f, .16f, 1);
-            renderer->DrawEllipse(xx - 2, yy - 10, 4, 10, .45f, .35f, .22f, .65f);
-            renderer->DrawEllipse(xx, yy - 18, 12, 5, .19f, .17f, .12f, 1);
-        }
-    }
-
-    void DrawGiwaHouse(float x, float y)
-    {
-        DrawHouse(x, y, false);
-    }
-
-    void DrawChogaHouse(float x, float y)
-    {
-        DrawHouse(x, y, true);
-    }
-
-    void DrawMarketStall(float x, float y)
-    {
-        renderer->DrawSolidRect(x, y - 10.0f, 53.0f, 20.0f, 0.33f, 0.20f, 0.12f, 1.0f);
-        renderer->DrawSolidDiamond(x, y - 29.0f, 66.0f, 25.0f, 0.48f, 0.16f, 0.12f, 1.0f);
-        renderer->DrawSolidRect(x - 20.0f, y - 23.0f, 3.0f, 24.0f, 0.18f, 0.10f, 0.06f, 1.0f);
-        renderer->DrawSolidRect(x + 20.0f, y - 23.0f, 3.0f, 24.0f, 0.18f, 0.10f, 0.06f, 1.0f);
-    }
-
-    void DrawJangseung(float x, float y)
-    {
-        renderer->DrawSolidRect(x, y - 28.0f, 11.0f, 50.0f, 0.31f, 0.19f, 0.10f, 1.0f);
-        renderer->DrawSolidDiamond(x, y - 55.0f, 18.0f, 20.0f, 0.39f, 0.25f, 0.13f, 1.0f);
-        renderer->DrawSolidRect(x, y - 56.0f, 8.0f, 2.0f, 0.08f, 0.05f, 0.03f, 1.0f);
-    }
-
-    void DrawLantern(float x, float y)
-    {
-        const float glow = 0.72f;
-        renderer->DrawSolidRect(x, y - 19.0f, 3.0f, 26.0f, 0.16f, 0.10f, 0.06f, 1.0f);
-        renderer->DrawSolidDiamond(x, y - 33.0f, 12.0f, 17.0f, 1.0f, glow, 0.25f, 0.95f);
-    }
-
-    void DrawStoneWell(float x, float y)
-    {
-        renderer->DrawSolidDiamond(x, y - 8.0f, 33.0f, 17.0f, 0.30f, 0.34f, 0.33f, 1.0f);
-        renderer->DrawSolidDiamond(x, y - 13.0f, 23.0f, 11.0f, 0.07f, 0.12f, 0.15f, 1.0f);
-        renderer->DrawSolidRect(x, y - 34.0f, 3.0f, 34.0f, 0.19f, 0.13f, 0.08f, 1.0f);
-        renderer->DrawSolidRect(x, y - 44.0f, 28.0f, 3.0f, 0.19f, 0.13f, 0.08f, 1.0f);
-    }
-
-    void DrawFence(float x, float y, bool horizontal)
-    {
-        float width = horizontal ? 42.0f : 10.0f;
-        float height = horizontal ? 8.0f : 36.0f;
-        renderer->DrawSolidRect(x, y - 13.0f, width, height, 0.26f, 0.16f, 0.09f, 1.0f);
-        if (horizontal)
-        {
-            renderer->DrawSolidRect(x - 16.0f, y - 18.0f, 3.0f, 22.0f, 0.17f, 0.10f, 0.05f, 1.0f);
-            renderer->DrawSolidRect(x + 16.0f, y - 18.0f, 3.0f, 22.0f, 0.17f, 0.10f, 0.05f, 1.0f);
-        }
-    }
-
-    void CharacterCloth(float x0,
-                        float y0,
-                        float x1,
-                        float y1,
-                        float x2,
-                        float y2,
-                        float x3,
-                        float y3,
-                        float r,
-                        float g,
-                        float b)
-    {
-        // Only executed when the versioned primitive cache is built.
-        float cx = (x0 + x1 + x2 + x3) * .25f, cy = (y0 + y1 + y2 + y3) * .25f;
-        renderer->SetMaterial(0);
-        renderer->DrawQuad(cx + (x0 - cx) * 1.08f,
-                           cy + (y0 - cy) * 1.055f,
-                           cx + (x1 - cx) * 1.08f,
-                           cy + (y1 - cy) * 1.055f,
-                           cx + (x2 - cx) * 1.08f,
-                           cy + (y2 - cy) * 1.055f,
-                           cx + (x3 - cx) * 1.08f,
-                           cy + (y3 - cy) * 1.055f,
-                           .10f,
-                           .13f,
-                           .13f);
-        renderer->SetMaterial(20);
-        renderer->DrawQuad(x0, y0, x1, y1, x2, y2, x3, y3, r, g, b);
-    }
-
-    void CharacterFace(float y, int look)
-    {
-        float tone = float(look % 4) * .033f;
-        float width = look == 4 ? 15.0f : look == 7 ? 20.0f : 18.0f;
-        renderer->SetMaterial(0);
-        renderer->DrawEllipse(-1, y - 3, width + 5, 23, .12f, .14f, .13f, 1);
-        renderer->DrawEllipse(-width * .5f, y + 1, 5, 7, .67f - tone, .48f - tone, .31f - tone, 1);
-        renderer->DrawEllipse(width * .5f, y + 1, 5, 7, .78f - tone, .59f - tone, .39f - tone, 1);
-        renderer->SetMaterial(21);
-        renderer->DrawSolidRect(1, y + 1, width, 21, .84f - tone, .66f - tone, .45f - tone, 1);
-        renderer->SetMaterial(0);
-        renderer->DrawEllipse(-2, y - 8, width + 1, 8, .14f, .15f, .13f, 1);
-        renderer->DrawSolidRect(-2, y - 3, 4, 1.3f, .20f, .19f, .15f, 1);
-        renderer->DrawSolidRect(5, y - 3, 4, 1.3f, .20f, .19f, .15f, 1);
-        renderer->DrawSolidRect(-2, y, 1.5f, 2, .10f, .12f, .11f, 1);
-        renderer->DrawSolidRect(5, y, 1.7f, 2, .10f, .12f, .11f, 1);
-        renderer->DrawSolidRect(7, y + 3, 2, 3, .66f - tone, .45f - tone, .29f - tone, 1);
-        renderer->DrawSolidRect(3, y + 7, 4, 1, .43f, .29f, .21f, 1);
-        if (look == 11 || look == 17)
-        {
-            renderer->DrawEllipse(2, y + 9, 8, 5, .30f, .30f, .26f, .85f);
-        }
-    }
-
-    void CharacterBody(float r,
-                       float g,
-                       float b,
-                       float width,
-                       float height,
-                       int frame,
-                       bool longCoat,
-                       bool apron,
-                       const CharacterPresentation::SwordPose* sword = nullptr,
-                       float hemOverride = 0,
-                       int identity = -1)
-    {
-        float phase = float(frame) * 6.2831853f / 8;
-        float stride = sword ? sword->stance : std::sin(phase) * 3.5f;
-        float bob = std::abs(std::sin(phase)) * .9f;
-        float dip = sword ? sword->bodyDip : 0;
-        float shoulder = -height * .64f - bob + dip, waist = -height * .37f - bob + dip * .5f;
-        renderer->SetMaterial(0);
-        // Opposing feet, visible soles and wrapped shins keep the gait grounded.
-        renderer->DrawEllipse(-width * .23f + 1, -2 + stride, 10, 5, .08f, .12f, .13f, 1);
-        renderer->DrawEllipse(width * .23f + 2, -2 - stride, 10, 5, .08f, .12f, .13f, 1);
-        CharacterCloth(-width * .42f,
-                       -23 + stride * .25f,
-                       -1,
-                       -22,
-                       -2,
-                       -5 + stride,
-                       -width * .37f,
-                       -5 + stride,
-                       .52f,
-                       .51f,
-                       .41f);
-        CharacterCloth(1,
-                       -22,
-                       width * .42f,
-                       -24 - stride * .25f,
-                       width * .38f,
-                       -5 - stride,
-                       2,
-                       -5 - stride,
-                       .66f,
-                       .64f,
-                       .51f);
-        renderer->SetMaterial(0);
-        renderer->DrawSolidRect(-width * .25f, -9 + stride, 6, 2, .76f, .72f, .57f, 1);
-        renderer->DrawSolidRect(width * .26f, -9 - stride, 6, 2, .76f, .72f, .57f, 1);
-        // Far sleeve is behind the robe; its hand swings opposite the near foot.
-        CharacterCloth(-width * .42f,
-                       shoulder + 1,
-                       -width * .68f,
-                       shoulder + 4,
-                       -width * .72f,
-                       waist + 6 - stride,
-                       -width * .43f,
-                       waist + 8 - stride,
-                       r * .74f,
-                       g * .76f,
-                       b * .76f);
-        renderer->SetMaterial(0);
-        renderer->DrawEllipse(-width * .59f, waist + 10 - stride, 6, 7, .68f, .50f, .33f, 1);
-        float hem = hemOverride != 0 ? hemOverride : longCoat ? -8.0f : -14.0f;
-        CharacterCloth(-width * .44f,
-                       shoulder,
-                       1,
-                       shoulder - 2,
-                       1,
-                       waist + 4,
-                       -width * .5f,
-                       waist + 7,
-                       r * .80f,
-                       g * .82f,
-                       b * .82f);
-        CharacterCloth(
-            1, shoulder - 2, width * .44f, shoulder + 2, width * .52f, waist + 6, 1, waist + 4, r, g, b);
-        CharacterCloth(-width * .49f,
-                       waist + 1,
-                       1,
-                       waist + 1,
-                       -1,
-                       hem - stride * .28f,
-                       -width * .62f,
-                       hem - 3 + stride * .3f,
-                       r * .73f,
-                       g * .77f,
-                       b * .78f);
-        CharacterCloth(1,
-                       waist + 1,
-                       width * .5f,
-                       waist + 2,
-                       width * .63f,
-                       hem - 1 - stride * .3f,
-                       3,
-                       hem + stride * .25f,
-                       r * .90f,
-                       g * .93f,
-                       b * .94f);
-        renderer->SetMaterial(0);
-        // Crossed ivory collar and tied goreum, not a diamond painted over the chest.
-        renderer->DrawQuad(
-            -7, shoulder - 2, -3, shoulder - 4, 7, shoulder + 9, 3, shoulder + 10, .87f, .83f, .67f);
-        renderer->DrawQuad(
-            6, shoulder - 3, 9, shoulder - 1, 1, shoulder + 13, -2, shoulder + 10, .73f, .72f, .60f);
-        renderer->DrawSolidRect(0, waist, width + 1, 3, .24f, .23f, .18f, 1);
-        renderer->DrawSolidDiamond(5, shoulder + 13, 6, 4, .76f, .67f, .45f, 1);
-        renderer->DrawQuad(5, shoulder + 13, 7, shoulder + 14, 9, waist + 2, 5, waist + 4, .64f, .57f, .39f);
-        // Narrow seams and asymmetric folds keep all citizens from sharing a flat torso.
-        renderer->DrawQuad(-width * .32f,
-                           waist + 4,
-                           -width * .27f,
-                           waist + 3,
-                           -width * .38f,
-                           hem - 2,
-                           -width * .42f,
-                           hem - 2,
-                           r * .57f,
-                           g * .62f,
-                           b * .65f);
-        renderer->DrawQuad(width * .28f,
-                           waist + 3,
-                           width * .33f,
-                           waist + 4,
-                           width * .45f,
-                           hem - 2,
-                           width * .40f,
-                           hem - 2,
-                           r * 1.08f,
-                           g * 1.06f,
-                           b);
-        float armX = sword ? sword->handX - 1 : width * .55f;
-        float armY = sword ? sword->handY - 2 : waist + 8 + stride;
-        CharacterCloth(width * .39f,
-                       shoulder + 2,
-                       width * .65f,
-                       shoulder + 4,
-                       armX + 4,
-                       armY - 2,
-                       armX - 3,
-                       armY + 1,
-                       r * .94f,
-                       g * .95f,
-                       b * .93f);
-        renderer->SetMaterial(0);
-        renderer->DrawEllipse(armX + 1, armY + 2, 7, 8, .82f, .63f, .42f, 1);
-        if (apron)
-        {
-            CharacterCloth(-width * .35f,
-                           waist + 2,
-                           width * .33f,
-                           waist + 2,
-                           width * .38f,
-                           -10,
-                           -width * .40f,
-                           -12,
-                           identity == 0    ? .90f
-                           : identity == 12 ? .67f
-                                            : .54f,
-                           identity == 0    ? .86f
-                           : identity == 12 ? .22f
-                                            : .52f,
-                           identity == 0    ? .70f
-                           : identity == 12 ? .18f
-                                            : .40f);
-            renderer->SetMaterial(0);
-            renderer->DrawSolidRect(-4, -20, 6, 6, .48f, .43f, .31f, 1);
-            renderer->DrawSolidRect(-4, -18, 5, 1, .79f, .72f, .51f, 1);
-        }
-    }
-
-    void BuildActor(float r, float g, float b, bool hero, int frame, int attackPose = -1, int vertical = 0)
-    {
-        Perf::Scope scope(Perf::Cpu::CharacterBuild);
-        Perf::Count(Perf::Counter::CharacterModelsBuilt);
-        float phase = float(frame) * 6.2831853f / 8;
-        float bob = std::abs(std::sin(phase)) * .9f;
-        CharacterPresentation::SwordPose sword = CharacterPresentation::SampleSwordPose(attackPose, vertical);
-        const auto* attack = attackPose >= 0 ? &sword : nullptr;
-        float dip = attack ? sword.bodyDip : 0;
-        // A weathered indigo overcoat, medicine satchel and tied scabbard identify the traveller.
-        CharacterCloth(-11, -47 - bob, 3, -48 - bob, -8, -9, -22, -14, r * .55f, g * .60f, b * .66f);
-        renderer->SetMaterial(3);
-        renderer->DrawSolidRect(-15, -25, 12, 19, .39f, .31f, .20f, 1);
-        renderer->SetMaterial(0);
-        renderer->DrawSolidRect(-15, -31, 10, 4, .61f, .53f, .34f, 1);
-        renderer->DrawSolidRect(-17, -22, 4, 6, .78f, .72f, .53f, 1);
-        renderer->DrawQuad(-13, -32, -9, -33, -22, -5, -25, -7, .17f, .21f, .23f);
-        CharacterBody(r, g, b, 24, 68, frame, true, false, attack);
-        CharacterFace(-59 - bob + dip, 18);
-        renderer->SetMaterial(0);
-        renderer->DrawEllipse(-1, -69 - bob + dip, hero ? 37.0f : 25.0f, 8, .12f, .17f, .19f, 1);
-        renderer->DrawSolidRect(-2, -75 - bob + dip, 17, 10, .15f, .21f, .23f, 1);
-        renderer->DrawSolidRect(-2, -79 - bob + dip, 13, 2, .26f, .31f, .29f, 1);
-        renderer->DrawQuad(-12, -46 - bob, -9, -47 - bob, -5, -26, -8, -25, .56f, .43f, .25f);
-        renderer->DrawSolidRect(0, -25, 24, 3, .51f, .27f, .19f, 1);
-        renderer->DrawSolidDiamond(5, -25, 6, 5, .75f, .60f, .34f, 1);
-        renderer->DrawQuad(6, -24, 9, -23, 12, -14 + std::sin(phase), 8, -13, .61f, .33f, .22f);
-        if (attackPose >= 0)
-        {
-            float hx = sword.handX, hy = sword.handY;
-            float dx = std::cos(sword.angle), dy = std::sin(sword.angle);
-            // The hilt is centred in the same hand used by the sleeve, not a floating pivot.
-            renderer->DrawQuad(hx - dx * 6 - dy * 2,
-                               hy - dy * 6 + dx * 2,
-                               hx - dx * 6 + dy * 2,
-                               hy - dy * 6 - dx * 2,
-                               hx + dx * 3 + dy * 2,
-                               hy + dy * 3 - dx * 2,
-                               hx + dx * 3 - dy * 2,
-                               hy + dy * 3 + dx * 2,
-                               .29f,
-                               .22f,
-                               .16f);
-            renderer->DrawQuad(hx + dx * 5 - dy * 2,
-                               hy + dy * 5 + dx * 2,
-                               hx + dx * 5 + dy * 2,
-                               hy + dy * 5 - dx * 2,
-                               hx + dx * 43,
-                               hy + dy * 43,
-                               hx + dx * 37 - dy * 2,
-                               hy + dy * 37 + dx * 2,
-                               .72f,
-                               .78f,
-                               .74f);
-            renderer->DrawQuad(hx + dx * 3 - dy * 6,
-                               hy + dy * 3 + dx * 6,
-                               hx + dx * 3 + dy * 6,
-                               hy + dy * 3 - dx * 6,
-                               hx + dx * 5 + dy * 6,
-                               hy + dy * 5 - dx * 6,
-                               hx + dx * 5 - dy * 6,
-                               hy + dy * 5 + dx * 6,
-                               .62f,
-                               .49f,
-                               .29f);
-            renderer->DrawEllipse(hx, hy, 6, 6, .82f, .63f, .42f, 1);
-        }
-    }
-
-    void CitizenBackSilhouette(int look, float width, float height, float bob)
-    {
-        renderer->SetMaterial(20);
-        if (look == 2 || look == 6 || look == 7 || look == 8)
-        {
-            // These broad, asymmetric silhouettes remain readable without colour or labels.
-            float spread = look == 7 ? 15.0f : look == 8 ? 7.0f : 10.0f;
-            float hem = look == 8 ? -3.0f : look == 6 ? -22.0f : -11.0f;
-            float r = look == 2 ? .67f : look == 6 ? .24f : .19f;
-            float g = look == 2 ? .19f : look == 6 ? .42f : .19f;
-            CharacterCloth(-width * .6f - spread,
-                           -height * .64f - bob,
-                           width * .65f + spread,
-                           -height * .60f - bob,
-                           width * .7f,
-                           hem,
-                           -width * .8f - spread,
-                           hem - 4,
-                           r,
-                           g,
-                           .22f);
-            if (look == 7)
-            {
-                renderer->SetMaterial(0);
-                renderer->DrawEllipse(-12, -height * .65f, 30, 16, .58f, .49f, .33f, 1);
-                renderer->DrawEllipse(12, -height * .65f, 30, 16, .58f, .49f, .33f, 1);
-            }
-        }
-        if (look == 9 || look == 17)
-        {
-            renderer->SetMaterial(3);
-            float yy = look == 17 ? -height + 8 : -height * .6f;
-            renderer->DrawSolidRect(-width * .7f, yy + 15, 22, 36, .45f, .32f, .18f, 1);
-            renderer->DrawSolidRect(-width * .7f, yy + 15, 25, 4, .83f, .72f, .44f, 1);
-            renderer->DrawSolidRect(-width * .7f, yy + 15, 3, 38, .83f, .72f, .44f, 1);
-        }
-        if (look == 14 || look == 16)
-        {
-            renderer->SetMaterial(3);
-            float xx = -width * .7f;
-            renderer->DrawSolidRect(xx, -37, look == 16 ? 3.0f : 12.0f, 66, .61f, .45f, .25f, 1);
-            if (look == 16)
-            {
-                renderer->DrawSolidDiamond(xx, -64, 14, 24, .69f, .52f, .30f, 1);
-            }
-            else
-            {
-                renderer->DrawSolidRect(xx, -24, 17, 3, .28f, .24f, .17f, 1);
-                renderer->DrawSolidRect(xx, -46, 17, 3, .28f, .24f, .17f, 1);
-            }
-        }
-        renderer->SetMaterial(0);
-    }
-
-    void CitizenIdentity(int look, float width, float head, float stride)
-    {
-        renderer->SetMaterial(0);
-        switch (look)
-        {
-        case 0: // Mira: white work wrap, broad ivory apron, rolled waterway plans.
-            renderer->DrawEllipse(-1, head - 8, 27, 13, .91f, .86f, .69f, 1);
-            renderer->DrawSolidRect(-2, head - 5, 26, 4, .69f, .73f, .61f, 1);
-            renderer->DrawQuad(-11, head - 5, -7, head - 4, -17, head + 16, -21, head + 12, .90f, .85f, .69f);
-            renderer->DrawSolidRect(-width * .76f, -29 - stride, 10, 28, .88f, .82f, .62f, 1);
-            renderer->DrawEllipse(-width * .76f, -43 - stride, 10, 5, .57f, .52f, .38f, 1);
-            renderer->DrawSolidRect(-width * .76f, -28 - stride, 11, 3, .22f, .43f, .42f, 1);
-            break;
-        case 1: // Doyun: tall square clerk's cap and a large, blue bound ledger.
-            renderer->DrawSolidRect(-1, head - 15, 19, 23, .12f, .19f, .25f, 1);
-            renderer->DrawSolidRect(-1, head - 27, 23, 4, .22f, .30f, .37f, 1);
-            renderer->DrawSolidRect(-1, head - 5, 25, 3, .12f, .19f, .25f, 1);
-            renderer->DrawSolidRect(width * .72f, -28 + stride, 17, 23, .18f, .32f, .55f, 1);
-            renderer->DrawSolidRect(width * .72f + 5, -28 + stride, 4, 20, .92f, .87f, .69f, 1);
-            renderer->DrawSolidRect(width * .72f - 5, -28 + stride, 2, 23, .64f, .67f, .60f, 1);
-            break;
-        case 2: // Serat: high red plume, broad crimson shoulder plates, long spear.
-            renderer->DrawSolidDiamond(1, head - 24, 11, 21, .81f, .23f, .16f, 1);
-            renderer->DrawSolidRect(-14, -43, 16, 9, .70f, .22f, .17f, 1);
-            renderer->DrawSolidRect(14, -42, 16, 9, .70f, .22f, .17f, 1);
-            renderer->DrawSolidDiamond(0, -30, 10, 10, .89f, .72f, .36f, 1);
-            break;
-        case 3: // Ian: exceptionally broad pale gat, plum coat, brass tally board.
-            renderer->DrawEllipse(-1, head - 9, 46, 8, .83f, .76f, .52f, 1);
-            renderer->DrawSolidRect(-1, head - 17, 17, 13, .58f, .48f, .27f, 1);
-            renderer->DrawSolidRect(-1, head - 23, 13, 2, .90f, .82f, .55f, 1);
-            renderer->DrawSolidRect(width * .80f, -27 + stride, 17, 21, .33f, .23f, .14f, 1);
-            for (int row = 0; row < 3; ++row)
-            {
-                renderer->DrawSolidRect(
-                    width * .80f, -33 + stride + float(row) * 6, 13, 3, .84f, .65f, .30f, 1);
-            }
-            break;
-        case 4: // Haram: small short coat, trailing red headband and oversized wooden mallet.
-            renderer->DrawSolidRect(0, head - 5, 22, 5, .77f, .25f, .16f, 1);
-            renderer->DrawQuad(-10, head - 5, -7, head - 2, -19, head + 16, -22, head + 13, .77f, .25f, .16f);
-            renderer->DrawSolidRect(width * .8f, -22 + stride, 4, 28, .50f, .33f, .19f, 1);
-            renderer->DrawSolidRect(width * .8f, -39 + stride, 20, 11, .66f, .45f, .25f, 1);
-            renderer->DrawSolidRect(width * .8f - 6, -39 + stride, 3, 10, .86f, .70f, .42f, 1);
-            break;
-        case 5:  // Solgae: pointed straw hat; quiver remains visible behind the shoulder.
-        case 16: // Boatman: flat straw brim and a tall paddle, not another bow silhouette.
-            renderer->DrawSolidDiamond(
-                -1, head - 11, look == 5 ? 36.0f : 43.0f, look == 5 ? 18.0f : 9.0f, .72f, .61f, .35f, 1);
-            renderer->DrawSolidRect(-1, head - 6, look == 5 ? 36.0f : 43.0f, 3, .43f, .36f, .22f, 1);
-            break;
-        case 6: // Yeondu: uncovered hair, long braid and short green shoulder cloak.
-            renderer->DrawEllipse(-7, head - 10, 18, 9, .13f, .18f, .14f, 1);
-            renderer->DrawSolidRect(-10, head + 11, 5, 25, .14f, .19f, .15f, 1);
-            renderer->DrawSolidRect(-10, head + 22, 8, 4, .85f, .72f, .38f, 1);
-            break;
-        case 7: // Meoksoe: heavy fur collar and a broad cleaver.
-            renderer->DrawSolidRect(width * .8f, -17 + stride, 10, 21, .68f, .70f, .61f, 1);
-            renderer->DrawSolidRect(width * .8f, -32 + stride, 4, 10, .29f, .21f, .16f, 1);
-            break;
-        case 8: // Heukbi: pointed hood and long split scarlet scarf.
-            renderer->DrawSolidDiamond(-1, head - 10, 26, 24, .16f, .21f, .25f, 1);
-            CharacterFace(head, look);
-            renderer->DrawQuad(-9, head + 4, 9, head + 4, 7, head + 11, -7, head + 11, .61f, .22f, .20f);
-            renderer->DrawQuad(-8, head + 8, -4, head + 9, -18, -8, -23, -15, .61f, .22f, .20f);
-            break;
-        case 9: // Jang: low orange cap and a broad basket on the back.
-            renderer->DrawEllipse(-1, head - 9, 25, 12, .75f, .42f, .18f, 1);
-            renderer->DrawSolidRect(-1, head - 5, 29, 3, .89f, .70f, .37f, 1);
-            break;
-        case 10: // Sundeok: pale triangular kerchief and a medicine case.
-            renderer->DrawSolidDiamond(-1, head - 12, 29, 16, .92f, .87f, .72f, 1);
-            renderer->DrawSolidRect(0, head - 3, 25, 3, .79f, .72f, .56f, 1);
-            renderer->DrawSolidRect(width * .8f, -23 + stride, 19, 18, .47f, .27f, .30f, 1);
-            renderer->DrawSolidRect(width * .8f, -27 + stride, 13, 4, .91f, .86f, .66f, 1);
-            renderer->DrawSolidRect(width * .8f, -23 + stride, 4, 12, .91f, .86f, .66f, 1);
-            break;
-        case 11: // Scholar: black gat, white beard and scroll rather than the clerk's cap.
-            renderer->DrawEllipse(1, head + 12, 11, 11, .78f, .79f, .69f, 1);
-            renderer->DrawSolidRect(-width * .7f, -25 - stride, 7, 29, .90f, .86f, .70f, 1);
-            renderer->DrawSolidRect(-width * .7f, -25 - stride, 9, 3, .34f, .35f, .27f, 1);
-            break;
-        case 12: // Innkeeper: large hair bun, red apron and a serving tray.
-            renderer->DrawEllipse(-5, head - 16, 18, 14, .15f, .17f, .14f, 1);
-            renderer->DrawSolidRect(-8, head - 16, 27, 2, .86f, .71f, .37f, 1);
-            renderer->DrawEllipse(width * .8f, -24 + stride, 25, 8, .44f, .29f, .17f, 1);
-            renderer->DrawEllipse(width * .8f, -29 + stride, 14, 10, .88f, .81f, .62f, 1);
-            break;
-        case 13: // Potter: low grey wrap and a large terracotta pot carried in front.
-            renderer->DrawSolidRect(-1, head - 7, 26, 7, .64f, .68f, .64f, 1);
-            renderer->DrawEllipse(width * .55f, -22 + stride, 23, 27, .68f, .35f, .22f, 1);
-            renderer->DrawEllipse(width * .55f, -36 + stride, 16, 6, .34f, .23f, .16f, 1);
-            break;
-        case 14: // Repairman: knotted ochre wrap, planks and rope coils.
-            renderer->DrawSolidRect(-1, head - 7, 25, 7, .73f, .60f, .30f, 1);
-            renderer->DrawSolidDiamond(-13, head - 4, 12, 12, .73f, .60f, .30f, 1);
-            renderer->DrawEllipse(width * .7f, -24 + stride, 17, 23, .72f, .59f, .33f, 1);
-            renderer->DrawEllipse(width * .7f, -24 + stride, 9, 14, .31f, .37f, .29f, 1);
-            break;
-        case 15: // Patrolman: no tall plume, broad round shield.
-            renderer->DrawEllipse(-width * .7f, -26 - stride, 24, 29, .31f, .38f, .42f, 1);
-            renderer->DrawEllipse(-width * .7f, -26 - stride, 17, 22, .49f, .38f, .23f, 1);
-            renderer->DrawSolidDiamond(-width * .7f, -26 - stride, 7, 9, .80f, .69f, .40f, 1);
-            break;
-        case 17: // Travelling merchant: rounded ochre hat and tall strapped baggage.
-            renderer->DrawEllipse(-1, head - 10, 28, 16, .68f, .54f, .27f, 1);
-            renderer->DrawEllipse(-1, head - 5, 35, 5, .35f, .31f, .20f, 1);
-            break;
-        }
-        renderer->SetMaterial(0);
-    }
-
-    void BuildCitizen(int look, int frame)
-    {
-        Perf::Scope scope(Perf::Cpu::CharacterBuild);
-        Perf::Count(Perf::Counter::CharacterModelsBuilt);
-
-        struct Outfit
-        {
-            float r, g, b, width, height;
-        };
-
-        static const Outfit outfits[WorldLayout::NpcAppearanceCount] = {{.18f, .61f, .58f, 23, 47},
-                                                                        {.78f, .82f, .71f, 13, 59},
-                                                                        {.17f, .29f, .49f, 28, 60},
-                                                                        {.61f, .26f, .50f, 24, 49},
-                                                                        {.88f, .57f, .22f, 12, 36},
-                                                                        {.29f, .46f, .27f, 21, 52},
-                                                                        {.53f, .58f, .33f, 17, 46},
-                                                                        {.30f, .19f, .17f, 25, 54},
-                                                                        {.17f, .23f, .29f, 18, 50},
-                                                                        {.70f, .44f, .24f, 23, 49},
-                                                                        {.55f, .28f, .37f, 21, 44},
-                                                                        {.71f, .74f, .67f, 15, 54},
-                                                                        {.62f, .36f, .30f, 24, 47},
-                                                                        {.46f, .53f, .54f, 22, 46},
-                                                                        {.37f, .48f, .36f, 20, 53},
-                                                                        {.27f, .43f, .63f, 22, 54},
-                                                                        {.40f, .32f, .22f, 23, 50},
-                                                                        {.62f, .49f, .24f, 18, 52}};
-        const Outfit& outfit = outfits[look];
-        float phase = float(frame) * 6.2831853f / 8;
-        float stride = std::sin(phase) * 3.5f, bob = std::abs(std::sin(phase)) * .9f;
-        float width = outfit.width + 2, height = outfit.height + 12;
-        float head = -height + 9 - bob;
-        bool guard = look == 2 || look == 15;
-        bool raider = look == 7 || look == 8;
-        bool hunter = look == 5 || look == 6;
-        bool scholar = look == 1 || look == 11;
-        bool apron = look == 0 || look == 4 || look == 12 || look == 13 || look == 14;
-        CitizenBackSilhouette(look, width, height, bob);
-        renderer->SetMaterial(0);
-        if (raider)
-        {
-            CharacterCloth(-width * .4f,
-                           -height * .7f,
-                           width * .25f,
-                           -height * .67f,
-                           width * .3f,
-                           -8,
-                           -width * .85f,
-                           -15,
-                           .17f,
-                           .20f,
-                           .20f);
-        }
-        if (hunter)
-        {
-            renderer->SetMaterial(3);
-            renderer->DrawQuad(-width * .7f,
-                               -43,
-                               -width * .5f,
-                               -45,
-                               -width * .40f,
-                               -19,
-                               -width * .67f,
-                               -16,
-                               .34f,
-                               .27f,
-                               .17f);
-            for (int i = 0; i < 3; ++i)
-            {
-                float xx = -width * .65f + float(i) * 3;
-                renderer->DrawQuad(xx, -48, xx + 1, -48, xx + 4, -21, xx + 3, -21, .63f, .55f, .34f);
-                renderer->DrawSolidDiamond(xx, -49, 4, 6, .80f, .77f, .61f, 1);
-            }
-        }
-        float hem = look == 1 || look == 3 || look == 11 ? -5.0f : look == 4 ? -20.0f : -13.0f;
-        CharacterBody(
-            outfit.r, outfit.g, outfit.b, width, height, frame, scholar || raider, apron, nullptr, hem, look);
-        CharacterFace(head, look);
-        renderer->SetMaterial(0);
-        if (guard)
-        {
-            // Five rows of lamellar plates, a red helmet tassel and a metal-tipped spear.
-            for (int row = 0; row < 5; ++row)
-            {
-                for (int column = 0; column < 3; ++column)
-                {
-                    renderer->DrawSolidRect(-7 + float(column) * 6,
-                                            -height * .55f + float(row) * 3.8f,
-                                            5,
-                                            3,
-                                            .26f + float(column) * .03f,
-                                            .32f,
-                                            .33f,
-                                            1);
-                }
-            }
-            renderer->DrawEllipse(0, head - 8, 26, 10, .18f, .24f, .27f, 1);
-            renderer->DrawSolidRect(0, head - 12, 18, 9, .23f, .31f, .33f, 1);
-            if (look == 2)
-            {
-                renderer->DrawSolidRect(1, head - 17, 3, 12, .66f, .24f, .16f, 1);
-            }
-            renderer->SetMaterial(3);
-            renderer->DrawQuad(width * .8f,
-                               -4,
-                               width * .8f + 2,
-                               -4,
-                               width * .8f + 2,
-                               -65,
-                               width * .8f,
-                               -65,
-                               .46f,
-                               .34f,
-                               .21f);
-            renderer->SetMaterial(0);
-            renderer->DrawSolidDiamond(width * .8f + 1, -69, 7, 16, .66f, .73f, .70f, 1);
-            renderer->DrawSolidRect(width * .8f + 1, -60, 5, 5, .64f, .26f, .17f, 1);
-        }
-        else if (raider)
-        {
-            renderer->DrawEllipse(-2, head - 7, 25, 10, .19f, .21f, .22f, 1);
-            renderer->DrawQuad(-10,
-                               head + 2,
-                               10,
-                               head + 3,
-                               7,
-                               head + 11,
-                               -8,
-                               head + 10,
-                               look == 7 ? .51f : .32f,
-                               .23f,
-                               .19f);
-            renderer->DrawSolidRect(0, -height * .36f, width, 4, .52f, .25f, .17f, 1);
-            renderer->DrawQuad(width * .65f,
-                               -25 + stride,
-                               width * .65f + 4,
-                               -26 + stride,
-                               width * .85f + 5,
-                               -8 + stride,
-                               width * .85f,
-                               -5 + stride,
-                               .65f,
-                               .69f,
-                               .62f);
-        }
-        else if (scholar || look == 3)
-        {
-            if (look == 11)
-            {
-                renderer->DrawEllipse(-1, head - 8, 34, 6, .13f, .17f, .18f, 1);
-                renderer->DrawSolidRect(-1, head - 13, 15, 10, .17f, .21f, .22f, 1);
-                renderer->DrawSolidRect(-1, head - 17, 12, 2, .29f, .34f, .31f, 1);
-            }
-            renderer->DrawSolidRect(width * .67f,
-                                    -22 + stride,
-                                    10,
-                                    16,
-                                    look == 3 ? .52f : .78f,
-                                    look == 3 ? .35f : .72f,
-                                    .47f,
-                                    1);
-            renderer->DrawSolidRect(width * .67f - 3, -22 + stride, 2, 15, .37f, .35f, .24f, 1);
-        }
-        else if (hunter)
-        {
-            renderer->DrawEllipse(-3, head - 8, 19, 7, .24f, .28f, .19f, 1);
-            renderer->DrawSolidRect(0, head - 6, 20, 3, .41f, .43f, .26f, 1);
-            // Three wooden segments and a taut string give the bow an actual curved silhouette.
-            renderer->DrawQuad(width * .7f,
-                               -44,
-                               width * .7f + 2,
-                               -44,
-                               width * .95f + 3,
-                               -27,
-                               width * .95f,
-                               -27,
-                               .53f,
-                               .36f,
-                               .21f);
-            renderer->DrawQuad(width * .95f,
-                               -27,
-                               width * .95f + 3,
-                               -27,
-                               width * .7f + 2,
-                               -9,
-                               width * .7f,
-                               -9,
-                               .53f,
-                               .36f,
-                               .21f);
-            renderer->DrawSolidRect(width * .7f, -26, 1, 35, .80f, .74f, .53f, 1);
-        }
-        else
-        {
-            renderer->DrawEllipse(-4, head - 12, 11, 9, .16f, .19f, .17f, 1);
-            renderer->SetMaterial(20);
-            renderer->DrawQuad(-11,
-                               head - 9,
-                               9,
-                               head - 9,
-                               10,
-                               head - 3,
-                               -10,
-                               head - 4,
-                               look == 0 ? .64f : outfit.r * .8f,
-                               look == 0 ? .61f : outfit.g * .8f,
-                               .43f);
-        }
-        if (apron && look != 4 && look != 12 && look != 13)
-        {
-            renderer->SetMaterial(3);
-            renderer->DrawSolidRect(width * .65f, -18 + stride, 9, 13, .38f, .29f, .18f, 1);
-            renderer->SetMaterial(0);
-            renderer->DrawSolidRect(width * .65f, -30 + stride, 2, 15, .52f, .49f, .35f, 1);
-            renderer->DrawSolidRect(
-                width * .65f + 1, -36 + stride, 8, 5, look == 0 || look == 4 ? .52f : .68f, .58f, .46f, 1);
-        }
-        if (look == 3 || look == 9 || look == 10 || look == 17)
-        {
-            renderer->SetMaterial(0);
-            renderer->DrawEllipse(-width * .60f, -17 - stride, 11, 14, .47f, .36f, .22f, 1);
-            renderer->DrawSolidRect(-width * .60f, -22 - stride, 9, 2, .69f, .54f, .30f, 1);
-            renderer->DrawSolidDiamond(-width * .60f, -17 - stride, 4, 5, .84f, .71f, .38f, 1);
-        }
-        CitizenIdentity(look, width, head, stride);
-        renderer->SetMaterial(0);
-    }
-
-    void BuildAnimal(int kind, int frame)
-    {
-        float x = 0, y = 0;
-        float step = std::sin(frame * 6.2831853f / 8) * 4;
-        float c = kind == 0 ? .67f : kind == 1 ? .25f : .43f;
-        for (int i = 0; i < 4; ++i)
-        {
-            renderer->DrawSolidRect(x - 12 + i * 8,
-                                    y - 5 + ((i % 2) ? step : -step),
-                                    3,
-                                    kind == 0 ? 19.0f : 10.0f,
-                                    c * .65f,
-                                    c * .5f,
-                                    c * .4f,
-                                    1);
-        }
-        renderer->DrawEllipse(x, y - 18, 35, 20, c, c * .8f, c * .6f, 1);
-        renderer->DrawEllipse(x + 17, y - 25, 16, 16, c, c * .82f, c * .66f, 1);
-        renderer->DrawSolidDiamond(x + 12, y - 36, 7, 15, c, c * .8f, c * .6f, 1);
-        renderer->DrawSolidDiamond(x + 21, y - 35, 6, 13, c, c * .8f, c * .6f, 1);
-        renderer->DrawSolidRect(x + 21, y - 26, 2, 2, .06f, .05f, .04f, 1);
-        if (kind == 0)
-        {
-            renderer->DrawSolidRect(x + 12, y - 42, 2, 17, .45f, .34f, .22f, 1);
-            renderer->DrawSolidRect(x + 19, y - 42, 2, 17, .45f, .34f, .22f, 1);
-        }
-    }
-
-    std::string FrameName(const std::string& prefix, int frame)
-    {
-        return prefix + std::to_string(frame);
-    }
-
-    void BuildProp(int kind)
-    {
-        switch (kind)
-        {
-        case 0:
-            DrawGiwaHouse(0, 0);
-            break;
-        case 1:
-            DrawChogaHouse(0, 0);
-            break;
-        case 2:
-            DrawMarketStall(0, 0);
-            break;
-        case 3:
-            DrawJangseung(0, 0);
-            break;
-        case 4:
-            DrawStoneWell(0, 0);
-            break;
-        case 5:
-            DrawLantern(0, 0);
-            break;
-        case 6:
-            DrawFence(0, 0, true);
-            break;
-        case 7:
-        case 16:
-        case 17:
-            DrawTree(0, 0, kind);
-            break;
-        case 8: // shore reeds
-            renderer->SetMaterial(3);
-            for (int i = -3; i <= 3; ++i)
-            {
-                float xx = float(i) * 4, top = -22.0f - float((i * i + 3) % 4) * 6;
-                renderer->DrawQuad(xx,
-                                   1,
-                                   xx + 1.5f,
-                                   1,
-                                   xx + float(i) * 1.7f,
-                                   top,
-                                   xx + float(i) * 1.7f - 1,
-                                   top,
-                                   .41f,
-                                   .43f,
-                                   .25f);
-                renderer->SetMaterial(13);
-                renderer->DrawSolidRect(xx + 4, -11, 13, 5, .37f, .46f, .27f, 1);
-                renderer->SetMaterial(3);
-            }
-            break;
-        case 9: // shore stones with moss caps
-            renderer->SetMaterial(0);
-            renderer->DrawEllipse(0, -5, 40, 21, .32f, .36f, .32f, 1);
-            renderer->DrawSolidDiamond(-3, -12, 31, 15, .49f, .51f, .41f, 1);
-            renderer->DrawSolidDiamond(-8, -14, 18, 8, .36f, .44f, .29f, 1);
-            renderer->DrawEllipse(17, -3, 14, 10, .43f, .45f, .37f, 1);
-            break;
-        case 10: // moored fishing boat (not walkable)
-            renderer->SetMaterial(3);
-            renderer->DrawQuad(-60, -4, -12, 19, 58, -11, 8, -29, .29f, .23f, .15f);
-            renderer->DrawQuad(-60, -4, -12, 19, -10, 7, -51, -10, .42f, .32f, .20f);
-            for (int i = -2; i <= 2; ++i)
-            {
-                float xx = float(i) * 17;
-                renderer->DrawQuad(xx - 12, -12, xx + 12, -1, xx + 17, -4, xx - 7, -15, .52f, .39f, .23f);
-            }
-            renderer->DrawSolidRect(4, -29, 3, 57, .41f, .30f, .18f, 1);
-            renderer->SetMaterial(14);
-            renderer->DrawQuad(6, -54, 28, -41, 25, -17, 6, -24, .73f, .65f, .45f);
-            break;
-        case 11: // herbs drying above damp ground
-            renderer->SetMaterial(3);
-            renderer->DrawSolidRect(-24, -20, 3, 42, .32f, .25f, .16f, 1);
-            renderer->DrawSolidRect(24, -20, 3, 42, .32f, .25f, .16f, 1);
-            renderer->DrawQuad(-28, -34, 20, -14, 30, -20, -18, -40, .49f, .38f, .23f);
-            renderer->SetMaterial(13);
-            for (int i = 0; i < 5; ++i)
-            {
-                renderer->DrawSolidRect(-18 + float(i) * 9, -33 + float(i) * 3.5f, 9, 8, .45f, .49f, .25f, 1);
-            }
-            break;
-        case 12: // linen hung after the storm
-            renderer->SetMaterial(3);
-            renderer->DrawSolidRect(-31, -24, 3, 50, .31f, .24f, .16f, 1);
-            renderer->DrawSolidRect(31, -24, 3, 50, .31f, .24f, .16f, 1);
-            renderer->DrawQuad(-32, -45, 32, -38, 32, -37, -32, -44, .40f, .33f, .21f);
-            renderer->SetMaterial(14);
-            for (int i = 0; i < 3; ++i)
-            {
-                float xx = -21 + float(i) * 20, yy = -42 + float(i) * 2;
-                renderer->DrawQuad(xx - 7,
-                                   yy,
-                                   xx + 7,
-                                   yy + 1,
-                                   xx + 6,
-                                   yy + 22,
-                                   xx - 8,
-                                   yy + 20,
-                                   .71f - float(i) * .12f,
-                                   .69f - float(i) * .09f,
-                                   .54f,
-                                   1);
-            }
-            break;
-        case 13: // raised rice sacks and salvaged cargo
-            renderer->SetMaterial(3);
-            renderer->DrawSolidDiamond(0, 0, 49, 22, .32f, .25f, .16f, 1);
-            renderer->SetMaterial(5);
-            renderer->DrawSolidRect(-9, -12, 23, 25, .63f, .54f, .34f, 1);
-            renderer->DrawSolidRect(12, -10, 22, 22, .55f, .47f, .29f, 1);
-            renderer->SetMaterial(0);
-            renderer->DrawSolidRect(-9, -12, 2, 22, .40f, .32f, .20f, 1);
-            break;
-        case 14: // medicine-shop cloth, no illegible pseudo-text
-            renderer->SetMaterial(3);
-            renderer->DrawSolidRect(0, -31, 3, 64, .28f, .24f, .16f, 1);
-            renderer->SetMaterial(14);
-            renderer->DrawQuad(2, -60, 23, -56, 22, -25, 2, -27, .80f, .71f, .49f);
-            renderer->SetMaterial(0);
-            renderer->DrawSolidRect(12, -43, 3, 17, .48f, .24f, .15f, 1);
-            renderer->DrawSolidRect(12, -43, 13, 3, .48f, .24f, .15f, 1);
-            break;
-        case 15: // wooden walk on existing road tiles only
-            renderer->SetMaterial(3);
-            for (int i = 0; i < 6; ++i)
-            {
-                float a = float(i) / 6, b = float(i + 1) / 6 - .025f;
-                renderer->DrawQuad(-48 + 48 * a,
-                                   -24 * a,
-                                   48 * a,
-                                   24 - 24 * a,
-                                   48 * b,
-                                   24 - 24 * b,
-                                   -48 + 48 * b,
-                                   -24 * b,
-                                   .42f,
-                                   .34f,
-                                   .22f);
-            }
-            break;
-        }
-    }
-
-    void InitializeModels()
-    {
-        Perf::Scope scope(Perf::Cpu::ModelBuild);
-        // Cache only local shape data: no GPU handles, camera positions or runtime state.
         wchar_t executable[32768] = {};
         DWORD length = GetModuleFileNameW(nullptr, executable, 32768);
-        std::wstring directory;
-        if (length > 0 && length < 32768)
+        if (!length || length >= 32768)
         {
-            directory.assign(executable, length);
-            directory.resize(directory.find_last_of(L"\\/") + 1);
+            return false;
         }
-        directory += L"Cache";
-        bool directoryReady =
-            CreateDirectoryW(directory.c_str(), nullptr) != FALSE || GetLastError() == ERROR_ALREADY_EXISTS;
-        std::wstring cache = directory + L"/harbor_models_v6.cache";
-
-        std::vector<std::string> expected;
-        for (int k = 0; k < 18; ++k)
+        std::wstring directory(executable, length);
+        directory.resize(directory.find_last_of(L"\\/") + 1);
+        if (!renderer->LoadResourceSprites(directory + L"Resources"))
         {
-            expected.push_back(FrameName("prop", k));
+            return false;
         }
-        for (int k = 0; k < 8; ++k)
+        std::vector<std::string> required = {
+            "drain", "sluice", "sluice_open", "notice", "wreck", "ledger", "key", "corpse", "bandit_sign"};
+        for (int kind = 0; kind < 20; ++kind)
         {
-            expected.push_back(FrameName("hero", k));
-        }
-        for (const char* prefix : {"hero_attack", "hero_attack_up", "hero_attack_down"})
-        {
-            for (int pose = 0; pose < CharacterPresentation::AttackFrames; ++pose)
-            {
-                expected.push_back(FrameName(prefix, pose));
-            }
-        }
-        for (int k = 0; k < WorldLayout::NpcAppearanceCount; ++k)
-        {
-            for (int frame = 0; frame < 8; ++frame)
-            {
-                expected.push_back("citizen" + std::to_string(k) + "_" + std::to_string(frame));
-            }
-        }
-        for (const char* name :
-             {"drain", "sluice", "sluice_open", "notice", "wreck", "ledger", "key", "corpse", "bandit_sign"})
-        {
-            expected.push_back(name);
-        }
-        for (int k = 0; k < 3; ++k)
-        {
-            for (int f = 0; f < 8; ++f)
-            {
-                expected.push_back(FrameName("beast" + std::to_string(k) + "_", f));
-            }
-        }
-        for (int k = 0; k < 3; ++k)
-        {
-            expected.push_back(FrameName("loot", k));
-        }
-        for (int k = 0; k < 6; ++k)
-        {
-            expected.push_back(FrameName("tile", k));
-        }
-
-        bool loaded = directoryReady && renderer->LoadModels(cache);
-        for (const auto& name : expected)
-        {
-            loaded = loaded && renderer->HasModel(name);
-        }
-        if (loaded)
-        {
-            std::cout << "Loaded model cache: " << expected.size() << " models.\n";
-            return;
-        }
-
-        for (int kind = 0; kind < 18; ++kind)
-        {
-            renderer->BeginModel(FrameName("prop", kind));
-            BuildProp(kind);
-            renderer->EndModel();
-        }
-        for (int frame = 0; frame < 8; ++frame)
-        {
-            renderer->BeginModel(FrameName("hero", frame));
-            BuildActor(.38f, .46f, .60f, true, frame);
-            renderer->EndModel();
-        }
-        for (int vertical = -1; vertical <= 1; ++vertical)
-        {
-            const char* prefix = vertical < 0   ? "hero_attack_up"
-                                 : vertical > 0 ? "hero_attack_down"
-                                                : "hero_attack";
-            for (int pose = 0; pose < CharacterPresentation::AttackFrames; ++pose)
-            {
-                renderer->BeginModel(FrameName(prefix, pose));
-                BuildActor(.38f, .46f, .60f, true, 0, pose, vertical);
-                renderer->EndModel();
-            }
-        }
-        for (int look = 0; look < WorldLayout::NpcAppearanceCount; ++look)
-        {
-            for (int frame = 0; frame < 8; ++frame)
-            {
-                renderer->BeginModel("citizen" + std::to_string(look) + "_" + std::to_string(frame));
-                BuildCitizen(look, frame);
-                renderer->EndModel();
-            }
-        }
-        for (int kind = 0; kind < 3; ++kind)
-        {
-            for (int frame = 0; frame < 8; ++frame)
-            {
-                renderer->BeginModel(FrameName("beast" + std::to_string(kind) + "_", frame));
-                BuildAnimal(kind, frame);
-                renderer->EndModel();
-            }
-        }
-        for (int kind = 0; kind < 3; ++kind)
-        {
-            renderer->BeginModel(FrameName("loot", kind));
-            if (kind == 0)
-            {
-                renderer->DrawEllipse(0, -7, 15, 10, .86f, .67f, .24f, 1);
-                renderer->DrawSolidRect(0, -7, 3, 3, .23f, .17f, .06f, 1);
-            }
-            else if (kind == 1)
-            {
-                renderer->DrawEllipse(0, -10, 14, 20, .21f, .52f, .42f, 1);
-                renderer->DrawSolidRect(0, -19, 7, 5, .58f, .40f, .22f, 1);
-                renderer->DrawSolidRect(0, -10, 9, 6, .80f, .75f, .59f, 1);
-            }
-            else
-            {
-                renderer->DrawSolidDiamond(0, -8, 23, 16, .55f, .37f, .21f, 1);
-                renderer->DrawSolidRect(0, -8, 3, 13, .27f, .18f, .11f, 1);
-            }
-            renderer->EndModel();
+            required.push_back("prop" + std::to_string(kind));
         }
         for (int kind = 0; kind < 6; ++kind)
         {
-            renderer->BeginModel(FrameName("tile", kind));
-            renderer->SetMaterial(kind == 4 ? 2 : kind == 5 ? 6 : 1);
-            // One terrain instance; continuous surface detail is evaluated in world space.
-            renderer->DrawSolidDiamond(0,
-                                       0,
-                                       TileWidth + 1,
-                                       TileHeight + 1,
-                                       kind == 5   ? .12f
-                                       : kind == 4 ? .43f
-                                                   : .27f,
-                                       kind == 5   ? .29f
-                                       : kind == 4 ? .42f
-                                                   : .36f,
-                                       kind == 5   ? .31f
-                                       : kind == 4 ? .33f
-                                                   : .23f,
-                                       1);
-            renderer->EndModel();
+            required.push_back("tile" + std::to_string(kind));
         }
-
-        renderer->BeginModel("drain");
-        renderer->SetMaterial(2);
-        renderer->DrawSolidDiamond(0, -6, 92, 36, .24f, .27f, .27f, 1);
-        renderer->DrawSolidRect(0, -21, 70, 32, .09f, .14f, .15f, 1);
-        for (int k = -2; k <= 2; ++k)
+        for (int kind = 0; kind < 3; ++kind)
         {
-            renderer->DrawSolidRect(k * 13.0f, -21, 3, 32, .36f, .39f, .37f, 1);
+            required.push_back("loot" + std::to_string(kind));
         }
-        renderer->EndModel();
-        for (int open = 0; open < 2; ++open)
+        for (int direction = 0; direction < 4; ++direction)
         {
-            renderer->BeginModel(open ? "sluice_open" : "sluice");
-            renderer->SetMaterial(2);
-            renderer->DrawSolidRect(-39, -37, 14, 78, .29f, .32f, .30f, 1);
-            renderer->DrawSolidRect(39, -37, 14, 78, .29f, .32f, .30f, 1);
-            renderer->SetMaterial(6);
-            renderer->DrawSolidDiamond(0, 0, 78, 32, .08f, .29f, .35f, 1);
-            renderer->SetMaterial(3);
-            renderer->DrawSolidRect(0, open ? -65.0f : -31.0f, 66, open ? 18.0f : 66.0f, .30f, .21f, .14f, 1);
-            renderer->DrawSolidRect(0, -76, 96, 11, .26f, .20f, .15f, 1);
-            renderer->EndModel();
+            const std::string suffix = "@" + std::to_string(direction);
+            required.push_back("hero_idle" + suffix);
+            for (int frame = 0; frame < 8; ++frame)
+            {
+                required.push_back("hero" + std::to_string(frame) + suffix);
+            }
+            for (int frame = 0; frame < CharacterPresentation::AttackFrames; ++frame)
+            {
+                required.push_back("hero_attack" + std::to_string(frame) + suffix);
+            }
+            for (int look = 0; look < WorldLayout::NpcAppearanceCount; ++look)
+            {
+                const std::string prefix = "citizen" + std::to_string(look) + "_";
+                required.push_back(prefix + "idle" + suffix);
+                for (int frame = 0; frame < 8; ++frame)
+                {
+                    required.push_back(prefix + std::to_string(frame) + suffix);
+                }
+            }
+            for (int kind = 0; kind < 3; ++kind)
+            {
+                const std::string prefix = "beast" + std::to_string(kind) + "_";
+                required.push_back(prefix + "idle" + suffix);
+                for (int frame = 0; frame < 8; ++frame)
+                {
+                    required.push_back(prefix + std::to_string(frame) + suffix);
+                }
+            }
         }
-        renderer->BeginModel("notice");
-        renderer->SetMaterial(3);
-        renderer->DrawSolidRect(-19, -30, 7, 58, .30f, .22f, .15f, 1);
-        renderer->DrawSolidRect(19, -30, 7, 58, .30f, .22f, .15f, 1);
-        renderer->DrawSolidRect(0, -42, 49, 33, .35f, .27f, .18f, 1);
-        renderer->SetMaterial(0);
-        renderer->DrawSolidRect(0, -43, 29, 22, .76f, .70f, .53f, 1);
-        renderer->EndModel();
-        renderer->BeginModel("wreck");
-        renderer->SetMaterial(3);
-        renderer->DrawSolidDiamond(0, -9, 146, 55, .24f, .18f, .13f, 1);
-        for (int k = -3; k <= 3; ++k)
-        {
-            renderer->DrawSolidRect(k * 16.0f, -24, 6, 30 + std::abs(k) * 5.0f, .37f, .28f, .18f, 1);
-        }
-        renderer->DrawSolidRect(18, -67, 7, 100, .31f, .24f, .16f, 1);
-        renderer->EndModel();
-        renderer->BeginModel("ledger");
-        renderer->SetMaterial(0);
-        renderer->DrawSolidRect(0, -9, 19, 21, .26f, .36f, .45f, 1);
-        renderer->DrawSolidRect(-6, -9, 3, 21, .77f, .71f, .53f, 1);
-        renderer->DrawSolidRect(2, -9, 8, 11, .70f, .65f, .49f, 1);
-        renderer->EndModel();
-        renderer->BeginModel("key");
-        renderer->DrawEllipse(0, -18, 10, 10, .79f, .64f, .25f, 1);
-        renderer->DrawSolidRect(0, -7, 3, 17, .79f, .64f, .25f, 1);
-        renderer->DrawSolidRect(4, -2, 7, 3, .79f, .64f, .25f, 1);
-        renderer->EndModel();
-        renderer->BeginModel("bandit_sign");
-        renderer->SetMaterial(3);
-        renderer->DrawSolidRect(0, -38, 8, 76, .21f, .14f, .10f, 1);
-        renderer->SetMaterial(0);
-        renderer->DrawSolidDiamond(0, -52, 42, 45, .58f, .12f, .10f, 1);
-        renderer->DrawSolidRect(0, -52, 4, 24, .9f, .68f, .45f, 1);
-        renderer->DrawSolidRect(0, -37, 5, 4, .9f, .68f, .45f, 1);
-        renderer->EndModel();
-        renderer->BeginModel("corpse");
-        renderer->DrawEllipse(0, -2, 38, 14, .32f, .33f, .30f, 1);
-        renderer->DrawEllipse(17, -5, 11, 10, .62f, .46f, .32f, 1);
-        renderer->EndModel();
-
-        if (!directoryReady || !renderer->SaveModels(cache))
-        {
-            std::cerr << "Model cache could not be written; using in-memory models.\n";
-        }
-        else
-        {
-            std::cout << "Generated and saved model cache.\n";
-        }
+        return std::all_of(required.begin(),
+                           required.end(),
+                           [](const std::string& model)
+                           {
+                               return renderer->HasModel(model);
+                           });
     }
 
     void InitializeSceneActors()
     {
+        Perf::Scope scope(Perf::Cpu::ScenePrepare);
         SceneGraph& scene = firstLevel.Scene();
         harbor.Initialize();
+        for (ActorKind kind : {ActorKind::Player, ActorKind::Npc, ActorKind::Enemy, ActorKind::Prop})
+        {
+            for (ActorId id : scene.FindByKind(kind))
+            {
+                Actor& actor = scene.Get(id);
+                actor.visualHeight = renderer->ModelVisualHeight(actor.model) + 4;
+                if (actor.shadowWidth > 0)
+                {
+                    actor.shadowHeight = actor.visualHeight;
+                }
+            }
+        }
         for (Harbor::Landmark* site : scene.Actors<Harbor::Landmark>(ActorKind::Prop))
         {
             Actor& label = scene.Create(site->Id(), "SiteLabel", ActorKind::UI);
@@ -1457,7 +236,7 @@ namespace
             label.drawable = true;
             label.SetLocalPosition({0, 0, 105});
         }
-        for (const Npc* npc : scene.Actors<Npc>(ActorKind::Npc))
+        for (Npc* npc : scene.Actors<Npc>(ActorKind::Npc))
         {
             Actor& label = scene.Create(npc->Id(), "NpcIdentity", ActorKind::UI);
             label.pass = ScenePass::Overlay;
@@ -1569,6 +348,7 @@ namespace
 
     void DrawEffectActor(const Actor& actor, float x, float y)
     {
+        renderer->SetMaterial(0);
         switch (ActorEffect(actor.variant))
         {
         case ActorEffect::WarmLight:
@@ -1581,9 +361,9 @@ namespace
             break;
         case ActorEffect::Flame:
             renderer->SetMaterial(17);
-            renderer->DrawSolidRect(x, y + 16, 130, 95, 1, .54f, .19f, .11f);
+            renderer->DrawSolidRect(x, y + 4, 70, 65, 1, .54f, .19f, .11f);
             renderer->SetMaterial(8);
-            renderer->DrawSolidRect(x, y, 32, 52, 1, 1, 1, .92f);
+            renderer->DrawSolidRect(x, y, 10, 18, 1, 1, 1, .92f);
             break;
         case ActorEffect::Smoke:
             renderer->SetMaterial(9);
@@ -1599,28 +379,12 @@ namespace
             if (firstLevel.attackAnimation > 0)
             {
                 int frame = CharacterPresentation::AttackFrame(firstLevel.attackAnimation);
-                int vertical = CharacterPresentation::AttackDirection(firstLevel.facingY);
-                auto pose = CharacterPresentation::SampleSwordPose(frame, vertical);
-                float flip = firstLevel.Player().mirrorModel ? -1.0f : 1.0f;
-                // Narrow ribbons follow the actual blade. No glow during wind-up or recovery.
-                for (int k = 0; k < 4 && pose.trailStrength > .01f; ++k)
-                {
-                    float a = pose.angle - float(k) * .16f;
-                    float b = a - .18f;
-                    float hx = x + flip * pose.handX, hy = y + pose.handY;
-                    renderer->DrawQuad(hx + flip * std::cos(a) * 17,
-                                       hy + std::sin(a) * 17,
-                                       hx + flip * std::cos(a) * 43,
-                                       hy + std::sin(a) * 43,
-                                       hx + flip * std::cos(b) * 43,
-                                       hy + std::sin(b) * 43,
-                                       hx + flip * std::cos(b) * 17,
-                                       hy + std::sin(b) * 17,
-                                       .84f,
-                                       .91f,
-                                       .89f,
-                                       pose.trailStrength * (.42f - float(k) * .085f));
-                }
+                renderer->DrawResourceSwordTrail(
+                    frame,
+                    firstLevel.Player().visualDirection,
+                    x,
+                    y,
+                    CharacterPresentation::AttackTrailStrength(firstLevel.attackAnimation));
             }
             break;
         case ActorEffect::EnemyStatus:
@@ -1634,11 +398,12 @@ namespace
                 if (enemy->health < enemy->maxHealth ||
                     Distance2D(enemy->WorldPosition(), PlayerPosition()) < 4)
                 {
-                    renderer->DrawSolidRect(x, y - 60, 42, 5, .07f, .055f, .05f, 1);
+                    const float barY = y - enemy->visualHeight - 8;
+                    renderer->DrawSolidRect(x, barY, 42, 5, .07f, .055f, .05f, 1);
                     float width = 40.0f * enemy->health / enemy->maxHealth;
                     if (width > 0)
                     {
-                        renderer->DrawSolidRect(x - 20 + width * .5f, y - 60, width, 3, .73f, .25f, .18f, 1);
+                        renderer->DrawSolidRect(x - 20 + width * .5f, barY, width, 3, .73f, .25f, .18f, 1);
                     }
                 }
             }
@@ -1768,7 +533,8 @@ namespace
                                 renderer->SetSurfaceData(actor.surfaceData);
                                 if (!actor.model.empty())
                                 {
-                                    renderer->DrawModel(actor.model, x, y, actor.mirrorModel);
+                                    renderer->DrawModel(
+                                        actor.model, x, y, actor.mirrorModel, actor.visualDirection);
                                 }
                                 if (actor.Kind() == ActorKind::Effect)
                                 {
@@ -2925,7 +1691,13 @@ int main(int argc, char** argv)
         Close();
         return 1;
     }
-    InitializeModels();
+    if (!InitializeModels())
+    {
+        std::cerr
+            << "Resource atlas missing or invalid. Rebuild to deploy Resources/world_atlas.png and world_sprites.bin.\n";
+        Close();
+        return 1;
+    }
     InitializeSceneActors();
     UpdatePromptActor();
     worldMonitor.Start();

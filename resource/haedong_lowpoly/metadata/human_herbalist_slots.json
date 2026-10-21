@@ -1,0 +1,99 @@
+{
+  "id": "human_herbalist",
+  "skeleton": "human_v1",
+  "slots": [
+    {
+      "slot": "body_base",
+      "glb": "glb/parts/human_herbalist__body_base.glb",
+      "objects": [
+        "body_torso_base",
+        "body_neck",
+        "ear.L",
+        "body_leg.L",
+        "body_arm.L",
+        "thumb.L",
+        "ear.R",
+        "body_leg.R",
+        "body_arm.R",
+        "thumb.R"
+      ]
+    },
+    {
+      "slot": "head",
+      "glb": "glb/parts/human_herbalist__head.glb",
+      "objects": [
+        "head_oval"
+      ]
+    },
+    {
+      "slot": "face",
+      "glb": "glb/parts/human_herbalist__face.glb",
+      "objects": [
+        "face_eye.L",
+        "face_brow.L",
+        "face_eye.R",
+        "face_brow.R",
+        "face_nose",
+        "face_mouth"
+      ]
+    },
+    {
+      "slot": "lower_clothing",
+      "glb": "glb/parts/human_herbalist__lower_clothing.glb",
+      "objects": [
+        "pants_baji.L",
+        "pants_baji.R"
+      ]
+    },
+    {
+      "slot": "shoes",
+      "glb": "glb/parts/human_herbalist__shoes.glb",
+      "objects": [
+        "shoes_jipsin.L",
+        "shoes_jipsin.R"
+      ]
+    },
+    {
+      "slot": "upper_clothing",
+      "glb": "glb/parts/human_herbalist__upper_clothing.glb",
+      "objects": [
+        "sleeve_jeogori.L",
+        "sleeve_shoulder.L",
+        "sleeve_jeogori.R",
+        "sleeve_shoulder.R",
+        "clothes_jeogori",
+        "clothes_shoulder_yoke",
+        "collar_left",
+        "collar_right",
+        "belt",
+        "goreum_knot",
+        "goreum_ribbon"
+      ]
+    },
+    {
+      "slot": "hands",
+      "glb": "glb/parts/human_herbalist__hands.glb",
+      "objects": [
+        "hands_mitten.L",
+        "hands_mitten.R"
+      ]
+    },
+    {
+      "slot": "hair",
+      "glb": "glb/parts/human_herbalist__hair.glb",
+      "objects": [
+        "hair_cap",
+        "hair_topknot",
+        "headband"
+      ]
+    },
+    {
+      "slot": "accessories",
+      "glb": "glb/parts/human_herbalist__accessories.glb",
+      "objects": [
+        "medicine_satchel",
+        "apron"
+      ]
+    }
+  ]
+}

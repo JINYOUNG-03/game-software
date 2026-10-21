@@ -106,7 +106,7 @@ namespace Level
         playerId = hero.Id();
         hero.SetLocalPosition(Camp);
         hero.drawable = true;
-        hero.model = "hero0";
+        hero.model = "hero_idle";
         hero.shadowWidth = 30;
         hero.shadowHeight = 65;
         hero.visualHeight = WorldLayout::CharacterVisualHeight;
@@ -170,31 +170,30 @@ namespace Level
         prop.variant = kind;
         prop.drawable = true;
         prop.model = "prop" + std::to_string(kind);
-        prop.shadowWidth = kind <= 1                   ? 112.0f
-                           : (kind == 7 || kind >= 16) ? 65.0f
-                           : kind == 8 || kind == 15   ? 0.0f
-                                                       : 34.0f;
-        prop.shadowHeight = kind <= 1 ? 105.0f : (kind == 7 || kind >= 16) ? 112.0f : 30.0f;
+        const bool house = kind <= 1 || kind == 19;
+        const bool tree = kind == 7 || kind == 16 || kind == 17;
+        prop.shadowWidth = house ? 112.0f : tree ? 65.0f : kind == 8 || kind == 15 ? 0.0f : 34.0f;
+        prop.shadowHeight = house ? 190.0f : tree ? 112.0f : 30.0f;
         if (kind == 15)
         {
             prop.pass = ScenePass::Ground;
         }
-        if (kind <= 1)
+        if (house)
         {
             Actor& light = scene.Create(prop.Id(), "WindowLight", ActorKind::Effect);
             light.drawable = true;
             light.pass = ScenePass::Effects;
             light.variant = int(ActorEffect::WarmLight);
-            light.SetLocalPosition({-.15f, .15f, 36});
+            light.SetLocalPosition({-.15f, .15f, 58});
         }
         prop.SetBlocksMovement(blocksMovement);
-        if (kind <= 1 || kind == 5)
+        if (house || kind == 5)
         {
             Actor& effect = scene.Create(prop.Id(), kind == 5 ? "Flame" : "ChimneySmoke", ActorKind::Effect);
             effect.drawable = true;
             effect.pass = ScenePass::Effects;
             effect.variant = int(kind == 5 ? ActorEffect::Flame : ActorEffect::Smoke);
-            effect.SetLocalPosition(kind == 5 ? Position{0, 0, 43} : Position{.416667f, -.416667f, 103});
+            effect.SetLocalPosition(kind == 5 ? Position{0, 0, 74} : Position{.416667f, -.416667f, 184});
         }
     }
 
@@ -216,20 +215,17 @@ namespace Level
         if (attackAnimation > 0)
         {
             int pose = CharacterPresentation::AttackFrame(attackAnimation);
-            int direction = CharacterPresentation::AttackDirection(facingY);
-            const char* prefix = direction < 0   ? "hero_attack_up"
-                                 : direction > 0 ? "hero_attack_down"
-                                                 : "hero_attack";
-            Player().model = prefix + std::to_string(pose);
+            Player().model = "hero_attack" + std::to_string(pose);
         }
         else
         {
-            Player().model = "hero" + std::to_string(frame);
+            Player().model = moving ? "hero" + std::to_string(frame) : "hero_idle";
         }
         for (Enemy* enemy : scene.Actors<Enemy>(ActorKind::Enemy))
         {
             int pose = enemy->moving ? int(enemy->phase * 9 * 8 / 6.2831853f) % 8 : 0;
-            enemy->model = "beast" + std::to_string(enemy->kind) + "_" + std::to_string(pose);
+            enemy->model =
+                "beast" + std::to_string(enemy->kind) + "_" + (enemy->moving ? std::to_string(pose) : "idle");
         }
     }
 
@@ -576,7 +572,9 @@ namespace Level
         {
             for (int y = 8; y <= 32; y += 6)
             {
-                addBlock(x + WorldLayout::TownOffsetX, y + WorldLayout::TownOffsetY, int(random() % 2));
+                addBlock(x + WorldLayout::TownOffsetX,
+                         y + WorldLayout::TownOffsetY,
+                         x == 8 && y == 8 ? 19 : int(random() % 2));
             }
         }
         for (Position p : {WorldLayout::Town(12, 9), WorldLayout::Town(14, 9), WorldLayout::Town(18, 15)})
@@ -605,7 +603,11 @@ namespace Level
             {
                 for (int x = -9; x <= 9; x += 6)
                 {
-                    addBlock(int(c.x) + x, int(c.y) + y, (x + y + village) % 3 == 0 ? 0 : 1);
+                    addBlock(int(c.x) + x,
+                             int(c.y) + y,
+                             x == -9 && y == -9           ? 19
+                             : (x + y + village) % 3 == 0 ? 0
+                                                          : 1);
                 }
             }
             AddProp({c.x - 5, c.y - 3, 0}, 2);
@@ -617,6 +619,19 @@ namespace Level
             {
                 AddProp({c.x + float(offset), c.y + 2, 0}, 5);
                 AddProp({c.x + float(offset), c.y - 5, 0}, 11);
+            }
+        }
+        for (int village = 0; village < WorldLayout::VillageCount; ++village)
+        {
+            const Position c = WorldLayout::VillageCenter(village);
+            // Farm cattle and rice cargo are scenery, not hostile respawning wildlife.
+            if (Open(int(c.x) + 11, int(c.y) + 13))
+            {
+                AddProp({c.x + 11, c.y + 13, 0}, 18);
+            }
+            if (Open(int(c.x) + 9, int(c.y) + 13))
+            {
+                AddProp({c.x + 9, c.y + 13, 0}, 13);
             }
         }
         for (int attempt = 0; attempt < 19500; ++attempt)
@@ -878,7 +893,7 @@ namespace Level
                 float right = ((maxX - minY) - (hero.x - hero.y)) * HalfTileWidth;
                 float top = ((minX + minY) - (hero.x + hero.y)) * HalfTileHeight;
                 float bottom = ((maxX + maxY) - (hero.x + hero.y)) * HalfTileHeight;
-                bool visible = right > -900 && left < 900 && bottom > -650 && top < 760;
+                bool visible = right > -900 && left < 900 && bottom > -650 && top < 920;
                 int index = cy * WorldLayout::ChunksPerSide + cx;
                 scene.Get(terrainChunks[index]).SetVisible(visible);
                 scene.Get(propChunks[index]).SetVisible(visible);
@@ -927,6 +942,7 @@ namespace Level
         {
             facingX = sx / length;
             facingY = sy / length;
+            Player().visualDirection = CharacterPresentation::ScreenDirection(facingX, facingY);
             if (std::abs(facingX) > .1f)
             {
                 Player().mirrorModel = facingX < 0;
@@ -1429,6 +1445,13 @@ namespace Level
                     Move(enemy, dx / length * amount, dy / length * amount);
                 }
                 enemy.moving = Distance(before, enemy.WorldPosition()) > .0001f;
+                if (enemy.moving)
+                {
+                    const Position after = enemy.WorldPosition();
+                    enemy.visualDirection = CharacterPresentation::ScreenDirection(
+                        ((after.x - before.x) - (after.y - before.y)) * HalfTileWidth,
+                        ((after.x - before.x) + (after.y - before.y)) * HalfTileHeight);
+                }
 
                 if (chasing && distance < .9f && enemy.cooldown <= 0 && invulnerability <= 0 &&
                     ClearLine(enemy.WorldPosition(), Player().WorldPosition()))

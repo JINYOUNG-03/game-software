@@ -749,7 +749,7 @@ namespace Harbor
             npc.lastLedger = Site(0);
             npc.variant = i;
             npc.drawable = true;
-            npc.model = "citizen" + std::to_string(appearance) + "_0";
+            npc.model = "citizen" + std::to_string(appearance) + "_idle";
             npc.shadowWidth = 30;
             npc.shadowHeight = 62;
             npc.visualHeight = CharacterPresentation::NpcVisualHeight(appearance);
@@ -1297,6 +1297,9 @@ namespace Harbor
         npc.moving = travelled > .0001f;
         if (npc.moving)
         {
+            npc.visualDirection =
+                CharacterPresentation::ScreenDirection(((after.x - before.x) - (after.y - before.y)) * 48,
+                                                       ((after.x - before.x) + (after.y - before.y)) * 24);
             npc.phase += travelled * 5.5f;
             float screenDirection = (after.x - before.x) - (after.y - before.y);
             if (std::abs(screenDirection) > .0001f)
@@ -1305,7 +1308,7 @@ namespace Harbor
             }
         }
         npc.model = "citizen" + std::to_string(npc.appearance) + "_" +
-                    std::to_string(npc.moving ? int(npc.phase * 8 / 6.2831853f) % 8 : 0);
+                    (npc.moving ? std::to_string(int(npc.phase * 8 / 6.2831853f) % 8) : "idle");
         npc.cooldown = (std::max)(0.0f, npc.cooldown - dt);
         npc.threatTime = (std::max)(0.0f, npc.threatTime - dt);
         npc.raidCooldown = (std::max)(0.0f, npc.raidCooldown - dt);

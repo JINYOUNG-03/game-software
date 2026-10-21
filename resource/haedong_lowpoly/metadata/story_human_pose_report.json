@@ -1,0 +1,32 @@
+[
+  {
+    "asset": "human_mira_engineer",
+    "evaluated_action_frames": 283,
+    "status": "pass"
+  },
+  {
+    "asset": "human_doyun_clerk",
+    "evaluated_action_frames": 283,
+    "status": "pass"
+  },
+  {
+    "asset": "human_serat_inspector",
+    "evaluated_action_frames": 283,
+    "status": "pass"
+  },
+  {
+    "asset": "human_ian_broker",
+    "evaluated_action_frames": 283,
+    "status": "pass"
+  },
+  {
+    "asset": "human_haram_apprentice",
+    "evaluated_action_frames": 283,
+    "status": "pass"
+  },
+  {
+    "asset": "human_ian_broker.glb",
+    "roundtrip_actions": 11,
+    "status": "pass"
+  }
+]

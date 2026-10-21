@@ -40,13 +40,13 @@ foreach ($contract in @('offsetof(Instance, surface)', 'i < 6',
 }
 if (-not $header.Contains('sizeof(float) * 21') -or -not $header.Contains('float surface[4]'))
 { throw 'CPU/GPU instance layout mismatch.' }
-foreach ($contract in @('harbor_models_v6.cache', 'kind < 18', 'k < 18', 'SetSurfaceData(actor.surfaceData)',
+foreach ($contract in @('LoadResourceSprites(directory + L"Resources")', 'kind < 20', 'SetSurfaceData(actor.surfaceData)',
                        'UpdateWorldLights()', 'count < 8', 'ActorEffect::WarmLight', 'ActorEffect::HarborMist'))
 {
     if (-not $game.Contains($contract)) { throw "Missing graphics integration: $contract" }
 }
-if (-not $models.Contains('ModelCacheVersion = 2') -or -not $models.Contains('part.material > 21') -or
-    -not $models.Contains('v[11]')) { throw 'New geometry/material/alpha cache is not versioned.' }
+if (-not $models.Contains('revision != 2') -or -not $models.Contains('crc != Crc32(png)') -or
+    -not $models.Contains('GUID_WICPixelFormat32bppRGBA')) { throw 'Resource atlas needs version/CRC/RGBA validation.' }
 if ([regex]::Matches($level, 'RefreshTerrainAppearance\(\);').Count -ne 2)
 { throw 'Terrain appearance must update after generation and draining, not every frame.' }
 foreach ($contract in @('waterMask |= 1 << edge', 'roadMask |= 1 << edge', 'wetLane ? 1.0f : 0.0f',
@@ -59,10 +59,10 @@ $scenery = [regex]::Match($level,
     '(?s)void FirstLevel::BuildHarborScenery\(\).*?(?=void FirstLevel::UpdateVisibleChunks\()').Value
 if ($scenery.Contains('Carve(') -or $scenery.Contains('true)') -or $scenery.Contains('SetVariant('))
 { throw 'Decoration must not carve roads, block paths or change gameplay terrain.' }
-$tileModel = [regex]::Match($game,
-    '(?s)for \(int kind = 0; kind < 6;.*?(?=renderer->BeginModel\("drain"\))').Value
-if ([regex]::Matches($tileModel, 'DrawSolidDiamond\(').Count -ne 1 -or $tileModel.Contains('DrawEllipse('))
-{ throw 'Terrain models must retain one batched primitive per tile.' }
+$drawModel = [regex]::Match($models,
+    '(?s)void Renderer::DrawModel\(.*?(?=void Renderer::DrawResourceSwordTrail)').Value
+if ([regex]::Matches($drawModel, '\bQueueRect\(').Count -ne 1 -or $drawModel.Contains('glDraw'))
+{ throw 'Each imported model must submit one quad without an immediate draw call.' }
 $endWorld = [regex]::Match($renderer, '(?s)void Renderer::EndWorld\(.*?(?=void Renderer::DrawQuad\()').Value
 if ([regex]::Matches($endWorld, '\bDrawPost\(').Count -ne 4 -or
     -not $endWorld.Contains('m_WorldShading = false'))
@@ -102,6 +102,6 @@ for ($i = 0; $i -lt 4; $i++)
 if ($mask -ne 1) { throw 'West shoreline bit contract failed.' }
 [pscustomobject]@{
     event = 'visual_static_contracts'; passed = $true; world_coordinate_projection_probes = 16
-    maximum_lights = 8; post_passes = 4; model_cache_version = 2; appearance_revision = 6
+    maximum_lights = 8; post_passes = 4; resource_atlas_format = 2
     game_build_performed = $false; game_execution_performed = $false; shader_compilation_performed = $false
 } | ConvertTo-Json

@@ -204,7 +204,7 @@
       <PreprocessorDefinitions>NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>opengl32.lib;gdi32.lib;psapi.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>windowscodecs.lib;ole32.lib;opengl32.lib;gdi32.lib;psapi.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -232,4 +232,18 @@
   </Target>
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <Target Name="CopyResourceSprites" AfterTargets="Build">
+    <ItemGroup>
+      <ResourceSprites Include="$(ProjectDir)..\..\resource\haedong_runtime\world_atlas.png;$(ProjectDir)..\..\resource\haedong_runtime\world_sprites.bin" />
+    </ItemGroup>
+    <Error Condition="!Exists('%(ResourceSprites.Identity)')" Text="Missing resource atlas. Run node tools/Compile-ResourceSprites.cjs from the repository root." />
+    <MakeDir Directories="$(OutDir)Resources" />
+    <Copy SourceFiles="@(ResourceSprites)" DestinationFolder="$(OutDir)Resources" SkipUnchangedFiles="true" />
+  </Target>
+  <ItemGroup>
+    <None Include="..\..\resource\haedong_runtime\world_atlas.png" />
+    <None Include="..\..\resource\haedong_runtime\world_sprites.bin" />
+    <None Include="..\..\resource\haedong_runtime\import_report.json" />
+    <None Include="..\..\tools\Compile-ResourceSprites.cjs" />
+  </ItemGroup>
 </Project>

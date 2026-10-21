@@ -1,0 +1,1562 @@
+{
+  "pack": "haedong_lowpoly",
+  "version": "1.0.0",
+  "assets": [
+    {
+      "id": "animal_tiger",
+      "category": "animal",
+      "blend": "blend/animal_tiger.blend",
+      "glb": "glb/animal_tiger.glb",
+      "triangles_before_modifiers": 2204,
+      "mesh_parts": 97,
+      "bones": 20,
+      "animations": [
+        {
+          "name": "idle",
+          "frames": 60,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 1.9666666666666666
+        },
+        {
+          "name": "turn_pose",
+          "frames": 1,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.0
+        },
+        {
+          "name": "walk",
+          "frames": 32,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 1.0333333333333334
+        },
+        {
+          "name": "run",
+          "frames": 24,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "turn_left",
+          "frames": 24,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "turn_right",
+          "frames": 24,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "attack",
+          "frames": 30,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.9666666666666667
+        },
+        {
+          "name": "jump",
+          "frames": 42,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 1.3666666666666667
+        },
+        {
+          "name": "jump_start",
+          "frames": 10,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.3
+        },
+        {
+          "name": "jump_air",
+          "frames": 24,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "jump_land",
+          "frames": 12,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.36666666666666664
+        }
+      ],
+      "temperament": "dangerous",
+      "diet": "carnivore",
+      "skeleton": "tiger_v1",
+      "run_gait": "diagonal_trot",
+      "attack": "bite_and_swipe"
+    },
+    {
+      "id": "animal_wolf",
+      "category": "animal",
+      "blend": "blend/animal_wolf.blend",
+      "glb": "glb/animal_wolf.glb",
+      "triangles_before_modifiers": 1772,
+      "mesh_parts": 31,
+      "bones": 20,
+      "animations": [
+        {
+          "name": "idle",
+          "frames": 60,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 1.9666666666666666
+        },
+        {
+          "name": "turn_pose",
+          "frames": 1,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.0
+        },
+        {
+          "name": "walk",
+          "frames": 32,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 1.0333333333333334
+        },
+        {
+          "name": "run",
+          "frames": 24,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "turn_left",
+          "frames": 24,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "turn_right",
+          "frames": 24,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "attack",
+          "frames": 30,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.9666666666666667
+        },
+        {
+          "name": "jump",
+          "frames": 42,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 1.3666666666666667
+        },
+        {
+          "name": "jump_start",
+          "frames": 10,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.3
+        },
+        {
+          "name": "jump_air",
+          "frames": 24,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "jump_land",
+          "frames": 12,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.36666666666666664
+        }
+      ],
+      "temperament": "neutral",
+      "diet": "carnivore",
+      "skeleton": "wolf_v1",
+      "run_gait": "diagonal_trot",
+      "attack": "bite_and_swipe"
+    },
+    {
+      "id": "animal_deer",
+      "category": "animal",
+      "blend": "blend/animal_deer.blend",
+      "glb": "glb/animal_deer.glb",
+      "triangles_before_modifiers": 1492,
+      "mesh_parts": 27,
+      "bones": 20,
+      "animations": [
+        {
+          "name": "idle",
+          "frames": 60,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 1.9666666666666666
+        },
+        {
+          "name": "turn_pose",
+          "frames": 1,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.0
+        },
+        {
+          "name": "walk",
+          "frames": 32,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 1.0333333333333334
+        },
+        {
+          "name": "run",
+          "frames": 24,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "turn_left",
+          "frames": 24,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "turn_right",
+          "frames": 24,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "attack",
+          "frames": 30,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.9666666666666667
+        },
+        {
+          "name": "jump",
+          "frames": 42,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 1.3666666666666667
+        },
+        {
+          "name": "jump_start",
+          "frames": 10,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.3
+        },
+        {
+          "name": "jump_air",
+          "frames": 24,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "jump_land",
+          "frames": 12,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.36666666666666664
+        }
+      ],
+      "temperament": "passive",
+      "diet": "herbivore",
+      "skeleton": "deer_v1",
+      "run_gait": "diagonal_trot",
+      "attack": "head_butt"
+    },
+    {
+      "id": "animal_ox",
+      "category": "animal",
+      "blend": "blend/animal_ox.blend",
+      "glb": "glb/animal_ox.glb",
+      "triangles_before_modifiers": 1464,
+      "mesh_parts": 25,
+      "bones": 20,
+      "animations": [
+        {
+          "name": "idle",
+          "frames": 60,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 1.9666666666666666
+        },
+        {
+          "name": "turn_pose",
+          "frames": 1,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.0
+        },
+        {
+          "name": "walk",
+          "frames": 32,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 1.0333333333333334
+        },
+        {
+          "name": "run",
+          "frames": 24,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "turn_left",
+          "frames": 24,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "turn_right",
+          "frames": 24,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "attack",
+          "frames": 30,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.9666666666666667
+        },
+        {
+          "name": "jump",
+          "frames": 42,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 1.3666666666666667
+        },
+        {
+          "name": "jump_start",
+          "frames": 10,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.3
+        },
+        {
+          "name": "jump_air",
+          "frames": 24,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "jump_land",
+          "frames": 12,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.36666666666666664
+        }
+      ],
+      "temperament": "passive",
+      "diet": "herbivore",
+      "skeleton": "ox_v1",
+      "run_gait": "diagonal_trot",
+      "attack": "head_butt"
+    },
+    {
+      "id": "prop_door_hinged",
+      "category": "skeletal_prop",
+      "bones": 2,
+      "glb": "glb/prop_door_hinged.glb",
+      "animations": [
+        {
+          "name": "door_open",
+          "frames": 30
+        }
+      ],
+      "origin": "hinge foot"
+    },
+    {
+      "id": "module_foundation_2m",
+      "category": "architecture_prop",
+      "snap_m": [
+        2,
+        2,
+        0.3
+      ],
+      "origin": "bottom center",
+      "glb": "glb/module_foundation_2m.glb",
+      "library_translation_m": [
+        0.0,
+        0.0,
+        0
+      ]
+    },
+    {
+      "id": "module_floor_2m",
+      "category": "architecture_prop",
+      "snap_m": [
+        2,
+        2,
+        0.14
+      ],
+      "origin": "bottom center",
+      "glb": "glb/module_floor_2m.glb",
+      "library_translation_m": [
+        3.5,
+        0.0,
+        0
+      ]
+    },
+    {
+      "id": "module_post_2_4m",
+      "category": "architecture_prop",
+      "snap_m": [
+        2,
+        2,
+        2.4
+      ],
+      "origin": "foot center",
+      "glb": "glb/module_post_2_4m.glb",
+      "library_translation_m": [
+        7.0,
+        0.0,
+        0
+      ]
+    },
+    {
+      "id": "module_beam_2m",
+      "category": "architecture_prop",
+      "snap_m": [
+        2,
+        0,
+        0
+      ],
+      "origin": "bottom center",
+      "glb": "glb/module_beam_2m.glb",
+      "library_translation_m": [
+        10.5,
+        0.0,
+        0
+      ]
+    },
+    {
+      "id": "module_wall_plaster_2m",
+      "category": "architecture_prop",
+      "snap_m": [
+        2,
+        0,
+        0
+      ],
+      "origin": "bottom center; fits between posts",
+      "glb": "glb/module_wall_plaster_2m.glb",
+      "library_translation_m": [
+        14.0,
+        0.0,
+        0
+      ]
+    },
+    {
+      "id": "module_wall_paper_lattice_2m",
+      "category": "architecture_prop",
+      "snap_m": [
+        2,
+        0,
+        0
+      ],
+      "origin": "bottom center",
+      "glb": "glb/module_wall_paper_lattice_2m.glb",
+      "library_translation_m": [
+        0.0,
+        3.8,
+        0
+      ]
+    },
+    {
+      "id": "module_roof_giwa_2m",
+      "category": "architecture_prop",
+      "snap_m": [
+        2,
+        2,
+        0
+      ],
+      "origin": "wall-top center; 0.2m eave overhang",
+      "glb": "glb/module_roof_giwa_2m.glb",
+      "library_translation_m": [
+        3.5,
+        3.8,
+        0
+      ]
+    },
+    {
+      "id": "module_roof_thatch_2m",
+      "category": "architecture_prop",
+      "snap_m": [
+        2,
+        2,
+        0
+      ],
+      "origin": "wall-top center",
+      "glb": "glb/module_roof_thatch_2m.glb",
+      "library_translation_m": [
+        7.0,
+        3.8,
+        0
+      ]
+    },
+    {
+      "id": "module_gable_2m",
+      "category": "architecture_prop",
+      "snap_m": [
+        2,
+        0,
+        0
+      ],
+      "origin": "wall-top center",
+      "glb": "glb/module_gable_2m.glb",
+      "library_translation_m": [
+        10.5,
+        3.8,
+        0
+      ]
+    },
+    {
+      "id": "module_fence_2m",
+      "category": "architecture_prop",
+      "snap_m": [
+        2,
+        0,
+        0
+      ],
+      "origin": "ground center",
+      "glb": "glb/module_fence_2m.glb",
+      "library_translation_m": [
+        14.0,
+        3.8,
+        0
+      ]
+    },
+    {
+      "id": "module_soban_table",
+      "category": "architecture_prop",
+      "snap_m": null,
+      "origin": "ground center",
+      "glb": "glb/module_soban_table.glb",
+      "library_translation_m": [
+        0.0,
+        7.6,
+        0
+      ]
+    },
+    {
+      "id": "module_stool",
+      "category": "architecture_prop",
+      "snap_m": null,
+      "origin": "ground center",
+      "glb": "glb/module_stool.glb",
+      "library_translation_m": [
+        3.5,
+        7.6,
+        0
+      ]
+    },
+    {
+      "id": "module_onggi_jar",
+      "category": "architecture_prop",
+      "snap_m": null,
+      "origin": "ground center; removable lid",
+      "glb": "glb/module_onggi_jar.glb",
+      "library_translation_m": [
+        7.0,
+        7.6,
+        0
+      ]
+    },
+    {
+      "id": "module_rice_sack",
+      "category": "architecture_prop",
+      "snap_m": null,
+      "origin": "ground center",
+      "glb": "glb/module_rice_sack.glb",
+      "library_translation_m": [
+        10.5,
+        7.6,
+        0
+      ]
+    },
+    {
+      "id": "module_storage_chest",
+      "category": "architecture_prop",
+      "snap_m": null,
+      "origin": "ground center",
+      "glb": "glb/module_storage_chest.glb",
+      "library_translation_m": [
+        14.0,
+        7.6,
+        0
+      ]
+    },
+    {
+      "id": "module_medicine_drawers",
+      "category": "architecture_prop",
+      "snap_m": null,
+      "origin": "ground center",
+      "glb": "glb/module_medicine_drawers.glb",
+      "library_translation_m": [
+        0.0,
+        11.399999999999999,
+        0
+      ]
+    },
+    {
+      "id": "module_paper_lantern",
+      "category": "architecture_prop",
+      "snap_m": null,
+      "origin": "base center",
+      "glb": "glb/module_paper_lantern.glb",
+      "library_translation_m": [
+        3.5,
+        11.399999999999999,
+        0
+      ]
+    },
+    {
+      "id": "module_wood_bucket",
+      "category": "architecture_prop",
+      "snap_m": null,
+      "origin": "ground center",
+      "glb": "glb/module_wood_bucket.glb",
+      "library_translation_m": [
+        7.0,
+        11.399999999999999,
+        0
+      ]
+    },
+    {
+      "id": "module_reed_mat",
+      "category": "architecture_prop",
+      "snap_m": null,
+      "origin": "ground center",
+      "glb": "glb/module_reed_mat.glb",
+      "library_translation_m": [
+        10.5,
+        11.399999999999999,
+        0
+      ]
+    },
+    {
+      "id": "module_firewood",
+      "category": "architecture_prop",
+      "snap_m": null,
+      "origin": "ground center",
+      "glb": "glb/module_firewood.glb",
+      "library_translation_m": [
+        14.0,
+        11.399999999999999,
+        0
+      ]
+    },
+    {
+      "id": "module_door_hinged",
+      "category": "architecture_prop",
+      "snap_m": null,
+      "origin": "hinge foot; door_open action",
+      "glb": "glb/module_door_hinged.glb",
+      "library_translation_m": [
+        0.0,
+        15.2,
+        0
+      ]
+    },
+    {
+      "id": "scene_medicine_shop",
+      "category": "assembled_example",
+      "blend": "blend/scene_medicine_shop.blend",
+      "glb": "glb/scene_medicine_shop.glb",
+      "triangles_before_modifiers": 2050,
+      "mesh_parts": 88,
+      "bones": 0,
+      "animations": []
+    },
+    {
+      "id": "nature_pine",
+      "category": "tree",
+      "glb": "glb/nature_pine.glb",
+      "origin": "ground center",
+      "library_translation_m": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "nature_broadleaf",
+      "category": "tree",
+      "glb": "glb/nature_broadleaf.glb",
+      "origin": "ground center",
+      "library_translation_m": [
+        3,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "nature_grass_clump",
+      "category": "vegetation",
+      "glb": "glb/nature_grass_clump.glb",
+      "origin": "ground center",
+      "library_translation_m": [
+        6,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "nature_reed_clump",
+      "category": "vegetation",
+      "glb": "glb/nature_reed_clump.glb",
+      "origin": "ground center",
+      "library_translation_m": [
+        9,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "nature_rock_00",
+      "category": "rock",
+      "glb": "glb/nature_rock_00.glb",
+      "origin": "ground center",
+      "library_translation_m": [
+        0,
+        3,
+        0
+      ]
+    },
+    {
+      "id": "nature_rock_01",
+      "category": "rock",
+      "glb": "glb/nature_rock_01.glb",
+      "origin": "ground center",
+      "library_translation_m": [
+        3,
+        3,
+        0
+      ]
+    },
+    {
+      "id": "nature_rock_02",
+      "category": "rock",
+      "glb": "glb/nature_rock_02.glb",
+      "origin": "ground center",
+      "library_translation_m": [
+        6,
+        3,
+        0
+      ]
+    },
+    {
+      "id": "terrain_earth_2m",
+      "category": "terrain",
+      "glb": "glb/terrain_earth_2m.glb",
+      "origin": "ground center",
+      "library_translation_m": [
+        9,
+        3,
+        0
+      ]
+    },
+    {
+      "id": "terrain_grass_2m",
+      "category": "terrain",
+      "glb": "glb/terrain_grass_2m.glb",
+      "origin": "ground center",
+      "library_translation_m": [
+        0,
+        6,
+        0
+      ]
+    },
+    {
+      "id": "terrain_stone_2m",
+      "category": "terrain",
+      "glb": "glb/terrain_stone_2m.glb",
+      "origin": "ground center",
+      "library_translation_m": [
+        3,
+        6,
+        0
+      ]
+    },
+    {
+      "id": "terrain_slope_2m",
+      "category": "terrain",
+      "glb": "glb/terrain_slope_2m.glb",
+      "origin": "ground center",
+      "library_translation_m": [
+        6,
+        6,
+        0
+      ]
+    },
+    {
+      "id": "human_protagonist",
+      "category": "human",
+      "blend": "blend/human_protagonist.blend",
+      "glb": "glb/human_protagonist.glb",
+      "triangles_before_modifiers": 2044,
+      "mesh_parts": 38,
+      "bones": 18,
+      "animations": [
+        {
+          "name": "idle",
+          "frames": 60,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 1.9666666666666666
+        },
+        {
+          "name": "turn_pose",
+          "frames": 1,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.0
+        },
+        {
+          "name": "walk",
+          "frames": 32,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 1.0333333333333334
+        },
+        {
+          "name": "run",
+          "frames": 24,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "turn_left",
+          "frames": 24,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "turn_right",
+          "frames": 24,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "attack",
+          "frames": 30,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.9666666666666667
+        },
+        {
+          "name": "jump",
+          "frames": 42,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 1.3666666666666667
+        },
+        {
+          "name": "jump_start",
+          "frames": 10,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.3
+        },
+        {
+          "name": "jump_air",
+          "frames": 24,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "jump_land",
+          "frames": 12,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.36666666666666664
+        }
+      ],
+      "height_m": 1.75,
+      "head_ratio": 7,
+      "skeleton": "human_v1"
+    },
+    {
+      "id": "human_porter",
+      "category": "human",
+      "blend": "blend/human_porter.blend",
+      "glb": "glb/human_porter.glb",
+      "triangles_before_modifiers": 2172,
+      "mesh_parts": 40,
+      "bones": 18,
+      "animations": [
+        {
+          "name": "idle",
+          "frames": 60,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 1.9666666666666666
+        },
+        {
+          "name": "turn_pose",
+          "frames": 1,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.0
+        },
+        {
+          "name": "walk",
+          "frames": 32,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 1.0333333333333334
+        },
+        {
+          "name": "run",
+          "frames": 24,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "turn_left",
+          "frames": 24,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "turn_right",
+          "frames": 24,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "attack",
+          "frames": 30,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.9666666666666667
+        },
+        {
+          "name": "jump",
+          "frames": 42,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 1.3666666666666667
+        },
+        {
+          "name": "jump_start",
+          "frames": 10,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.3
+        },
+        {
+          "name": "jump_air",
+          "frames": 24,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "jump_land",
+          "frames": 12,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.36666666666666664
+        }
+      ],
+      "height_m": 1.75,
+      "head_ratio": 7,
+      "skeleton": "human_v1"
+    },
+    {
+      "id": "human_herbalist",
+      "category": "human",
+      "blend": "blend/human_herbalist.blend",
+      "glb": "glb/human_herbalist.glb",
+      "triangles_before_modifiers": 2072,
+      "mesh_parts": 39,
+      "bones": 18,
+      "animations": [
+        {
+          "name": "idle",
+          "frames": 60,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 1.9666666666666666
+        },
+        {
+          "name": "turn_pose",
+          "frames": 1,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.0
+        },
+        {
+          "name": "walk",
+          "frames": 32,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 1.0333333333333334
+        },
+        {
+          "name": "run",
+          "frames": 24,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "turn_left",
+          "frames": 24,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "turn_right",
+          "frames": 24,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "attack",
+          "frames": 30,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.9666666666666667
+        },
+        {
+          "name": "jump",
+          "frames": 42,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 1.3666666666666667
+        },
+        {
+          "name": "jump_start",
+          "frames": 10,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.3
+        },
+        {
+          "name": "jump_air",
+          "frames": 24,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "jump_land",
+          "frames": 12,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.36666666666666664
+        }
+      ],
+      "height_m": 1.75,
+      "head_ratio": 7,
+      "skeleton": "human_v1"
+    },
+    {
+      "id": "human_mira_engineer",
+      "category": "human",
+      "blend": "blend/human_mira_engineer.blend",
+      "glb": "glb/human_mira_engineer.glb",
+      "triangles_before_modifiers": 2188,
+      "mesh_parts": 50,
+      "bones": 18,
+      "animations": [
+        {
+          "name": "idle",
+          "frames": 60,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 1.9666666666666666
+        },
+        {
+          "name": "turn_pose",
+          "frames": 1,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.0
+        },
+        {
+          "name": "walk",
+          "frames": 32,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 1.0333333333333334
+        },
+        {
+          "name": "run",
+          "frames": 24,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "turn_left",
+          "frames": 24,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "turn_right",
+          "frames": 24,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "attack",
+          "frames": 30,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.9666666666666667
+        },
+        {
+          "name": "jump",
+          "frames": 42,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 1.3666666666666667
+        },
+        {
+          "name": "jump_start",
+          "frames": 10,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.3
+        },
+        {
+          "name": "jump_air",
+          "frames": 24,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "jump_land",
+          "frames": 12,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.36666666666666664
+        }
+      ],
+      "height_m": 1.75,
+      "head_ratio": 7,
+      "skeleton": "human_v1",
+      "story_character": "미라 벤",
+      "role": "배수로 기술자",
+      "silhouette": "back bun, head wrap, split work apron, tool belt",
+      "appearance_status": "art_direction_proposal_not_story_canon"
+    },
+    {
+      "id": "human_doyun_clerk",
+      "category": "human",
+      "blend": "blend/human_doyun_clerk.blend",
+      "glb": "glb/human_doyun_clerk.glb",
+      "triangles_before_modifiers": 2280,
+      "mesh_parts": 54,
+      "bones": 18,
+      "animations": [
+        {
+          "name": "idle",
+          "frames": 60,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 1.9666666666666666
+        },
+        {
+          "name": "turn_pose",
+          "frames": 1,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.0
+        },
+        {
+          "name": "walk",
+          "frames": 32,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 1.0333333333333334
+        },
+        {
+          "name": "run",
+          "frames": 24,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "turn_left",
+          "frames": 24,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "turn_right",
+          "frames": 24,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "attack",
+          "frames": 30,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.9666666666666667
+        },
+        {
+          "name": "jump",
+          "frames": 42,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 1.3666666666666667
+        },
+        {
+          "name": "jump_start",
+          "frames": 10,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.3
+        },
+        {
+          "name": "jump_air",
+          "frames": 24,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "jump_land",
+          "frames": 12,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.36666666666666664
+        }
+      ],
+      "height_m": 1.75,
+      "head_ratio": 7,
+      "skeleton": "human_v1",
+      "story_character": "도윤 렌",
+      "role": "부두 조합 서기",
+      "silhouette": "gray temples, moustache, long split vest, ledger satchel",
+      "appearance_status": "art_direction_proposal_not_story_canon"
+    },
+    {
+      "id": "human_serat_inspector",
+      "category": "human",
+      "blend": "blend/human_serat_inspector.blend",
+      "glb": "glb/human_serat_inspector.glb",
+      "triangles_before_modifiers": 2468,
+      "mesh_parts": 60,
+      "bones": 18,
+      "animations": [
+        {
+          "name": "idle",
+          "frames": 60,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 1.9666666666666666
+        },
+        {
+          "name": "turn_pose",
+          "frames": 1,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.0
+        },
+        {
+          "name": "walk",
+          "frames": 32,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 1.0333333333333334
+        },
+        {
+          "name": "run",
+          "frames": 24,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "turn_left",
+          "frames": 24,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "turn_right",
+          "frames": 24,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "attack",
+          "frames": 30,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.9666666666666667
+        },
+        {
+          "name": "jump",
+          "frames": 42,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 1.3666666666666667
+        },
+        {
+          "name": "jump_start",
+          "frames": 10,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.3
+        },
+        {
+          "name": "jump_air",
+          "frames": 24,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "jump_land",
+          "frames": 12,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.36666666666666664
+        }
+      ],
+      "height_m": 1.75,
+      "head_ratio": 7,
+      "skeleton": "human_v1",
+      "story_character": "세라트 경",
+      "role": "항만청 조사관",
+      "silhouette": "low helmet, padded shoulder vest, official badge, sealed document case",
+      "appearance_status": "art_direction_proposal_not_story_canon"
+    },
+    {
+      "id": "human_ian_broker",
+      "category": "human",
+      "blend": "blend/human_ian_broker.blend",
+      "glb": "glb/human_ian_broker.glb",
+      "triangles_before_modifiers": 2512,
+      "mesh_parts": 54,
+      "bones": 18,
+      "animations": [
+        {
+          "name": "idle",
+          "frames": 60,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 1.9666666666666666
+        },
+        {
+          "name": "turn_pose",
+          "frames": 1,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.0
+        },
+        {
+          "name": "walk",
+          "frames": 32,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 1.0333333333333334
+        },
+        {
+          "name": "run",
+          "frames": 24,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "turn_left",
+          "frames": 24,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "turn_right",
+          "frames": 24,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "attack",
+          "frames": 30,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.9666666666666667
+        },
+        {
+          "name": "jump",
+          "frames": 42,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 1.3666666666666667
+        },
+        {
+          "name": "jump_start",
+          "frames": 10,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.3
+        },
+        {
+          "name": "jump_air",
+          "frames": 24,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "jump_land",
+          "frames": 12,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.36666666666666664
+        }
+      ],
+      "height_m": 1.75,
+      "head_ratio": 7,
+      "skeleton": "human_v1",
+      "story_character": "이안 노을",
+      "role": "야시장 중개인",
+      "silhouette": "gat hat, pointed beard, open long coat, coin purse",
+      "appearance_status": "art_direction_proposal_not_story_canon"
+    },
+    {
+      "id": "human_haram_apprentice",
+      "category": "human",
+      "blend": "blend/human_haram_apprentice.blend",
+      "glb": "glb/human_haram_apprentice.glb",
+      "triangles_before_modifiers": 2312,
+      "mesh_parts": 49,
+      "bones": 18,
+      "animations": [
+        {
+          "name": "idle",
+          "frames": 60,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 1.9666666666666666
+        },
+        {
+          "name": "turn_pose",
+          "frames": 1,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.0
+        },
+        {
+          "name": "walk",
+          "frames": 32,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 1.0333333333333334
+        },
+        {
+          "name": "run",
+          "frames": 24,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "turn_left",
+          "frames": 24,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "turn_right",
+          "frames": 24,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "attack",
+          "frames": 30,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.9666666666666667
+        },
+        {
+          "name": "jump",
+          "frames": 42,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 1.3666666666666667
+        },
+        {
+          "name": "jump_start",
+          "frames": 10,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.3
+        },
+        {
+          "name": "jump_air",
+          "frames": 24,
+          "fps": 30,
+          "loop": true,
+          "duration_seconds": 0.7666666666666667
+        },
+        {
+          "name": "jump_land",
+          "frames": 12,
+          "fps": 30,
+          "loop": false,
+          "duration_seconds": 0.36666666666666664
+        }
+      ],
+      "height_m": 1.75,
+      "head_ratio": 7,
+      "skeleton": "human_v1",
+      "story_character": "하람",
+      "role": "견습 수리공",
+      "silhouette": "tied headband, low ponytail, short patched apron, blueprint roll",
+      "appearance_status": "art_direction_proposal_not_story_canon"
+    }
+  ]
+}

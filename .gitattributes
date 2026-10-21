@@ -1,2 +1,6 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+resource/**/*.glb binary
+resource/**/*.png binary
+resource/haedong_runtime/*.bin binary
+tools/*.cjs text eol=lf

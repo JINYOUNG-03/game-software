@@ -1,0 +1,120 @@
+{
+  "id": "human_serat_inspector",
+  "skeleton": "human_v1",
+  "slots": [
+    {
+      "slot": "body_base",
+      "glb": "glb/parts/human_serat_inspector__body_base.glb",
+      "objects": [
+        "body_torso_base",
+        "body_neck",
+        "ear.L",
+        "body_leg.L",
+        "body_arm.L",
+        "thumb.L",
+        "ear.R",
+        "body_leg.R",
+        "body_arm.R",
+        "thumb.R"
+      ]
+    },
+    {
+      "slot": "head",
+      "glb": "glb/parts/human_serat_inspector__head.glb",
+      "objects": [
+        "head_oval"
+      ]
+    },
+    {
+      "slot": "face",
+      "glb": "glb/parts/human_serat_inspector__face.glb",
+      "objects": [
+        "face_eye.L",
+        "face_brow.L",
+        "face_eye.R",
+        "face_brow.R",
+        "face_nose",
+        "face_mouth"
+      ]
+    },
+    {
+      "slot": "lower_clothing",
+      "glb": "glb/parts/human_serat_inspector__lower_clothing.glb",
+      "objects": [
+        "pants_baji.L",
+        "pants_baji.R"
+      ]
+    },
+    {
+      "slot": "shoes",
+      "glb": "glb/parts/human_serat_inspector__shoes.glb",
+      "objects": [
+        "shoes_jipsin.L",
+        "shoes_jipsin.R"
+      ]
+    },
+    {
+      "slot": "upper_clothing",
+      "glb": "glb/parts/human_serat_inspector__upper_clothing.glb",
+      "objects": [
+        "sleeve_jeogori.L",
+        "sleeve_shoulder.L",
+        "sleeve_jeogori.R",
+        "sleeve_shoulder.R",
+        "clothes_jeogori",
+        "clothes_shoulder_yoke",
+        "collar_left",
+        "collar_right",
+        "belt",
+        "goreum_knot",
+        "goreum_ribbon",
+        "clothes_padded_shoulder_-1",
+        "clothes_padded_shoulder_1",
+        "clothes_official_vest",
+        "clothes_vest_stitch",
+        "clothes_vest_stitch.001",
+        "clothes_vest_stitch.002",
+        "clothes_vest_stitch.003",
+        "clothes_vest_stitch.004",
+        "clothes_vest_stitch.005",
+        "clothes_vest_stitch.006",
+        "clothes_vest_stitch.007",
+        "clothes_vest_stitch.008",
+        "clothes_vest_stitch.009",
+        "clothes_vest_stitch.010",
+        "clothes_vest_stitch.011"
+      ]
+    },
+    {
+      "slot": "hands",
+      "glb": "glb/parts/human_serat_inspector__hands.glb",
+      "objects": [
+        "hands_mitten.L",
+        "hands_mitten.R"
+      ]
+    },
+    {
+      "slot": "hair",
+      "glb": "glb/parts/human_serat_inspector__hair.glb",
+      "objects": [
+        "hair_cap",
+        "headwear_helmet",
+        "headwear_helmet_rim",
+        "headwear_helmet_tip",
+        "headwear_chin_tie_-1",
+        "headwear_chin_tie_1"
+      ]
+    },
+    {
+      "slot": "accessories",
+      "glb": "glb/parts/human_serat_inspector__accessories.glb",
+      "objects": [
+        "official_badge",
+        "badge_inset",
+        "sealed_document_case",
+        "document_red_seal",
+        "official_baton"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+{
+  "id": "human_doyun_clerk",
+  "skeleton": "human_v1",
+  "slots": [
+    {
+      "slot": "body_base",
+      "glb": "glb/parts/human_doyun_clerk__body_base.glb",
+      "objects": [
+        "body_torso_base",
+        "body_neck",
+        "ear.L",
+        "body_leg.L",
+        "body_arm.L",
+        "thumb.L",
+        "ear.R",
+        "body_leg.R",
+        "body_arm.R",
+        "thumb.R"
+      ]
+    },
+    {
+      "slot": "head",
+      "glb": "glb/parts/human_doyun_clerk__head.glb",
+      "objects": [
+        "head_oval"
+      ]
+    },
+    {
+      "slot": "face",
+      "glb": "glb/parts/human_doyun_clerk__face.glb",
+      "objects": [
+        "face_eye.L",
+        "face_brow.L",
+        "face_eye.R",
+        "face_brow.R",
+        "face_nose",
+        "face_mouth",
+        "face_moustache_-1",
+        "face_age_line_-1",
+        "face_moustache_1",
+        "face_age_line_1"
+      ]
+    },
+    {
+      "slot": "lower_clothing",
+      "glb": "glb/parts/human_doyun_clerk__lower_clothing.glb",
+      "objects": [
+        "pants_baji.L",
+        "pants_baji.R"
+      ]
+    },
+    {
+      "slot": "shoes",
+      "glb": "glb/parts/human_doyun_clerk__shoes.glb",
+      "objects": [
+        "shoes_jipsin.L",
+        "shoes_jipsin.R"
+      ]
+    },
+    {
+      "slot": "upper_clothing",
+      "glb": "glb/parts/human_doyun_clerk__upper_clothing.glb",
+      "objects": [
+        "sleeve_jeogori.L",
+        "sleeve_shoulder.L",
+        "sleeve_jeogori.R",
+        "sleeve_shoulder.R",
+        "clothes_jeogori",
+        "clothes_shoulder_yoke",
+        "collar_left",
+        "collar_right",
+        "belt",
+        "goreum_knot",
+        "goreum_ribbon",
+        "clothes_coat_L_front",
+        "clothes_coat_L_back",
+        "clothes_coat_lapel_L",
+        "clothes_coat_R_front",
+        "clothes_coat_R_back",
+        "clothes_coat_lapel_R"
+      ]
+    },
+    {
+      "slot": "hands",
+      "glb": "glb/parts/human_doyun_clerk__hands.glb",
+      "objects": [
+        "hands_mitten.L",
+        "hands_mitten.R"
+      ]
+    },
+    {
+      "slot": "hair",
+      "glb": "glb/parts/human_doyun_clerk__hair.glb",
+      "objects": [
+        "hair_cap",
+        "hair_topknot",
+        "hair_gray_temple_-1",
+        "hair_gray_temple_1"
+      ]
+    },
+    {
+      "slot": "accessories",
+      "glb": "glb/parts/human_doyun_clerk__accessories.glb",
+      "objects": [
+        "ledger_satchel",
+        "ledger_pages",
+        "ledger_cover_spine",
+        "brush_case",
+        "writing_brush",
+        "union_record_tag"
+      ]
+    }
+  ]
+}

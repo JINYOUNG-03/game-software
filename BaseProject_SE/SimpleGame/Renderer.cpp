@@ -28,6 +28,7 @@ Renderer::~Renderer()
             glDeleteBuffers(1, &batch.buffer);
         }
     }
+    glDeleteTextures(1, &m_ResourceAtlas);
     glDeleteVertexArrays(1, &m_PostVAO);
     glDeleteFramebuffers(2, m_GlowFbo.data());
     glDeleteTextures(2, m_GlowTexture.data());
@@ -170,22 +171,12 @@ void Renderer::CreateVertexBufferObjects()
 
 void Renderer::DrawSolidRect(float x, float y, float width, float height, float r, float g, float b, float a)
 {
-    if (!m_RecordingModel.empty())
-    {
-        m_Models[m_RecordingModel].push_back({0, m_Material, {{x, y, width, height, r, g, b, a}}});
-        return;
-    }
     DrawShape(m_VBORect, x, y, width, height, r, g, b, a);
 }
 
 void Renderer::DrawSolidDiamond(
     float x, float y, float width, float height, float r, float g, float b, float a)
 {
-    if (!m_RecordingModel.empty())
-    {
-        m_Models[m_RecordingModel].push_back({1, m_Material, {{x, y, width, height, r, g, b, a}}});
-        return;
-    }
     DrawShape(m_VBODiamond, x, y, width, height, r, g, b, a);
 }
 
@@ -343,11 +334,6 @@ void Renderer::DrawQuad(float x0,
                         float b,
                         float a)
 {
-    if (!m_RecordingModel.empty())
-    {
-        m_Models[m_RecordingModel].push_back({2, m_Material, {{x0, y0, x1, y1, x2, y2, x3, y3, r, g, b, a}}});
-        return;
-    }
     Instance item{};
     const float corners[] = {x0, y0, x1, y1, x2, y2, x3, y3};
     const float color[] = {r, g, b, a};

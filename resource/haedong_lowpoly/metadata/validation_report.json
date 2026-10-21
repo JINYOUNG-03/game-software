@@ -1,0 +1,2421 @@
+{
+  "status": "pass",
+  "glb_files": 140,
+  "human_shared_skeletons_checked": 8,
+  "checks": [
+    "GLB header/buffer lengths",
+    "manifest paths",
+    "finite accessors",
+    "UV presence",
+    "index bounds",
+    "bone indices",
+    "normalized skin weights",
+    "11 clips per human/animal and part",
+    "strictly increasing key times",
+    "unit rotation quaternions",
+    "identical human inverse bind matrices"
+  ],
+  "limits": [
+    "Not Khronos glTF Validator certification",
+    "No game build/run",
+    "No automated collision or foot-contact verification"
+  ],
+  "files": [
+    {
+      "file": "glb\\animal_deer.glb",
+      "bytes": 338900,
+      "meshes": 27,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\animal_ox.glb",
+      "bytes": 334720,
+      "meshes": 25,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\animal_tiger.glb",
+      "bytes": 497548,
+      "meshes": 97,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\animal_wolf.glb",
+      "bytes": 378928,
+      "meshes": 31,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\human_doyun_clerk.glb",
+      "bytes": 624348,
+      "meshes": 54,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\human_haram_apprentice.glb",
+      "bytes": 618540,
+      "meshes": 49,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\human_herbalist.glb",
+      "bytes": 514180,
+      "meshes": 39,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\human_ian_broker.glb",
+      "bytes": 579820,
+      "meshes": 54,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\human_mira_engineer.glb",
+      "bytes": 607932,
+      "meshes": 50,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\human_porter.glb",
+      "bytes": 594596,
+      "meshes": 40,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\human_protagonist.glb",
+      "bytes": 578236,
+      "meshes": 38,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\human_serat_inspector.glb",
+      "bytes": 582532,
+      "meshes": 60,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\module_beam_2m.glb",
+      "bytes": 2180,
+      "meshes": 1,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\module_door_hinged.glb",
+      "bytes": 80652,
+      "meshes": 4,
+      "skins": 1,
+      "animations": [
+        "door_open"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\module_fence_2m.glb",
+      "bytes": 82712,
+      "meshes": 7,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\module_firewood.glb",
+      "bytes": 79680,
+      "meshes": 5,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\module_floor_2m.glb",
+      "bytes": 82560,
+      "meshes": 10,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\module_foundation_2m.glb",
+      "bytes": 76224,
+      "meshes": 1,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\module_gable_2m.glb",
+      "bytes": 156096,
+      "meshes": 3,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\module_medicine_drawers.glb",
+      "bytes": 104860,
+      "meshes": 25,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\module_onggi_jar.glb",
+      "bytes": 15712,
+      "meshes": 2,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\module_paper_lantern.glb",
+      "bytes": 10196,
+      "meshes": 3,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\module_post_2_4m.glb",
+      "bytes": 70896,
+      "meshes": 1,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\module_reed_mat.glb",
+      "bytes": 114244,
+      "meshes": 1,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\module_rice_sack.glb",
+      "bytes": 191508,
+      "meshes": 2,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\module_roof_giwa_2m.glb",
+      "bytes": 111224,
+      "meshes": 15,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\module_roof_thatch_2m.glb",
+      "bytes": 115564,
+      "meshes": 1,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\module_soban_table.glb",
+      "bytes": 75884,
+      "meshes": 5,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\module_stool.glb",
+      "bytes": 72852,
+      "meshes": 3,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\module_storage_chest.glb",
+      "bytes": 73276,
+      "meshes": 3,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\module_wall_paper_lattice_2m.glb",
+      "bytes": 90492,
+      "meshes": 15,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\module_wall_plaster_2m.glb",
+      "bytes": 154700,
+      "meshes": 3,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\module_wood_bucket.glb",
+      "bytes": 78468,
+      "meshes": 2,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\nature_broadleaf.glb",
+      "bytes": 106664,
+      "meshes": 11,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\nature_grass_clump.glb",
+      "bytes": 82532,
+      "meshes": 18,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\nature_pine.glb",
+      "bytes": 87992,
+      "meshes": 5,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\nature_reed_clump.glb",
+      "bytes": 223144,
+      "meshes": 28,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\nature_rock_00.glb",
+      "bytes": 78852,
+      "meshes": 1,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\nature_rock_01.glb",
+      "bytes": 79348,
+      "meshes": 1,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\nature_rock_02.glb",
+      "bytes": 79836,
+      "meshes": 1,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\animal_deer__body.glb",
+      "bytes": 157200,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\animal_deer__front_legs.glb",
+      "bytes": 189664,
+      "meshes": 6,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\animal_deer__head.glb",
+      "bytes": 209404,
+      "meshes": 8,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\animal_deer__hind_legs.glb",
+      "bytes": 189660,
+      "meshes": 6,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\animal_deer__horns.glb",
+      "bytes": 157636,
+      "meshes": 4,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\animal_deer__tail.glb",
+      "bytes": 147748,
+      "meshes": 1,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\animal_ox__body.glb",
+      "bytes": 158336,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\animal_ox__front_legs.glb",
+      "bytes": 190808,
+      "meshes": 6,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\animal_ox__head.glb",
+      "bytes": 210556,
+      "meshes": 8,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\animal_ox__hind_legs.glb",
+      "bytes": 190808,
+      "meshes": 6,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\animal_ox__horns.glb",
+      "bytes": 153428,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\animal_ox__tail.glb",
+      "bytes": 148868,
+      "meshes": 1,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\animal_tiger__body.glb",
+      "bytes": 229556,
+      "meshes": 58,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\animal_tiger__front_legs.glb",
+      "bytes": 219072,
+      "meshes": 10,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\animal_tiger__head.glb",
+      "bytes": 261460,
+      "meshes": 18,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\animal_tiger__hind_legs.glb",
+      "bytes": 219084,
+      "meshes": 10,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\animal_tiger__tail.glb",
+      "bytes": 149140,
+      "meshes": 1,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\animal_wolf__body.glb",
+      "bytes": 156672,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\animal_wolf__front_legs.glb",
+      "bytes": 217180,
+      "meshes": 10,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\animal_wolf__head.glb",
+      "bytes": 209844,
+      "meshes": 8,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\animal_wolf__hind_legs.glb",
+      "bytes": 217168,
+      "meshes": 10,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\animal_wolf__tail.glb",
+      "bytes": 147212,
+      "meshes": 1,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_doyun_clerk__accessories.glb",
+      "bytes": 212132,
+      "meshes": 6,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_doyun_clerk__body_base.glb",
+      "bytes": 204180,
+      "meshes": 10,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_doyun_clerk__face.glb",
+      "bytes": 157124,
+      "meshes": 10,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_doyun_clerk__hair.glb",
+      "bytes": 169052,
+      "meshes": 4,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_doyun_clerk__hands.glb",
+      "bytes": 153872,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_doyun_clerk__head.glb",
+      "bytes": 141224,
+      "meshes": 1,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_doyun_clerk__lower_clothing.glb",
+      "bytes": 145840,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_doyun_clerk__shoes.glb",
+      "bytes": 266212,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_doyun_clerk__upper_clothing.glb",
+      "bytes": 205748,
+      "meshes": 17,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_haram_apprentice__accessories.glb",
+      "bytes": 354816,
+      "meshes": 10,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_haram_apprentice__body_base.glb",
+      "bytes": 204188,
+      "meshes": 10,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_haram_apprentice__face.glb",
+      "bytes": 146216,
+      "meshes": 6,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_haram_apprentice__hair.glb",
+      "bytes": 155692,
+      "meshes": 5,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_haram_apprentice__hands.glb",
+      "bytes": 153876,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_haram_apprentice__head.glb",
+      "bytes": 141224,
+      "meshes": 1,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_haram_apprentice__lower_clothing.glb",
+      "bytes": 145840,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_haram_apprentice__shoes.glb",
+      "bytes": 266212,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_haram_apprentice__upper_clothing.glb",
+      "bytes": 306856,
+      "meshes": 11,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_herbalist__accessories.glb",
+      "bytes": 245448,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_herbalist__body_base.glb",
+      "bytes": 204180,
+      "meshes": 10,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_herbalist__face.glb",
+      "bytes": 146220,
+      "meshes": 6,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_herbalist__hair.glb",
+      "bytes": 159248,
+      "meshes": 3,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_herbalist__hands.glb",
+      "bytes": 153872,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_herbalist__head.glb",
+      "bytes": 141224,
+      "meshes": 1,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_herbalist__lower_clothing.glb",
+      "bytes": 145840,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_herbalist__shoes.glb",
+      "bytes": 266212,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_herbalist__upper_clothing.glb",
+      "bytes": 194472,
+      "meshes": 11,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_ian_broker__accessories.glb",
+      "bytes": 264984,
+      "meshes": 4,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_ian_broker__body_base.glb",
+      "bytes": 204176,
+      "meshes": 10,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_ian_broker__face.glb",
+      "bytes": 155296,
+      "meshes": 9,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_ian_broker__hair.glb",
+      "bytes": 298792,
+      "meshes": 7,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_ian_broker__hands.glb",
+      "bytes": 153872,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_ian_broker__head.glb",
+      "bytes": 141224,
+      "meshes": 1,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_ian_broker__lower_clothing.glb",
+      "bytes": 145840,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_ian_broker__shoes.glb",
+      "bytes": 266212,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_ian_broker__upper_clothing.glb",
+      "bytes": 205624,
+      "meshes": 17,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_mira_engineer__accessories.glb",
+      "bytes": 338272,
+      "meshes": 11,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_mira_engineer__body_base.glb",
+      "bytes": 204008,
+      "meshes": 10,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_mira_engineer__face.glb",
+      "bytes": 146032,
+      "meshes": 6,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_mira_engineer__hair.glb",
+      "bytes": 161196,
+      "meshes": 5,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_mira_engineer__hands.glb",
+      "bytes": 153728,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_mira_engineer__head.glb",
+      "bytes": 141084,
+      "meshes": 1,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_mira_engineer__lower_clothing.glb",
+      "bytes": 145696,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_mira_engineer__shoes.glb",
+      "bytes": 266068,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_mira_engineer__upper_clothing.glb",
+      "bytes": 194088,
+      "meshes": 11,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_porter__accessories.glb",
+      "bytes": 331800,
+      "meshes": 4,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_porter__body_base.glb",
+      "bytes": 204180,
+      "meshes": 10,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_porter__face.glb",
+      "bytes": 146216,
+      "meshes": 6,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_porter__hair.glb",
+      "bytes": 153860,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_porter__hands.glb",
+      "bytes": 153872,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_porter__head.glb",
+      "bytes": 141220,
+      "meshes": 1,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_porter__lower_clothing.glb",
+      "bytes": 145844,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_porter__shoes.glb",
+      "bytes": 266212,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_porter__upper_clothing.glb",
+      "bytes": 306856,
+      "meshes": 11,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_protagonist__accessories.glb",
+      "bytes": 202380,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_protagonist__body_base.glb",
+      "bytes": 204004,
+      "meshes": 10,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_protagonist__face.glb",
+      "bytes": 146048,
+      "meshes": 6,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_protagonist__hair.glb",
+      "bytes": 153716,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_protagonist__hands.glb",
+      "bytes": 153728,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_protagonist__head.glb",
+      "bytes": 141084,
+      "meshes": 1,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_protagonist__lower_clothing.glb",
+      "bytes": 145696,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_protagonist__shoes.glb",
+      "bytes": 266068,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_protagonist__upper_clothing.glb",
+      "bytes": 194288,
+      "meshes": 11,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_serat_inspector__accessories.glb",
+      "bytes": 141380,
+      "meshes": 5,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_serat_inspector__body_base.glb",
+      "bytes": 204184,
+      "meshes": 10,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_serat_inspector__face.glb",
+      "bytes": 146216,
+      "meshes": 6,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_serat_inspector__hair.glb",
+      "bytes": 172404,
+      "meshes": 6,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_serat_inspector__hands.glb",
+      "bytes": 153876,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_serat_inspector__head.glb",
+      "bytes": 141228,
+      "meshes": 1,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_serat_inspector__lower_clothing.glb",
+      "bytes": 145840,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_serat_inspector__shoes.glb",
+      "bytes": 266212,
+      "meshes": 2,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\parts\\human_serat_inspector__upper_clothing.glb",
+      "bytes": 355456,
+      "meshes": 26,
+      "skins": 1,
+      "animations": [
+        "attack",
+        "idle",
+        "jump",
+        "jump_air",
+        "jump_land",
+        "jump_start",
+        "run",
+        "turn_left",
+        "turn_pose",
+        "turn_right",
+        "walk"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\prop_door_hinged.glb",
+      "bytes": 80652,
+      "meshes": 4,
+      "skins": 1,
+      "animations": [
+        "door_open"
+      ],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\scene_medicine_shop.glb",
+      "bytes": 656340,
+      "meshes": 88,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\terrain_earth_2m.glb",
+      "bytes": 73496,
+      "meshes": 1,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\terrain_grass_2m.glb",
+      "bytes": 68676,
+      "meshes": 1,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\terrain_slope_2m.glb",
+      "bytes": 73496,
+      "meshes": 1,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    },
+    {
+      "file": "glb\\terrain_stone_2m.glb",
+      "bytes": 76224,
+      "meshes": 1,
+      "skins": 0,
+      "animations": [],
+      "status": "pass"
+    }
+  ]
+}

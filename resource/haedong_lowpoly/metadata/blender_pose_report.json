@@ -1,0 +1,42 @@
+[
+  {
+    "asset": "human_protagonist",
+    "evaluated_action_frames": 283,
+    "status": "pass"
+  },
+  {
+    "asset": "human_porter",
+    "evaluated_action_frames": 283,
+    "status": "pass"
+  },
+  {
+    "asset": "human_herbalist",
+    "evaluated_action_frames": 283,
+    "status": "pass"
+  },
+  {
+    "asset": "animal_tiger",
+    "evaluated_action_frames": 283,
+    "status": "pass"
+  },
+  {
+    "asset": "animal_wolf",
+    "evaluated_action_frames": 283,
+    "status": "pass"
+  },
+  {
+    "asset": "animal_deer",
+    "evaluated_action_frames": 283,
+    "status": "pass"
+  },
+  {
+    "asset": "animal_ox",
+    "evaluated_action_frames": 283,
+    "status": "pass"
+  },
+  {
+    "asset": "human_protagonist.glb",
+    "roundtrip_actions": 11,
+    "status": "pass"
+  }
+]

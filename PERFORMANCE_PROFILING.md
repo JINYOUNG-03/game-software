@@ -6,7 +6,7 @@
 - 매 프레임 한 번 그래프를 순회하고 화면 밖 대상을 정렬 전에 제외한다.
 - 패스별 렌더 목록을 재사용하고 월드 위치는 부모 변경 시에만 다시 계산한다.
 - Actor 종류별 인덱스로 NPC/적/아이템 조회 시 전체 그래프 검색을 피한다.
-- 모델 도형은 메모리상의 인스턴스 템플릿으로 변환해 재사용한다. 기존 파일 캐시는 호환된다.
+- 월드 모델은 GLB에서 변환한 공유 RGBA 아틀라스와 바인딩을 한 번 읽는다. 모델당 인스턴스 1개이며 구형 도형 캐시는 사용하지 않는다. 자세한 원본 매핑은 RESOURCE_INTEGRATION.md 참조.
 - 렌더 큐는 최대 8,192개 사각형/마름모/임의 사각형을 순서대로 인스턴싱한다.
   색상, 재질, UV는 인스턴스 속성이다. 재질별 전역 재정렬은 하지 않는다.
 - 64개의 GPU 배치 슬롯에서 변하지 않은 데이터를 재사용한다. 변경 시 배치 단위 업로드한다.
@@ -26,12 +26,11 @@
 - 주변 창문/등불 조명은 가시 Effect Actor 중 화면 중심에 가까운 최대 8개를 선택해
   기존 배치의 uniform으로 전달한다. 광원별 추가 FBO/드로우 패스는 없다.
   이는 스타일화한 2D 광원이며 노멀맵/PBR/광원별 그림자 구현이 아니다.
-- 기와 처마·흙벽·잎/천의 바람·안개·방향성 그림자·생활 소품은 기존 도형 경로를 유지한다.
-  모델 외형 revision 6(`harbor_models_v6.cache`), 파일 포맷 2로 이전 외형을 자동 무효화한다.
-  세분화한 캐릭터와 좌우 반전도 같은 모델 템플릿·인스턴싱 경로를 사용한다.
-  캐시에는 12단계×3방향 공격 외형을 포함한 248개 모델이 들어간다(로더 한도 256).
-  NPC 식별용 모자·등짐·도구도 캐시 생성 때만 구성한다. 타격 시점의 전투는 combat,
-  공격 자세 갱신은 animation, 칼 궤적 제출은 render_effects의 기존 구간에서 확인한다.
+- 건물·캐릭터·지형·소품은 resource의 GLB 46개를 변환한 단일 2048×2048 아틀라스(16 MiB)를 공유한다.
+  스키닝/자세 샘플링은 오프라인에서 수행하며 캐릭터당 런타임 쿼드 하나다.
+  NPC는 외형 18종, 4방향, 정지/8단계 걷기, 플레이어 공격은 12단계다.
+  물/불꽃/안개/바람과 간략한 2.5D 그림자는 기존 셰이더/Effect Actor를 유지한다.
+  타격은 combat, 자세 갱신은 animation, 칼 잔상 제출은 render_effects에서 확인한다.
 - uniform 위치는 초기화 시 캐싱한다. OpenGL 상태/버퍼 설정은 개별 도형이 아니라 배치 단위다.
 
 ## 출력과 보존
@@ -63,7 +62,7 @@
 
 모든 CPU/GPU 시간은 ms, 크기는 bytes, 누적 이벤트는 count 단위다.
 안정적인 영문 snake_case 키를 사용한다. 스키마를 바꾸면 schema_version을 올린다.
-현재 스키마는 8이며 분석기는 기존 스키마 1·2·3·4·5·6·7 로그도 읽는다.
+현재 스키마는 9이며 분석기는 기존 스키마 1·2·3·4·5·6·7·8 로그도 읽는다.
 
 | 필드 | 의미 |
 |---|---|
@@ -85,7 +84,7 @@
 | counters.quad_instances / glyph_instances | 제출된 도형 수 / 그중 글리프 수. draw_calls와 구분 |
 | counters.upload_bytes / upload_calls / gpu_buffer_reuse | 버퍼·글리프 업로드와 GPU 배치 재사용 |
 | counters.actors_total / actors_visible / actors_culled / sort_items | 그래프 규모와 가시성·정렬 작업량 |
-| counters.model_cache_hit / model_cache_miss | 메모리상 인스턴스 템플릿 적중/최초 변환. 디스크 캐시 적중률이 아님 |
+| counters.model_cache_hit / model_cache_miss | 과거 스키마 호환용, 새 아틀라스 경로에서는 0 |
 | counters.minimap_cache_hit / minimap_cache_miss / glyph_cache_miss | 캐시 동작 |
 | counters.navigation_cells / collision_tests / enemies_updated / loot_updated | 게임플레이 작업량 |
 | counters.gpu_sample_skipped / gpu_samples_pending | GPU 결과 지연 시 누락/대기 상황 |
@@ -114,15 +113,19 @@
 | cpu_ms.scenery_build / counters.scenery_props | 초기 물가/생활 소품 배치 시간 / 추가한 비충돌 소품 수 |
 | cpu_ms.lighting / counters.lights_considered / counters.lights_selected | 프레임별 가시 광원 선별 시간 / 후보 수 / 실제 선택 수(최대 8) |
 | counters.shadow_casters | 이번 프레임에 방향성 그림자와 접지 그림자를 생성한 Actor 수 |
-| cpu_ms.character_build / counters.character_models_built | 외형 캐시 재생성 중 캐릭터 도형 생성 시간 / 생성 모델 수. model_build의 자식 구간이므로 합산하지 않는다 |
-| counters.character_instances / mirrored_character_instances | 프레임에 제출한 캐릭터 도형 인스턴스 수 / 그중 좌우 반전한 도형 수. NPC 인구나 드로우콜 수가 아님 |
+| cpu_ms.character_build / counters.character_models_built | 과거 스키마 호환용, 오프라인 GLB 변환 비용은 게임 로그에 포함하지 않음 |
+| counters.character_instances / mirrored_character_instances | 프레임에 제출한 플레이어/NPC 스프라이트 수 / 새 경로에서 반전은 사용하지 않아 0. 인구·드로우콜과 구분 |
+| cpu_ms.resource_load | 시작 시 파일 읽기·검증·WIC 디코딩·GPU 아틀라스 업로드의 중첩 포함 CPU ms. 비동기 GPU 실행 시간은 아님 |
+| counters.resource_bytes_read / resource_atlas_bytes | 읽은 PNG+메타데이터 bytes / 업로드한 RGBA bytes(현재 16,777,216). startup 값 |
+| counters.resource_sprites_loaded | 불러온 모델 별칭 바인딩 수. 픽셀 공유 이미지 수나 Actor 수가 아님 |
+| counters.resource_lookup_hit / resource_lookup_miss | 그리기 때 모델 조회 성공/실패 수. 정상 플레이의 miss는 0이어야 함 |
 | cpu_ms.rumor_update / counters.rumor_candidates / rumor_transfers | 2초 간격 근접 소문 처리 시간 / 공간 버킷 내 후보 검사 수 / 새 지식 전달 메시지 수(지식 비트 수가 아님) |
 | counters.courier_departures | 장터 체류를 마치고 다음 마을로 출발한 횟수. 최초 출발은 제외하며 고유 전달꾼 수가 아님 |
 | cpu_ms.village_statistics / counters.village_mood_samples | 약 1초 간격 마을 분위기 집계 시간 / 집계한 마을 표본 수 |
 | cpu_ms.enemy_respawn / counters.respawn_candidates / enemy_respawns | 몹 재생성 탐색 시간 / 검사한 캐시 후보 수 / 성공한 재생성 수 |
 
 로컬 HTML 모니터는 WORLD_MONITOR.md를 따른다. 브라우저가 수신하는 모니터 스키마 1은
-프로파일링 스키마 8과 별개다. 최대 1초 간격으로 게시하고, 구독이 5초간 없으면 생성하지 않는다.
+프로파일링 스키마 9과 별개다. 최대 1초 간격으로 게시하고, 구독이 5초간 없으면 생성하지 않는다.
 일시정지 중에도 모니터 표본과 전송 통계는 갱신한다. 네트워크 스레드는 프로파일러의
 프레임 배열에 직접 접근하지 않고 atomic 통계를 게임 스레드에서 회수한다.
 world_state에도 이름·집계·최근 사건이 추가되며 영문 키와 단위는 기존 규약을 유지한다.

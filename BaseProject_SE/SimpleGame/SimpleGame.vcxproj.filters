@@ -71,4 +71,16 @@
       <Filter>소스 파일\Shaders</Filter>
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\resource\haedong_runtime\world_atlas.png">
+      <Filter>리소스 파일</Filter>
+    </None>
+    <None Include="..\..\resource\haedong_runtime\world_sprites.bin">
+      <Filter>리소스 파일</Filter>
+    </None>
+    <None Include="..\..\resource\haedong_runtime\import_report.json">
+      <Filter>리소스 파일</Filter>
+    </None>
+    <None Include="..\..\tools\Compile-ResourceSprites.cjs" />
+  </ItemGroup>
 </Project>

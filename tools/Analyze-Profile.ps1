@@ -10,7 +10,7 @@ $seen = [System.Collections.Generic.HashSet[string]]::new()
 
 function Add-ProfileRecord([hashtable]$record)
 {
-    if ($record.schema_version -notin @(1, 2, 3, 4, 5, 6, 7, 8) -or -not $record.session_id) { return }
+    if ($record.schema_version -notin @(1, 2, 3, 4, 5, 6, 7, 8, 9) -or -not $record.session_id) { return }
     $sessionId = [string]$record.session_id
     if (-not $sessions.ContainsKey($sessionId))
     {
@@ -72,7 +72,7 @@ if ($SelfTest)
 {
     @(
         '{"schema_version":1,"session_id":"fixture","event":"frame","frame_id":1,"frame_interval_ms":10,"cpu_ms":{"update":2},"counters":{"draw_calls":8},"scene_state":{"paused":false},"log_dropped_total":0,"log_file_failed":false}',
-        '{"schema_version":8,"session_id":"fixture","event":"frame","frame_id":2,"frame_interval_ms":30,"cpu_ms":{"update":4},"counters":{"draw_calls":12},"scene_state":{"paused":false},"log_dropped_total":1,"log_file_failed":false}',
+        '{"schema_version":9,"session_id":"fixture","event":"frame","frame_id":2,"frame_interval_ms":30,"cpu_ms":{"update":4},"counters":{"draw_calls":12},"scene_state":{"paused":false},"log_dropped_total":1,"log_file_failed":false}',
         '{"schema_version":1,"session_id":"fixture","event":"gpu_frame","frame_id":1,"gpu_interval_ms":{"world":3}}',
         '{"schema_version":2,"session_id":"fixture","event":"world_state","frame_id":2,"world":{"world_minute":420,"npcs":[{"actor_id":10,"job":"raider","coins":35}]}}'
     ) | ForEach-Object { Add-ProfileRecord ($_ | ConvertFrom-Json -AsHashtable) }
@@ -130,7 +130,7 @@ if ($SelfTest)
     { throw 'Profile analyzer self-test failed.' }
 }
 [pscustomobject]@{
-    schema_version = 8; event = 'profile_analysis'; invalid_json_lines = $invalidLines
+    schema_version = 9; event = 'profile_analysis'; invalid_json_lines = $invalidLines
     self_test = [bool]$SelfTest
     notes = @('CPU scopes are inclusive; do not sum nested scopes.',
               'GPU timestamp intervals can include CPU submission starvation; they are not GPU utilization.',

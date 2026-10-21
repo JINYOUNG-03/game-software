@@ -1,0 +1,67 @@
+{
+  "id": "animal_wolf",
+  "skeleton": "wolf_v1",
+  "slots": [
+    {
+      "slot": "body",
+      "glb": "glb/parts/animal_wolf__body.glb",
+      "objects": [
+        "body",
+        "neck"
+      ]
+    },
+    {
+      "slot": "head",
+      "glb": "glb/parts/animal_wolf__head.glb",
+      "objects": [
+        "head",
+        "muzzle",
+        "nose",
+        "jaw",
+        "eye.L",
+        "ear.L",
+        "eye.R",
+        "ear.R"
+      ]
+    },
+    {
+      "slot": "front_legs",
+      "glb": "glb/parts/animal_wolf__front_legs.glb",
+      "objects": [
+        "front.L_leg",
+        "front.L_paw",
+        "front.L_toe_-1",
+        "front.L_toe_0",
+        "front.L_toe_1",
+        "front.R_leg",
+        "front.R_paw",
+        "front.R_toe_-1",
+        "front.R_toe_0",
+        "front.R_toe_1"
+      ]
+    },
+    {
+      "slot": "hind_legs",
+      "glb": "glb/parts/animal_wolf__hind_legs.glb",
+      "objects": [
+        "hind.L_leg",
+        "hind.L_paw",
+        "hind.L_toe_-1",
+        "hind.L_toe_0",
+        "hind.L_toe_1",
+        "hind.R_leg",
+        "hind.R_paw",
+        "hind.R_toe_-1",
+        "hind.R_toe_0",
+        "hind.R_toe_1"
+      ]
+    },
+    {
+      "slot": "tail",
+      "glb": "glb/parts/animal_wolf__tail.glb",
+      "objects": [
+        "tail"
+      ]
+    }
+  ]
+}

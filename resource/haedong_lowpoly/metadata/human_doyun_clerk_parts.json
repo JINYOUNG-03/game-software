@@ -1,0 +1,659 @@
+{
+  "skeleton": "human_v1",
+  "parts": [
+    {
+      "name": "body_torso_base",
+      "bones": [
+        "pelvis",
+        "spine",
+        "chest"
+      ],
+      "vertices": 32
+    },
+    {
+      "name": "body_neck",
+      "bones": [
+        "neck"
+      ],
+      "vertices": 16
+    },
+    {
+      "name": "head_oval",
+      "bones": [
+        "head"
+      ],
+      "vertices": 52
+    },
+    {
+      "name": "ear.L",
+      "bones": [
+        "head"
+      ],
+      "vertices": 26
+    },
+    {
+      "name": "face_eye.L",
+      "bones": [
+        "head"
+      ],
+      "vertices": 8
+    },
+    {
+      "name": "face_brow.L",
+      "bones": [
+        "head"
+      ],
+      "vertices": 8
+    },
+    {
+      "name": "body_leg.L",
+      "bones": [
+        "thigh.L",
+        "shin.L"
+      ],
+      "vertices": 40
+    },
+    {
+      "name": "pants_baji.L",
+      "bones": [
+        "thigh.L",
+        "shin.L"
+      ],
+      "vertices": 40
+    },
+    {
+      "name": "shoes_jipsin.L",
+      "bones": [
+        "foot.L"
+      ],
+      "vertices": 52
+    },
+    {
+      "name": "body_arm.L",
+      "bones": [
+        "upper_arm.L",
+        "forearm.L"
+      ],
+      "vertices": 40
+    },
+    {
+      "name": "sleeve_jeogori.L",
+      "bones": [
+        "upper_arm.L",
+        "forearm.L"
+      ],
+      "vertices": 40
+    },
+    {
+      "name": "sleeve_shoulder.L",
+      "bones": [
+        "upper_arm.L"
+      ],
+      "vertices": 26
+    },
+    {
+      "name": "hands_mitten.L",
+      "bones": [
+        "hand.L"
+      ],
+      "vertices": 52
+    },
+    {
+      "name": "thumb.L",
+      "bones": [
+        "hand.L"
+      ],
+      "vertices": 26
+    },
+    {
+      "name": "ear.R",
+      "bones": [
+        "head"
+      ],
+      "vertices": 26
+    },
+    {
+      "name": "face_eye.R",
+      "bones": [
+        "head"
+      ],
+      "vertices": 8
+    },
+    {
+      "name": "face_brow.R",
+      "bones": [
+        "head"
+      ],
+      "vertices": 8
+    },
+    {
+      "name": "body_leg.R",
+      "bones": [
+        "thigh.R",
+        "shin.R"
+      ],
+      "vertices": 40
+    },
+    {
+      "name": "pants_baji.R",
+      "bones": [
+        "thigh.R",
+        "shin.R"
+      ],
+      "vertices": 40
+    },
+    {
+      "name": "shoes_jipsin.R",
+      "bones": [
+        "foot.R"
+      ],
+      "vertices": 52
+    },
+    {
+      "name": "body_arm.R",
+      "bones": [
+        "upper_arm.R",
+        "forearm.R"
+      ],
+      "vertices": 40
+    },
+    {
+      "name": "sleeve_jeogori.R",
+      "bones": [
+        "upper_arm.R",
+        "forearm.R"
+      ],
+      "vertices": 40
+    },
+    {
+      "name": "sleeve_shoulder.R",
+      "bones": [
+        "upper_arm.R"
+      ],
+      "vertices": 26
+    },
+    {
+      "name": "hands_mitten.R",
+      "bones": [
+        "hand.R"
+      ],
+      "vertices": 52
+    },
+    {
+      "name": "thumb.R",
+      "bones": [
+        "hand.R"
+      ],
+      "vertices": 26
+    },
+    {
+      "name": "face_nose",
+      "bones": [
+        "head"
+      ],
+      "vertices": 20
+    },
+    {
+      "name": "face_mouth",
+      "bones": [
+        "head"
+      ],
+      "vertices": 8
+    },
+    {
+      "name": "hair_cap",
+      "bones": [
+        "head"
+      ],
+      "vertices": 52
+    },
+    {
+      "name": "hair_topknot",
+      "bones": [
+        "head"
+      ],
+      "vertices": 52
+    },
+    {
+      "name": "clothes_jeogori",
+      "bones": [
+        "pelvis",
+        "spine",
+        "chest"
+      ],
+      "vertices": 32
+    },
+    {
+      "name": "clothes_shoulder_yoke",
+      "bones": [
+        "chest"
+      ],
+      "vertices": 38
+    },
+    {
+      "name": "collar_left",
+      "bones": [
+        "chest"
+      ],
+      "vertices": 8
+    },
+    {
+      "name": "collar_right",
+      "bones": [
+        "chest"
+      ],
+      "vertices": 8
+    },
+    {
+      "name": "belt",
+      "bones": [
+        "spine"
+      ],
+      "vertices": 24
+    },
+    {
+      "name": "goreum_knot",
+      "bones": [
+        "chest"
+      ],
+      "vertices": 8
+    },
+    {
+      "name": "goreum_ribbon",
+      "bones": [
+        "chest"
+      ],
+      "vertices": 8
+    },
+    {
+      "name": "hair_gray_temple_-1",
+      "bones": [
+        "head"
+      ],
+      "vertices": 26
+    },
+    {
+      "name": "face_moustache_-1",
+      "bones": [
+        "head"
+      ],
+      "vertices": 10
+    },
+    {
+      "name": "face_age_line_-1",
+      "bones": [
+        "head"
+      ],
+      "vertices": 8
+    },
+    {
+      "name": "hair_gray_temple_1",
+      "bones": [
+        "head"
+      ],
+      "vertices": 26
+    },
+    {
+      "name": "face_moustache_1",
+      "bones": [
+        "head"
+      ],
+      "vertices": 10
+    },
+    {
+      "name": "face_age_line_1",
+      "bones": [
+        "head"
+      ],
+      "vertices": 8
+    },
+    {
+      "name": "clothes_coat_L_front",
+      "bones": [
+        "chest",
+        "pelvis",
+        "thigh.L"
+      ],
+      "vertices": 6
+    },
+    {
+      "name": "clothes_coat_L_back",
+      "bones": [
+        "chest",
+        "pelvis",
+        "thigh.L"
+      ],
+      "vertices": 6
+    },
+    {
+      "name": "clothes_coat_lapel_L",
+      "bones": [
+        "chest",
+        "spine"
+      ],
+      "vertices": 8
+    },
+    {
+      "name": "clothes_coat_R_front",
+      "bones": [
+        "chest",
+        "pelvis",
+        "thigh.R"
+      ],
+      "vertices": 6
+    },
+    {
+      "name": "clothes_coat_R_back",
+      "bones": [
+        "chest",
+        "pelvis",
+        "thigh.R"
+      ],
+      "vertices": 6
+    },
+    {
+      "name": "clothes_coat_lapel_R",
+      "bones": [
+        "chest",
+        "spine"
+      ],
+      "vertices": 8
+    },
+    {
+      "name": "ledger_satchel",
+      "bones": [
+        "pelvis"
+      ],
+      "vertices": 8
+    },
+    {
+      "name": "ledger_pages",
+      "bones": [
+        "pelvis"
+      ],
+      "vertices": 8
+    },
+    {
+      "name": "ledger_cover_spine",
+      "bones": [
+        "pelvis"
+      ],
+      "vertices": 8
+    },
+    {
+      "name": "brush_case",
+      "bones": [
+        "pelvis"
+      ],
+      "vertices": 12
+    },
+    {
+      "name": "writing_brush",
+      "bones": [
+        "pelvis"
+      ],
+      "vertices": 10
+    },
+    {
+      "name": "union_record_tag",
+      "bones": [
+        "chest"
+      ],
+      "vertices": 8
+    }
+  ],
+  "rest_bones": [
+    {
+      "name": "root",
+      "head": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "tail": [
+        0.0,
+        0.0,
+        0.18000000715255737
+      ],
+      "parent": null
+    },
+    {
+      "name": "pelvis",
+      "head": [
+        0.0,
+        0.0,
+        0.8799999952316284
+      ],
+      "tail": [
+        0.0,
+        0.0,
+        1.0099999904632568
+      ],
+      "parent": "root"
+    },
+    {
+      "name": "spine",
+      "head": [
+        0.0,
+        0.0,
+        1.0099999904632568
+      ],
+      "tail": [
+        0.0,
+        0.0,
+        1.2200000286102295
+      ],
+      "parent": "pelvis"
+    },
+    {
+      "name": "chest",
+      "head": [
+        0.0,
+        0.0,
+        1.2200000286102295
+      ],
+      "tail": [
+        0.0,
+        0.0,
+        1.4299999475479126
+      ],
+      "parent": "spine"
+    },
+    {
+      "name": "neck",
+      "head": [
+        0.0,
+        0.0,
+        1.4299999475479126
+      ],
+      "tail": [
+        0.0,
+        0.0,
+        1.5299999713897705
+      ],
+      "parent": "chest"
+    },
+    {
+      "name": "head",
+      "head": [
+        0.0,
+        0.0,
+        1.5299999713897705
+      ],
+      "tail": [
+        0.0,
+        0.0,
+        1.75
+      ],
+      "parent": "neck"
+    },
+    {
+      "name": "upper_arm.L",
+      "head": [
+        0.20000000298023224,
+        0.0,
+        1.399999976158142
+      ],
+      "tail": [
+        0.3100000023841858,
+        0.0,
+        1.1399999856948853
+      ],
+      "parent": "chest"
+    },
+    {
+      "name": "forearm.L",
+      "head": [
+        0.3100000023841858,
+        0.0,
+        1.1399999856948853
+      ],
+      "tail": [
+        0.3799999952316284,
+        -0.014999999664723873,
+        0.9399999976158142
+      ],
+      "parent": "upper_arm.L"
+    },
+    {
+      "name": "hand.L",
+      "head": [
+        0.3799999952316284,
+        -0.014999999664723873,
+        0.9399999976158142
+      ],
+      "tail": [
+        0.4000000059604645,
+        -0.02500000037252903,
+        0.8399999737739563
+      ],
+      "parent": "forearm.L"
+    },
+    {
+      "name": "upper_arm.R",
+      "head": [
+        -0.20000000298023224,
+        0.0,
+        1.399999976158142
+      ],
+      "tail": [
+        -0.3100000023841858,
+        0.0,
+        1.1399999856948853
+      ],
+      "parent": "chest"
+    },
+    {
+      "name": "forearm.R",
+      "head": [
+        -0.3100000023841858,
+        0.0,
+        1.1399999856948853
+      ],
+      "tail": [
+        -0.3799999952316284,
+        -0.014999999664723873,
+        0.9399999976158142
+      ],
+      "parent": "upper_arm.R"
+    },
+    {
+      "name": "hand.R",
+      "head": [
+        -0.3799999952316284,
+        -0.014999999664723873,
+        0.9399999976158142
+      ],
+      "tail": [
+        -0.4000000059604645,
+        -0.02500000037252903,
+        0.8399999737739563
+      ],
+      "parent": "forearm.R"
+    },
+    {
+      "name": "thigh.L",
+      "head": [
+        0.09000000357627869,
+        0.0,
+        0.9100000262260437
+      ],
+      "tail": [
+        0.09000000357627869,
+        -0.014999999664723873,
+        0.5
+      ],
+      "parent": "pelvis"
+    },
+    {
+      "name": "shin.L",
+      "head": [
+        0.09000000357627869,
+        -0.014999999664723873,
+        0.5
+      ],
+      "tail": [
+        0.09000000357627869,
+        0.0,
+        0.10000000149011612
+      ],
+      "parent": "thigh.L"
+    },
+    {
+      "name": "foot.L",
+      "head": [
+        0.09000000357627869,
+        0.0,
+        0.10000000149011612
+      ],
+      "tail": [
+        0.09000000357627869,
+        -0.1599999964237213,
+        0.05999999865889549
+      ],
+      "parent": "shin.L"
+    },
+    {
+      "name": "thigh.R",
+      "head": [
+        -0.09000000357627869,
+        0.0,
+        0.9100000262260437
+      ],
+      "tail": [
+        -0.09000000357627869,
+        -0.014999999664723873,
+        0.5
+      ],
+      "parent": "pelvis"
+    },
+    {
+      "name": "shin.R",
+      "head": [
+        -0.09000000357627869,
+        -0.014999999664723873,
+        0.5
+      ],
+      "tail": [
+        -0.09000000357627869,
+        0.0,
+        0.10000000149011612
+      ],
+      "parent": "thigh.R"
+    },
+    {
+      "name": "foot.R",
+      "head": [
+        -0.09000000357627869,
+        0.0,
+        0.10000000149011612
+      ],
+      "tail": [
+        -0.09000000357627869,
+        -0.1599999964237213,
+        0.05999999865889549
+      ],
+      "parent": "shin.R"
+    }
+  ]
+}

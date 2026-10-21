@@ -1,0 +1,86 @@
+{
+    "version": 1,
+    "fps": 30,
+    "status": "authoring_defaults_requires_engine_tuning",
+    "coordinates": {
+        "blend": {"up": "+Z", "forward": "-Y", "meters": true},
+        "glb": {"up": "+Y", "forward": "+Z", "meters": true}
+    },
+    "parameters": ["speed_mps", "signed_yaw_error_degrees", "grounded", "jump_requested", "attack_requested", "vertical_velocity_mps"],
+    "locomotion": {
+        "idle_clip": "idle",
+        "walk_clip": "walk",
+        "run_clip": "run",
+        "in_place_horizontal": true,
+        "root_vertical_motion": "visual_bob_only_when_physics_controls_jump_height",
+        "idle_walk": {"enter_walk_above_mps": 0.15, "return_idle_below_mps": 0.08, "crossfade_seconds": 0.18},
+        "human_walk_run": {
+            "walk_reference_speed_mps": 1.35,
+            "run_reference_speed_mps": 3.6,
+            "blend_start_mps": 1.8,
+            "blend_end_mps": 3.2,
+            "run_weight": "clamp((speed_mps - 1.8) / 1.4, 0, 1)",
+            "crossfade_seconds": 0.22,
+            "phase_rule": "preserve normalized phase; start destination at source phase * destination duration",
+            "phase": {"0.0": "both legs pass neutral", "0.25": "left swing flexion apex", "0.5": "both legs pass neutral", "0.75": "right swing flexion apex"},
+            "playback_rate": "speed / blended reference speed; clamp 0.65..1.35; blend toward idle below walking threshold",
+            "foot_contact_events": "not authored; solve contact and footsteps after engine foot-plant tuning"
+        },
+        "quadruped_walk_run": {
+            "walk_phase_offsets_cycles": {"hind.L": 0.0, "front.L": 0.25, "hind.R": 0.5, "front.R": 0.75},
+            "run_phase_offsets_cycles": {"hind.L": 0.0, "front.R": 0.0, "hind.R": 0.5, "front.L": 0.5},
+            "run_gait": "diagonal_trot",
+            "crossfade_seconds": 0.25,
+            "phase_rule": "preserve hind.L phase; front legs crossfade across gait change; use contact IK when integrated",
+            "suggested_reference_speeds_mps": {
+                "tiger": {"walk": 1.1, "run": 3.5},
+                "wolf": {"walk": 1.0, "run": 3.2},
+                "deer": {"walk": 1.1, "run": 3.8},
+                "ox": {"walk": 0.8, "run": 2.3}
+            },
+            "blend_rule": "per species: normalized speed between walk and run reference speeds; smoothstep weight"
+        }
+    },
+    "turning": {
+        "reference_pose": "turn_pose",
+        "reference_pose_kind": "shared rest A pose, not additive motion",
+        "stationary_turn_enter": {"speed_below_mps": 0.15, "yaw_error_above_degrees": 45},
+        "clips": {"turn_left": 90, "turn_right": -90},
+        "angles_are_blender_root_z_degrees": true,
+        "yaw_policy": "Either keep actor fixed during clip then atomically transfer final yaw to actor and clear root yaw, or extract per-frame root yaw delta into actor and remove it from sampled skeleton. Never apply both.",
+        "crossfade_seconds": 0.12,
+        "moving_turn": "steer actor heading continuously while blending locomotion; retain locomotion root yaw at zero",
+        "pose_bridge": "when a stationary clip is interrupted, resolve root yaw first, blend remaining pose toward turn_pose over 0.08s, then toward next pose over 0.12s",
+        "large_turn": "chain 90-degree clips; use actor steering for residual angle"
+    },
+    "attack": {
+        "clip": "attack",
+        "layer": "full_body_override",
+        "entry_crossfade_seconds": 0.10,
+        "exit_crossfade_seconds": 0.16,
+        "suggested_hit_window_normalized": [0.45, 0.70],
+        "root_motion_xy": false,
+        "weapon_socket": "human hand.R; no weapon asset or weapon-specific attack included",
+        "note": "Gameplay hitbox timing and damage are external. Hit window is a proposal, not embedded animation events."
+    },
+    "jump": {
+        "choose_one_mode": true,
+        "one_shot": {"clip": "jump", "entry_crossfade_seconds": 0.08, "exit_crossfade_seconds": 0.12},
+        "physics_driven": {
+            "sequence": ["jump_start", "jump_air", "jump_land"],
+            "start_to_air": "start finishes or grounded becomes false",
+            "air_to_land": "grounded becomes true while vertical_velocity_mps <= 0",
+            "land_to_locomotion": "land finishes; restore current desired speed with fresh blend",
+            "boundary_crossfade_seconds": 0.08,
+            "root_vertical": "remove visual root height if physics already drives the body center; optionally retain small landing squash"
+        }
+    },
+    "blend_math": {
+        "rotations": "shortest-path normalized quaternion slerp, per bone in local space",
+        "translations": "linear interpolation, per bone in local space",
+        "scales": "identity in this pack",
+        "weights": "normalize active clip weights to sum 1",
+        "loop_endpoint": "last sample duplicates first for looping clips; wrap by (frames - 1) / fps",
+        "single_frame_pose": "turn_pose contains one sample; clamp sample time to zero"
+    }
+}

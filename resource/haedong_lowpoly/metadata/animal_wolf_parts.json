@@ -1,0 +1,514 @@
+{
+  "skeleton": "wolf_v1",
+  "parts": [
+    {
+      "name": "body",
+      "bones": [
+        "pelvis",
+        "spine"
+      ],
+      "vertices": 50
+    },
+    {
+      "name": "neck",
+      "bones": [
+        "neck"
+      ],
+      "vertices": 16
+    },
+    {
+      "name": "head",
+      "bones": [
+        "head"
+      ],
+      "vertices": 52
+    },
+    {
+      "name": "muzzle",
+      "bones": [
+        "head"
+      ],
+      "vertices": 52
+    },
+    {
+      "name": "nose",
+      "bones": [
+        "head"
+      ],
+      "vertices": 26
+    },
+    {
+      "name": "jaw",
+      "bones": [
+        "jaw"
+      ],
+      "vertices": 52
+    },
+    {
+      "name": "eye.L",
+      "bones": [
+        "head"
+      ],
+      "vertices": 26
+    },
+    {
+      "name": "ear.L",
+      "bones": [
+        "head"
+      ],
+      "vertices": 12
+    },
+    {
+      "name": "eye.R",
+      "bones": [
+        "head"
+      ],
+      "vertices": 26
+    },
+    {
+      "name": "ear.R",
+      "bones": [
+        "head"
+      ],
+      "vertices": 12
+    },
+    {
+      "name": "front.L_leg",
+      "bones": [
+        "front.L.upper",
+        "front.L.lower",
+        "front.L.foot"
+      ],
+      "vertices": 64
+    },
+    {
+      "name": "front.L_paw",
+      "bones": [
+        "front.L.foot"
+      ],
+      "vertices": 26
+    },
+    {
+      "name": "front.L_toe_-1",
+      "bones": [
+        "front.L.foot"
+      ],
+      "vertices": 20
+    },
+    {
+      "name": "front.L_toe_0",
+      "bones": [
+        "front.L.foot"
+      ],
+      "vertices": 20
+    },
+    {
+      "name": "front.L_toe_1",
+      "bones": [
+        "front.L.foot"
+      ],
+      "vertices": 20
+    },
+    {
+      "name": "hind.L_leg",
+      "bones": [
+        "hind.L.upper",
+        "hind.L.lower",
+        "hind.L.foot"
+      ],
+      "vertices": 64
+    },
+    {
+      "name": "hind.L_paw",
+      "bones": [
+        "hind.L.foot"
+      ],
+      "vertices": 26
+    },
+    {
+      "name": "hind.L_toe_-1",
+      "bones": [
+        "hind.L.foot"
+      ],
+      "vertices": 20
+    },
+    {
+      "name": "hind.L_toe_0",
+      "bones": [
+        "hind.L.foot"
+      ],
+      "vertices": 20
+    },
+    {
+      "name": "hind.L_toe_1",
+      "bones": [
+        "hind.L.foot"
+      ],
+      "vertices": 20
+    },
+    {
+      "name": "front.R_leg",
+      "bones": [
+        "front.R.upper",
+        "front.R.lower",
+        "front.R.foot"
+      ],
+      "vertices": 64
+    },
+    {
+      "name": "front.R_paw",
+      "bones": [
+        "front.R.foot"
+      ],
+      "vertices": 26
+    },
+    {
+      "name": "front.R_toe_-1",
+      "bones": [
+        "front.R.foot"
+      ],
+      "vertices": 20
+    },
+    {
+      "name": "front.R_toe_0",
+      "bones": [
+        "front.R.foot"
+      ],
+      "vertices": 20
+    },
+    {
+      "name": "front.R_toe_1",
+      "bones": [
+        "front.R.foot"
+      ],
+      "vertices": 20
+    },
+    {
+      "name": "hind.R_leg",
+      "bones": [
+        "hind.R.upper",
+        "hind.R.lower",
+        "hind.R.foot"
+      ],
+      "vertices": 64
+    },
+    {
+      "name": "hind.R_paw",
+      "bones": [
+        "hind.R.foot"
+      ],
+      "vertices": 26
+    },
+    {
+      "name": "hind.R_toe_-1",
+      "bones": [
+        "hind.R.foot"
+      ],
+      "vertices": 20
+    },
+    {
+      "name": "hind.R_toe_0",
+      "bones": [
+        "hind.R.foot"
+      ],
+      "vertices": 20
+    },
+    {
+      "name": "hind.R_toe_1",
+      "bones": [
+        "hind.R.foot"
+      ],
+      "vertices": 20
+    },
+    {
+      "name": "tail",
+      "bones": [
+        "tail.01",
+        "tail.02"
+      ],
+      "vertices": 24
+    }
+  ],
+  "rest_bones": [
+    {
+      "name": "root",
+      "head": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "tail": [
+        0.0,
+        0.0,
+        0.1599999964237213
+      ],
+      "parent": null
+    },
+    {
+      "name": "pelvis",
+      "head": [
+        0.0,
+        0.36800000071525574,
+        0.670799970626831
+      ],
+      "tail": [
+        0.0,
+        0.0,
+        0.7332000136375427
+      ],
+      "parent": "root"
+    },
+    {
+      "name": "spine",
+      "head": [
+        0.0,
+        0.0,
+        0.7332000136375427
+      ],
+      "tail": [
+        0.0,
+        -0.36800000071525574,
+        0.7799999713897705
+      ],
+      "parent": "pelvis"
+    },
+    {
+      "name": "neck",
+      "head": [
+        0.0,
+        -0.36800000071525574,
+        0.7799999713897705
+      ],
+      "tail": [
+        0.0,
+        -0.5479999780654907,
+        0.949999988079071
+      ],
+      "parent": "spine"
+    },
+    {
+      "name": "head",
+      "head": [
+        0.0,
+        -0.5479999780654907,
+        0.949999988079071
+      ],
+      "tail": [
+        0.0,
+        -0.8379999995231628,
+        0.9900000095367432
+      ],
+      "parent": "neck"
+    },
+    {
+      "name": "jaw",
+      "head": [
+        0.0,
+        -0.7379999756813049,
+        0.9200000166893005
+      ],
+      "tail": [
+        0.0,
+        -0.937999963760376,
+        0.9100000262260437
+      ],
+      "parent": "head"
+    },
+    {
+      "name": "front.L.upper",
+      "head": [
+        0.14399999380111694,
+        -0.36800000071525574,
+        0.7098000049591064
+      ],
+      "tail": [
+        0.14399999380111694,
+        -0.31299999356269836,
+        0.444599986076355
+      ],
+      "parent": "spine"
+    },
+    {
+      "name": "front.L.lower",
+      "head": [
+        0.14399999380111694,
+        -0.31299999356269836,
+        0.444599986076355
+      ],
+      "tail": [
+        0.14399999380111694,
+        -0.3580000102519989,
+        0.18719999492168427
+      ],
+      "parent": "front.L.upper"
+    },
+    {
+      "name": "front.L.foot",
+      "head": [
+        0.14399999380111694,
+        -0.3580000102519989,
+        0.18719999492168427
+      ],
+      "tail": [
+        0.14399999380111694,
+        -0.40299999713897705,
+        0.07500000298023224
+      ],
+      "parent": "front.L.lower"
+    },
+    {
+      "name": "front.R.upper",
+      "head": [
+        -0.14399999380111694,
+        -0.36800000071525574,
+        0.7098000049591064
+      ],
+      "tail": [
+        -0.14399999380111694,
+        -0.31299999356269836,
+        0.444599986076355
+      ],
+      "parent": "spine"
+    },
+    {
+      "name": "front.R.lower",
+      "head": [
+        -0.14399999380111694,
+        -0.31299999356269836,
+        0.444599986076355
+      ],
+      "tail": [
+        -0.14399999380111694,
+        -0.3580000102519989,
+        0.18719999492168427
+      ],
+      "parent": "front.R.upper"
+    },
+    {
+      "name": "front.R.foot",
+      "head": [
+        -0.14399999380111694,
+        -0.3580000102519989,
+        0.18719999492168427
+      ],
+      "tail": [
+        -0.14399999380111694,
+        -0.40299999713897705,
+        0.07500000298023224
+      ],
+      "parent": "front.R.lower"
+    },
+    {
+      "name": "tail.01",
+      "head": [
+        0.0,
+        0.46799999475479126,
+        0.7799999713897705
+      ],
+      "tail": [
+        0.0,
+        0.7480000257492065,
+        0.6474000215530396
+      ],
+      "parent": "pelvis"
+    },
+    {
+      "name": "tail.02",
+      "head": [
+        0.0,
+        0.7480000257492065,
+        0.6474000215530396
+      ],
+      "tail": [
+        0.0,
+        0.9679999947547913,
+        0.4212000072002411
+      ],
+      "parent": "tail.01"
+    },
+    {
+      "name": "hind.L.upper",
+      "head": [
+        0.14399999380111694,
+        0.36800000071525574,
+        0.7098000049591064
+      ],
+      "tail": [
+        0.14399999380111694,
+        0.1979999989271164,
+        0.444599986076355
+      ],
+      "parent": "pelvis"
+    },
+    {
+      "name": "hind.L.lower",
+      "head": [
+        0.14399999380111694,
+        0.1979999989271164,
+        0.444599986076355
+      ],
+      "tail": [
+        0.14399999380111694,
+        0.4880000054836273,
+        0.18719999492168427
+      ],
+      "parent": "hind.L.upper"
+    },
+    {
+      "name": "hind.L.foot",
+      "head": [
+        0.14399999380111694,
+        0.4880000054836273,
+        0.18719999492168427
+      ],
+      "tail": [
+        0.14399999380111694,
+        0.3330000042915344,
+        0.07500000298023224
+      ],
+      "parent": "hind.L.lower"
+    },
+    {
+      "name": "hind.R.upper",
+      "head": [
+        -0.14399999380111694,
+        0.36800000071525574,
+        0.7098000049591064
+      ],
+      "tail": [
+        -0.14399999380111694,
+        0.1979999989271164,
+        0.444599986076355
+      ],
+      "parent": "pelvis"
+    },
+    {
+      "name": "hind.R.lower",
+      "head": [
+        -0.14399999380111694,
+        0.1979999989271164,
+        0.444599986076355
+      ],
+      "tail": [
+        -0.14399999380111694,
+        0.4880000054836273,
+        0.18719999492168427
+      ],
+      "parent": "hind.R.upper"
+    },
+    {
+      "name": "hind.R.foot",
+      "head": [
+        -0.14399999380111694,
+        0.4880000054836273,
+        0.18719999492168427
+      ],
+      "tail": [
+        -0.14399999380111694,
+        0.3330000042915344,
+        0.07500000298023224
+      ],
+      "parent": "hind.R.lower"
+    }
+  ]
+}

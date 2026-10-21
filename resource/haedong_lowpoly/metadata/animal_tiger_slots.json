@@ -1,0 +1,133 @@
+{
+  "id": "animal_tiger",
+  "skeleton": "tiger_v1",
+  "slots": [
+    {
+      "slot": "body",
+      "glb": "glb/parts/animal_tiger__body.glb",
+      "objects": [
+        "body",
+        "neck",
+        "stripe_1_0_0",
+        "stripe_1_0_1",
+        "stripe_1_0_2",
+        "stripe_1_0_3",
+        "stripe_1_0_7",
+        "stripe_1_0_8",
+        "stripe_1_0_9",
+        "stripe_1_1_0",
+        "stripe_1_1_1",
+        "stripe_1_1_2",
+        "stripe_1_1_3",
+        "stripe_1_1_7",
+        "stripe_1_1_8",
+        "stripe_1_1_9",
+        "stripe_1_2_0",
+        "stripe_1_2_1",
+        "stripe_1_2_2",
+        "stripe_1_2_3",
+        "stripe_1_2_7",
+        "stripe_1_2_8",
+        "stripe_1_2_9",
+        "stripe_1_3_0",
+        "stripe_1_3_1",
+        "stripe_1_3_2",
+        "stripe_1_3_3",
+        "stripe_1_3_7",
+        "stripe_1_3_8",
+        "stripe_1_3_9",
+        "stripe_2_0_0",
+        "stripe_2_0_1",
+        "stripe_2_0_2",
+        "stripe_2_0_3",
+        "stripe_2_0_7",
+        "stripe_2_0_8",
+        "stripe_2_0_9",
+        "stripe_2_1_0",
+        "stripe_2_1_1",
+        "stripe_2_1_2",
+        "stripe_2_1_3",
+        "stripe_2_1_7",
+        "stripe_2_1_8",
+        "stripe_2_1_9",
+        "stripe_2_2_0",
+        "stripe_2_2_1",
+        "stripe_2_2_2",
+        "stripe_2_2_3",
+        "stripe_2_2_7",
+        "stripe_2_2_8",
+        "stripe_2_2_9",
+        "stripe_2_3_0",
+        "stripe_2_3_1",
+        "stripe_2_3_2",
+        "stripe_2_3_3",
+        "stripe_2_3_7",
+        "stripe_2_3_8",
+        "stripe_2_3_9"
+      ]
+    },
+    {
+      "slot": "head",
+      "glb": "glb/parts/animal_tiger__head.glb",
+      "objects": [
+        "head",
+        "muzzle",
+        "nose",
+        "jaw",
+        "eye.L",
+        "ear.L",
+        "ear_inner.L",
+        "muzzle_jowl.L",
+        "eye.R",
+        "ear.R",
+        "ear_inner.R",
+        "muzzle_jowl.R",
+        "cheek_stripe_0_-1",
+        "cheek_stripe_0_1",
+        "cheek_stripe_1_-1",
+        "cheek_stripe_1_1",
+        "cheek_stripe_2_-1",
+        "cheek_stripe_2_1"
+      ]
+    },
+    {
+      "slot": "front_legs",
+      "glb": "glb/parts/animal_tiger__front_legs.glb",
+      "objects": [
+        "front.L_leg",
+        "front.L_paw",
+        "front.L_toe_-1",
+        "front.L_toe_0",
+        "front.L_toe_1",
+        "front.R_leg",
+        "front.R_paw",
+        "front.R_toe_-1",
+        "front.R_toe_0",
+        "front.R_toe_1"
+      ]
+    },
+    {
+      "slot": "hind_legs",
+      "glb": "glb/parts/animal_tiger__hind_legs.glb",
+      "objects": [
+        "hind.L_leg",
+        "hind.L_paw",
+        "hind.L_toe_-1",
+        "hind.L_toe_0",
+        "hind.L_toe_1",
+        "hind.R_leg",
+        "hind.R_paw",
+        "hind.R_toe_-1",
+        "hind.R_toe_0",
+        "hind.R_toe_1"
+      ]
+    },
+    {
+      "slot": "tail",
+      "glb": "glb/parts/animal_tiger__tail.glb",
+      "objects": [
+        "tail"
+      ]
+    }
+  ]
+}
