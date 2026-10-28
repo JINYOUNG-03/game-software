@@ -26,9 +26,9 @@
 - 주변 창문/등불 조명은 가시 Effect Actor 중 화면 중심에 가까운 최대 8개를 선택해
   기존 배치의 uniform으로 전달한다. 광원별 추가 FBO/드로우 패스는 없다.
   이는 스타일화한 2D 광원이며 노멀맵/PBR/광원별 그림자 구현이 아니다.
-- 건물·캐릭터·지형·소품은 resource의 GLB 46개를 변환한 단일 2048×2048 아틀라스(16 MiB)를 공유한다.
+- 건물·캐릭터·지형·소품은 resource의 GLB 46개를 변환한 단일 4096×4096 아틀라스(64 MiB)를 공유한다.
   스키닝/자세 샘플링은 오프라인에서 수행하며 캐릭터당 런타임 쿼드 하나다.
-  NPC는 외형 18종, 4방향, 정지/8단계 걷기, 플레이어 공격은 12단계다.
+  NPC는 외형 18종, 8방향, 정지/12단계 걷기·달리기, 플레이어 공격은 12단계, 짐승 공격은 16단계다.
   물/불꽃/안개/바람과 간략한 2.5D 그림자는 기존 셰이더/Effect Actor를 유지한다.
   타격은 combat, 자세 갱신은 animation, 칼 잔상 제출은 render_effects에서 확인한다.
   사람의 화면 가로 비율 1.40배와 잔상 비율은 기존 쿼드 좌표에서 적용해 인스턴스/드로우콜을 늘리지 않는다.
@@ -64,7 +64,7 @@
 
 모든 CPU/GPU 시간은 ms, 크기는 bytes, 누적 이벤트는 count 단위다.
 안정적인 영문 snake_case 키를 사용한다. 스키마를 바꾸면 schema_version을 올린다.
-현재 스키마는 9이며 분석기는 기존 스키마 1·2·3·4·5·6·7·8 로그도 읽는다.
+현재 스키마는 10이며 분석기는 기존 스키마 1·2·3·4·5·6·7·8·9 로그도 읽는다.
 
 | 필드 | 의미 |
 |---|---|
@@ -118,16 +118,20 @@
 | cpu_ms.character_build / counters.character_models_built | 과거 스키마 호환용, 오프라인 GLB 변환 비용은 게임 로그에 포함하지 않음 |
 | counters.character_instances / mirrored_character_instances | 프레임에 제출한 플레이어/NPC 스프라이트 수 / 새 경로에서 반전은 사용하지 않아 0. 인구·드로우콜과 구분 |
 | cpu_ms.resource_load | 시작 시 파일 읽기·검증·WIC 디코딩·GPU 아틀라스 업로드의 중첩 포함 CPU ms. 비동기 GPU 실행 시간은 아님 |
-| counters.resource_bytes_read / resource_atlas_bytes | 읽은 PNG+메타데이터 bytes / 업로드한 RGBA bytes(현재 16,777,216). startup 값 |
+| counters.resource_bytes_read / resource_atlas_bytes | 읽은 PNG+메타데이터 bytes / 업로드한 RGBA bytes(현재 67,108,864). startup 값 |
 | counters.resource_sprites_loaded | 불러온 모델 별칭 바인딩 수. 픽셀 공유 이미지 수나 Actor 수가 아님 |
 | counters.resource_lookup_hit / resource_lookup_miss | 그리기 때 모델 조회 성공/실패 수. 정상 플레이의 miss는 0이어야 함 |
+| cpu_ms.enemy_combat | 짐승 공격 시작·진행의 중첩 포함 CPU ms. AI 또는 NPC 갱신의 자식 구간이며 합산하지 않음. 대상 사망 일괄 취소는 combat으로 계측해 같은 키의 중첩을 피함 |
+| counters.enemy_attacks_started / enemy_attack_updates | 시작한 공격 횟수 / 공격 상태를 갱신한 작업 수. 프레임·인구·드로우콜 수와 구분 |
+| counters.enemy_attack_impacts / enemy_attack_hits / enemy_attack_misses | 1회 타격 창 시도 / 플레이어·NPC 실제 피해 / 거리·방향·차폐·보호·무적·사망 대상으로 무효화된 판정 |
+| counters.enemy_attacks_canceled | 사망·리스폰·대상 사망/제거로 취소된 공격. 타격 뒤 회복 중 취소도 포함하므로 hits와 상호 배타적이지 않음 |
 | cpu_ms.rumor_update / counters.rumor_candidates / rumor_transfers | 2초 간격 근접 소문 처리 시간 / 공간 버킷 내 후보 검사 수 / 새 지식 전달 메시지 수(지식 비트 수가 아님) |
 | counters.courier_departures | 장터 체류를 마치고 다음 마을로 출발한 횟수. 최초 출발은 제외하며 고유 전달꾼 수가 아님 |
 | cpu_ms.village_statistics / counters.village_mood_samples | 약 1초 간격 마을 분위기 집계 시간 / 집계한 마을 표본 수 |
 | cpu_ms.enemy_respawn / counters.respawn_candidates / enemy_respawns | 몹 재생성 탐색 시간 / 검사한 캐시 후보 수 / 성공한 재생성 수 |
 
 로컬 HTML 모니터는 WORLD_MONITOR.md를 따른다. 브라우저가 수신하는 모니터 스키마 1은
-프로파일링 스키마 9과 별개다. 최대 1초 간격으로 게시하고, 구독이 5초간 없으면 생성하지 않는다.
+프로파일링 스키마 10과 별개다. 최대 1초 간격으로 게시하고, 구독이 5초간 없으면 생성하지 않는다.
 일시정지 중에도 모니터 표본과 전송 통계는 갱신한다. 네트워크 스레드는 프로파일러의
 프레임 배열에 직접 접근하지 않고 atomic 통계를 게임 스레드에서 회수한다.
 world_state에도 이름·집계·최근 사건이 추가되며 영문 키와 단위는 기존 규약을 유지한다.

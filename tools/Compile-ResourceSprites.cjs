@@ -9,7 +9,23 @@ const assert = require("node:assert/strict");
 const root = path.resolve(__dirname, "..");
 const source = path.join(root, "resource/haedong_lowpoly/glb");
 const destination = path.join(root, "resource/haedong_runtime");
-const revision = 2;
+const revision = 2; // The binary layout stays compatible; startup validates the expanded required bindings.
+const presentation =
+    fs.readFileSync(path.join(root, "BaseProject_SE/SimpleGame/CharacterPresentation.h"), "utf8");
+const constant = name => Number(presentation.match(new RegExp(name + " = (\\d+);"))[1]);
+const directionCount = constant("DirectionCount");
+const walkFrames = constant("WalkFrames");
+const beastAttackFrames = constant("BeastAttackFrames");
+const screenVectors =
+    [ [ 1, 0 ], [ 0, 1 ], [ -1, 0 ], [ 0, -1 ], [ 1, 1 ], [ -1, 1 ], [ -1, -1 ], [ 1, -1 ] ];
+// Invert the 2:1 projection: equal screen diagonals are NOT equal 45-degree GLB yaw steps.
+const directionYaws =
+    screenVectors.map(([ x, y ]) => (Math.atan2(x + 2 * y, 2 * y - x) * 180 / Math.PI + 360) % 360);
+const humanWidthScale = Number(presentation.match(/HumanWidthScale = ([.\d]+)f/)[1]);
+const humanDirectionYaws = screenVectors.map(
+    ([ x, y ]) =>
+        (Math.atan2(x / humanWidthScale + 2 * y, 2 * y - x / humanWidthScale) * 180 / Math.PI + 360) % 360);
+assert.equal(directionCount, directionYaws.length);
 const I = () => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 
 function mul(a, b)
@@ -128,7 +144,7 @@ function decodePng(bytes)
             assert.equal(data[8], 8);
             assert.equal(data[12], 0);
             channels = ({0 : 1, 2 : 3, 4 : 2, 6 : 4})[data[9]];
-            assert(channels && w <= 4096 && h <= 4096, "Unsupported PNG format");
+            assert(channels && w <= 8192 && h <= 8192 && w * h <= 16 * 1024 * 1024, "Unsupported PNG format");
         }
         if (type === "IDAT")
             compressed.push(data);
@@ -763,14 +779,17 @@ function compile()
             const pieces = parts.map(p => geometry(p, clip, phase));
             const triangles = pieces.flat();
             const weapon = pieces.find(p => p.weapon)?.weapon;
+            const yaw = direction < 0
+                            ? 0
+                            : (parts.some(p => p.asset.startsWith("human_")) ? humanDirectionYaws
+                                                                             : directionYaws)[direction];
             image = {
-                ...raster(triangles, direction < 0 ? 0 : [ 135, 45, 315, 225 ][direction], tint,
-                          key.startsWith("tile") ? [ -48, -24, 48, 24 ] : null),
+                ...raster(triangles, yaw, tint, key.startsWith("tile") ? [ -48, -24, 48, 24 ] : null),
                 material,
                 triangleCount : triangles.length
             };
             image.weapon = weapon ? [ weapon.hand, weapon.tip ].flatMap(p => {
-                const v = point(axis(1, [ 135, 45, 315, 225 ][direction]), p);
+                const v = point(axis(1, yaw), p);
                 return [ (v[0] - v[2]) * 24, (v[0] + v[2]) * 12 - v[1] * 48 ];
             })
                                   : [ 0, 0, 0, 0 ];
@@ -788,21 +807,21 @@ function compile()
     const looks = [ 0, 1, 2, 3, 4, 5, 6, 6, 5, 6, 7, 1, 7, 6, 0, 2, 6, 3 ];
     for (let h = 0; h < humans.length; h++)
     {
-        for (let d = 0; d < 4; d++)
-            for (let frame = -1; frame < 8; frame++)
+        for (let d = 0; d < directionCount; d++)
+            for (let frame = -1; frame < walkFrames; frame++)
             {
                 const part = {asset : humans[h]};
                 const key = `${humans[h]}/${frame}/${d}`;
-                emit(key, [ part ], frame < 0 ? "idle" : "walk", frame < 0 ? 0 : frame / 8, d);
+                emit(key, [ part ], frame < 0 ? "idle" : "walk", frame < 0 ? 0 : frame / walkFrames, d);
                 for (let look = 0; look < 5; look++)
                     if (looks[look] === h)
                         aliases.set(`citizen${look}_${frame < 0 ? "idle" : frame}@${d}`, aliases.get(key));
                 if (h === 5)
                     emit(`hero${frame < 0 ? "_idle" : frame}@${d}`, [ {asset : humans[h], weapon : true} ],
-                         frame < 0 ? "idle" : "walk", frame < 0 ? 0 : frame / 8, d);
+                         frame < 0 ? "idle" : "walk", frame < 0 ? 0 : frame / walkFrames, d);
             }
         if (h === 5)
-            for (let d = 0; d < 4; d++)
+            for (let d = 0; d < directionCount; d++)
                 for (let frame = 0; frame < 12; frame++)
                 {
                     const key = `hero_attack${frame}@${d}`;
@@ -821,17 +840,29 @@ function compile()
         [ .29, .13, .25, 1 ]
     ];
     for (let look = 5; look < looks.length; look++)
-        for (let d = 0; d < 4; d++)
-            for (let frame = -1; frame < 8; frame++)
+        for (let d = 0; d < directionCount; d++)
+            for (let frame = -1; frame < walkFrames; frame++)
                 emit(`citizen${look}_${frame < 0 ? "idle" : frame}@${d}`,
                      [ {asset : humans[looks[look]], clothColor : clothes[look - 5]} ],
-                     frame < 0 ? "idle" : "walk", frame < 0 ? 0 : frame / 8, d);
+                     frame < 0 ? "idle" : "walk", frame < 0 ? 0 : frame / walkFrames, d);
     for (const [kind, id] of ["animal_deer", "animal_wolf", "animal_tiger"].entries())
     {
-        for (let d = 0; d < 4; d++)
-            for (let frame = -1; frame < 8; frame++)
+        for (let d = 0; d < directionCount; d++)
+            for (let frame = -1; frame < walkFrames; frame++)
                 emit(`beast${kind}_${frame < 0 ? "idle" : frame}@${d}`, [ {asset : id} ],
-                     frame < 0 ? "idle" : "walk", frame < 0 ? 0 : frame / 8, d);
+                     frame < 0 ? "idle" : "walk", frame < 0 ? 0 : frame / walkFrames, d);
+        for (let d = 0; d < directionCount; d++)
+        {
+            for (let frame = 0; frame < walkFrames; frame++)
+            {
+                emit(`beast${kind}_run${frame}@${d}`, [ {asset : id} ], "run", frame / walkFrames, d);
+            }
+            for (let frame = 0; frame < beastAttackFrames; frame++)
+            {
+                emit(`beast${kind}_attack${frame}@${d}`, [ {asset : id} ], "attack",
+                     frame / (beastAttackFrames - 1), d);
+            }
+        }
         process.stdout.write(`Imported ${id}\n`);
     }
     for (const [key, parts] of Object.entries(recipes()))
@@ -846,7 +877,7 @@ function compile()
     }
     // Height-ordered shelves avoid wasting another power-of-two texture on a short final row.
     images.sort((a, b) => b.height - a.height || b.width - a.width);
-    const atlasWidth = 2048;
+    const atlasWidth = 4096;
     let x = 2, y = 2, row = 0;
     for (const img of images)
     {
@@ -941,7 +972,13 @@ function compile()
         aliases : records.length,
         source_triangles_sampled : images.reduce((s, i) => s + i.triangleCount, 0),
         animation_sampling :
-            "four screen directions, eight walk samples, twelve attack samples, in-place root vertical only",
+            "eight screen directions, twelve walk/run samples, twelve sword samples, sixteen beast attack samples, in-place root vertical only",
+        direction_yaws : directionYaws,
+        human_direction_yaws : humanDirectionYaws,
+        human_width_scale : humanWidthScale,
+        direction_count : directionCount,
+        walk_frames : walkFrames,
+        beast_attack_frames : beastAttackFrames,
         projection : "screen_x=(glb_x-glb_z)*24; screen_y=(glb_x+glb_z)*12-glb_y*48",
         weapon :
             "resource beam blade/grip/guard at hand.R palm; corrected -Z grip, authored sword_slash with two-bone arm IK",
@@ -1011,5 +1048,8 @@ module.exports = {
     encodePng,
     recipes,
     swordPose,
-    poseSwordArm
+    poseSwordArm,
+    directionYaws,
+    humanDirectionYaws,
+    screenVectors
 };

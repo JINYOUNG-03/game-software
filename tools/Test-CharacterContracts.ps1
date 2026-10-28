@@ -39,10 +39,11 @@ foreach ($contract in @('ResourceLookupHit', 'ResourceLookupMiss', 'CharacterIns
 if ($game.Contains('BuildCitizen(') -or $models.Contains('MIST_MODELS'))
 { throw 'Procedural character fallback remains active.' }
 # Screen-facing order must match the importer yaw table.
-if (-not $presentation.Contains('x >= 0 ? 0 : 2') -or -not $presentation.Contains('y >= 0 ? 1 : 3'))
-{ throw 'Four-direction ordering differs from right/down/left/up.' }
+if (-not $presentation.Contains('DirectionCount = 8') -or -not $presentation.Contains('diagonalBoundary') -or
+    -not $presentation.Contains('x >= 0 ? 4 : 5'))
+{ throw 'Eight-direction ordering/diagonal sectors missing.' }
 $duration = [double][regex]::Match($presentation, 'AttackDuration = ([.\d]+)f').Groups[1].Value
-$frames = [int][regex]::Match($presentation, 'AttackFrames = (\d+)').Groups[1].Value
+$frames = [int][regex]::Match($presentation, '\bAttackFrames = (\d+)').Groups[1].Value
 $impactFraction = [double][regex]::Match($presentation, 'AttackImpactTime = AttackDuration \* ([.\d]+)f').Groups[1].Value
 if ($frames -ne 12 -or $duration -ne .38) { throw 'Expected twelve readable attack poses across 380ms.' }
 if (-not $presentation.Contains('progress > .45f && progress < .70f'))
@@ -80,7 +81,7 @@ if (-not $game.Contains('if (firstLevel.ConsumeAttackImpact())') -or
 if (36 - 13 - (12 + 2.5) -le 0) { throw 'NPC labels overlap health bars.' }
 [pscustomobject]@{
     event = 'character_static_contracts'; passed = $true; npc_appearances = 18
-    walking_frames = 8; player_attack_frames = $frames; screen_directions = 4
+    walking_frames = 12; player_attack_frames = $frames; screen_directions = 8
     attack_duration_ms = $duration * 1000; impact_once_under_variable_dt = $true
     appearance_source = 'resource_glb'; same_world_foot_anchor = $true
     game_build_performed = $false; game_execution_performed = $false

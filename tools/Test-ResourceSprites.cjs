@@ -66,10 +66,13 @@ for (let i = 0; i < count; i++)
 }
 assert.equal(cursor, binary.length);
 const expect = key => assert(records.has(key), `Missing binding ${key}`);
-for (let d = 0; d < 4; d++)
+assert.equal(report.direction_count, 8);
+assert.equal(report.walk_frames, 12);
+assert.equal(report.beast_attack_frames, 16);
+for (let d = 0; d < report.direction_count; d++)
 {
     expect(`hero_idle@${d}`);
-    for (let f = 0; f < 8; f++)
+    for (let f = 0; f < report.walk_frames; f++)
         expect(`hero${f}@${d}`);
     for (let f = 0; f < 12; f++)
     {
@@ -81,14 +84,21 @@ for (let d = 0; d < 4; d++)
     for (let look = 0; look < 18; look++)
     {
         expect(`citizen${look}_idle@${d}`);
-        for (let f = 0; f < 8; f++)
+        for (let f = 0; f < report.walk_frames; f++)
             expect(`citizen${look}_${f}@${d}`);
     }
     for (let kind = 0; kind < 3; kind++)
     {
         expect(`beast${kind}_idle@${d}`);
-        for (let f = 0; f < 8; f++)
+        for (let f = 0; f < report.walk_frames; f++)
+        {
             expect(`beast${kind}_${f}@${d}`);
+            expect(`beast${kind}_run${f}@${d}`);
+        }
+        for (let f = 0; f < report.beast_attack_frames; f++)
+        {
+            expect(`beast${kind}_attack${f}@${d}`);
+        }
     }
 }
 for (let p = 0; p < 20; p++)

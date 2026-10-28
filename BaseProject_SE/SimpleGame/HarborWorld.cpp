@@ -1154,6 +1154,7 @@ namespace Harbor
         Witness(attacker, victim.WorldPosition(), -8, -3);
         if (victim.health == 0)
         {
+            level.CancelEnemyAttacksTargeting(victim.Id());
             if (attacker == level.Player().Id())
             {
                 level.stats.GainExperience(12);
@@ -1307,8 +1308,11 @@ namespace Harbor
                 npc.mirrorModel = screenDirection < 0;
             }
         }
-        npc.model = "citizen" + std::to_string(npc.appearance) + "_" +
-                    (npc.moving ? std::to_string(int(npc.phase * 8 / 6.2831853f) % 8) : "idle");
+        npc.model =
+            "citizen" + std::to_string(npc.appearance) + "_" +
+            (npc.moving ? std::to_string(int(npc.phase * CharacterPresentation::WalkFrames / 6.2831853f) %
+                                         CharacterPresentation::WalkFrames)
+                        : "idle");
         npc.cooldown = (std::max)(0.0f, npc.cooldown - dt);
         npc.threatTime = (std::max)(0.0f, npc.threatTime - dt);
         npc.raidCooldown = (std::max)(0.0f, npc.raidCooldown - dt);
@@ -1409,9 +1413,7 @@ namespace Harbor
                 }
                 else
                 {
-                    Hurt(npc, 5 + beast->kind * 2, beast->Id());
-                    // A beast is not a human raid target. Continue hunting or flee on the next decision.
-                    npc.threatTime = 0;
+                    level.BeginEnemyAttack(*beast, npc.Id());
                 }
             }
         }
@@ -1628,6 +1630,21 @@ namespace Harbor
     void World::Update(float dt)
     {
         Perf::Scope scope(Perf::Cpu::NpcUpdate);
+        for (const auto& impact : level.ConsumeEnemyAttackImpacts())
+        {
+            auto* victim = dynamic_cast<Npc*>(level.Scene().Find(impact.target));
+            if (victim && victim->health > 0)
+            {
+                Hurt(*victim, impact.damage, impact.source);
+                // Beasts are not human raid targets; the next hunt/flee decision remains authoritative.
+                victim->threatTime = 0;
+                Perf::Count(Perf::Counter::EnemyAttackHits);
+            }
+            else
+            {
+                Perf::Count(Perf::Counter::EnemyAttackMisses);
+            }
+        }
         UpdateQuest();
         minutes += dt; // Daily life continues; story choices remain with the player.
         auto npcs = level.Scene().Actors<Npc>(ActorKind::Npc);

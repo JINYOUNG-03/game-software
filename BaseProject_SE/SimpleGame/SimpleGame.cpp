@@ -172,11 +172,11 @@ namespace
         {
             required.push_back("loot" + std::to_string(kind));
         }
-        for (int direction = 0; direction < 4; ++direction)
+        for (int direction = 0; direction < CharacterPresentation::DirectionCount; ++direction)
         {
             const std::string suffix = "@" + std::to_string(direction);
             required.push_back("hero_idle" + suffix);
-            for (int frame = 0; frame < 8; ++frame)
+            for (int frame = 0; frame < CharacterPresentation::WalkFrames; ++frame)
             {
                 required.push_back("hero" + std::to_string(frame) + suffix);
             }
@@ -188,7 +188,7 @@ namespace
             {
                 const std::string prefix = "citizen" + std::to_string(look) + "_";
                 required.push_back(prefix + "idle" + suffix);
-                for (int frame = 0; frame < 8; ++frame)
+                for (int frame = 0; frame < CharacterPresentation::WalkFrames; ++frame)
                 {
                     required.push_back(prefix + std::to_string(frame) + suffix);
                 }
@@ -197,9 +197,14 @@ namespace
             {
                 const std::string prefix = "beast" + std::to_string(kind) + "_";
                 required.push_back(prefix + "idle" + suffix);
-                for (int frame = 0; frame < 8; ++frame)
+                for (int frame = 0; frame < CharacterPresentation::WalkFrames; ++frame)
                 {
                     required.push_back(prefix + std::to_string(frame) + suffix);
+                    required.push_back(prefix + "run" + std::to_string(frame) + suffix);
+                }
+                for (int frame = 0; frame < CharacterPresentation::BeastAttackFrames; ++frame)
+                {
+                    required.push_back(prefix + "attack" + std::to_string(frame) + suffix);
                 }
             }
         }
@@ -391,6 +396,13 @@ namespace
             if (const auto* enemy =
                     dynamic_cast<const Level::Enemy*>(firstLevel.Scene().Find(actor.ParentId())))
             {
+                if (enemy->attackTime >= 0 &&
+                    enemy->attackTime < CharacterPresentation::BeastAttackDuration(enemy->kind) *
+                                            CharacterPresentation::BeastImpactFraction)
+                {
+                    // Existing status Actor also carries the wind-up warning; no new scene placement.
+                    renderer->DrawEllipse(x, y + 2, 62, 25, .95f, .48f, .15f, .27f);
+                }
                 if (enemy->flash > 0)
                 {
                     renderer->DrawEllipse(x, y - 20, 48, 40, 1, .7f, .45f, .4f);

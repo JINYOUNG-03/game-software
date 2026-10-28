@@ -217,7 +217,9 @@ const Renderer::ResourceSprite* Renderer::FindResourceSprite(const std::string& 
     auto found = m_ResourceSprites.find(name);
     if (found == m_ResourceSprites.end())
     {
-        found = m_ResourceSprites.find(name + "@" + std::to_string(std::max(0, std::min(3, direction))));
+        found = m_ResourceSprites.find(
+            name + "@" +
+            std::to_string(std::max(0, std::min(CharacterPresentation::DirectionCount - 1, direction))));
     }
     return found == m_ResourceSprites.end() ? nullptr : &found->second;
 }
@@ -230,7 +232,7 @@ bool Renderer::HasModel(const std::string& name) const
 float Renderer::ModelVisualHeight(const std::string& name) const
 {
     float height = 0;
-    for (int direction = 0; direction < 4; ++direction)
+    for (int direction = 0; direction < CharacterPresentation::DirectionCount; ++direction)
     {
         if (const auto* sprite = FindResourceSprite(name, direction))
         {

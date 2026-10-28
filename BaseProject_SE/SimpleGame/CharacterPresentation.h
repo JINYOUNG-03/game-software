@@ -7,13 +7,35 @@
 namespace CharacterPresentation
 {
     constexpr float HumanWidthScale = 1.40f;
+    constexpr int DirectionCount = 8;
+    constexpr int WalkFrames = 12;
+    constexpr int BeastAttackFrames = 16;
+    constexpr float BeastImpactFraction = .50f;
+    constexpr float BeastAttackRange = 1.25f;
+    constexpr float BeastAttackStartRange = .95f;
+
+    inline float BeastAttackDuration(int kind)
+    {
+        return kind == 0 ? .90f : kind == 1 ? .78f : .88f;
+    }
+
     constexpr int AttackFrames = 12;
     constexpr float AttackDuration = .38f;
     constexpr float AttackImpactTime = AttackDuration * .55f;
 
     inline int ScreenDirection(float x, float y)
     {
-        return std::abs(x) > std::abs(y) ? (x >= 0 ? 0 : 2) : (y >= 0 ? 1 : 3);
+        // Keep the four original indices; append down-right/down-left/up-left/up-right.
+        constexpr float diagonalBoundary = .41421356f; // tan(22.5 degrees)
+        if (std::abs(y) <= std::abs(x) * diagonalBoundary)
+        {
+            return x >= 0 ? 0 : 2;
+        }
+        if (std::abs(x) <= std::abs(y) * diagonalBoundary)
+        {
+            return y >= 0 ? 1 : 3;
+        }
+        return y >= 0 ? (x >= 0 ? 4 : 5) : (x < 0 ? 6 : 7);
     }
 
     inline float AttackTrailStrength(float remaining)

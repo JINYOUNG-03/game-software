@@ -116,7 +116,7 @@ class Actor
     float shadowHeight = 0;
     float visualHeight = 0;
     bool mirrorModel = false;
-    int visualDirection = 1; // Screen right/down/left/up; sampled from the supplied GLB poses.
+    int visualDirection = 1; // Screen R/D/L/U/DR/DL/UL/UR; sampled from the supplied GLB poses.
     // Derived from shared terrain, not a second collision/position representation.
     // Water/land edge mask, road edge mask, water depth, flooded-lane wetness.
     std::array<float, 4> surfaceData{{0, 0, -1, 0}};

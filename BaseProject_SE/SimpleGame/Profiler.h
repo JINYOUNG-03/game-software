@@ -65,6 +65,7 @@ namespace Perf
         VillageStatistics,
         EnemyRespawn,
         ResourceLoad,
+        EnemyCombat,
         Count
     };
     enum class Counter
@@ -138,6 +139,12 @@ namespace Perf
         ResourceSpritesLoaded,
         ResourceLookupHit,
         ResourceLookupMiss,
+        EnemyAttacksStarted,
+        EnemyAttackUpdates,
+        EnemyAttackImpacts,
+        EnemyAttackHits,
+        EnemyAttackMisses,
+        EnemyAttacksCanceled,
         Count
     };
 

@@ -211,7 +211,9 @@ namespace Level
     void FirstLevel::UpdateActorModels()
     {
         Perf::Scope scope(Perf::Cpu::Animation);
-        int frame = moving ? int(walkPhase * 8 / 6.2831853f) % 8 : 0;
+        int frame = moving ? int(walkPhase * CharacterPresentation::WalkFrames / 6.2831853f) %
+                                 CharacterPresentation::WalkFrames
+                           : 0;
         if (attackAnimation > 0)
         {
             int pose = CharacterPresentation::AttackFrame(attackAnimation);
@@ -223,9 +225,22 @@ namespace Level
         }
         for (Enemy* enemy : scene.Actors<Enemy>(ActorKind::Enemy))
         {
-            int pose = enemy->moving ? int(enemy->phase * 9 * 8 / 6.2831853f) % 8 : 0;
-            enemy->model =
-                "beast" + std::to_string(enemy->kind) + "_" + (enemy->moving ? std::to_string(pose) : "idle");
+            const std::string prefix = "beast" + std::to_string(enemy->kind) + "_";
+            if (enemy->attackTime >= 0)
+            {
+                int pose = (std::min)(
+                    CharacterPresentation::BeastAttackFrames - 1,
+                    int(enemy->attackTime / CharacterPresentation::BeastAttackDuration(enemy->kind) *
+                        CharacterPresentation::BeastAttackFrames));
+                enemy->model = prefix + "attack" + std::to_string(pose);
+            }
+            else
+            {
+                int pose = int(enemy->locomotionPhase * CharacterPresentation::WalkFrames / 6.2831853f) %
+                           CharacterPresentation::WalkFrames;
+                enemy->model =
+                    prefix + (enemy->moving ? (enemy->running ? "run" : "") + std::to_string(pose) : "idle");
+            }
         }
     }
 
@@ -433,6 +448,7 @@ namespace Level
         attackAnimation = 0;
         attackImpactPending = attackImpactReady = false;
         attackCooldown = 0;
+        enemyAttackImpacts.clear();
         invulnerability = 2;
         navigationTime = 0;
         hurtFlash = 0;
@@ -958,6 +974,16 @@ namespace Level
         if (moving)
         {
             walkPhase += dt * 10;
+            if (attackAnimation <= 0)
+            {
+                const Position after = Player().WorldPosition();
+                const float actualX = ((after.x - before.x) - (after.y - before.y)) * HalfTileWidth;
+                const float actualY = ((after.x - before.x) + (after.y - before.y)) * HalfTileHeight;
+                const float actualLength = std::hypot(actualX, actualY);
+                facingX = actualX / actualLength;
+                facingY = actualY / actualLength;
+                Player().visualDirection = CharacterPresentation::ScreenDirection(facingX, facingY);
+            }
         }
     }
 
@@ -980,6 +1006,7 @@ namespace Level
 
     void FirstLevel::Kill(Enemy& enemy, bool playerCredit)
     {
+        CancelEnemyAttack(enemy);
         enemy.health = 0;
         enemy.respawn = WorldLayout::RespawnDelaySeconds;
         enemy.deathPosition = enemy.WorldPosition();
@@ -1057,6 +1084,9 @@ namespace Level
             enemy.SetVisible(true);
             enemy.health = enemy.maxHealth;
             enemy.cooldown = 1;
+            CancelEnemyAttack(enemy);
+            enemy.locomotionPhase = 0;
+            enemy.running = false;
             enemy.moving = false;
             Perf::Count(Perf::Counter::EnemyRespawns);
             return true;
@@ -1128,6 +1158,128 @@ namespace Level
         return false;
     }
 
+    bool FirstLevel::BeginEnemyAttack(Enemy& enemy, ActorId targetId)
+    {
+        Perf::Scope scope(Perf::Cpu::EnemyCombat);
+        Actor* target = scene.Find(targetId);
+        if (enemy.health <= 0 || enemy.cooldown > 0 || enemy.attackTime >= 0 || !target ||
+            !target->IsActive() ||
+            Distance(enemy.WorldPosition(), target->WorldPosition()) >
+                CharacterPresentation::BeastAttackRange ||
+            !ClearLine(enemy.WorldPosition(), target->WorldPosition()))
+        {
+            return false;
+        }
+        Position from = enemy.WorldPosition(), to = target->WorldPosition();
+        float dx = to.x - from.x, dy = to.y - from.y, length = std::hypot(dx, dy);
+        if (length < .001f)
+        {
+            return false;
+        }
+        enemy.attackForward = {dx / length, dy / length, 0};
+        enemy.visualDirection =
+            CharacterPresentation::ScreenDirection((dx - dy) * HalfTileWidth, (dx + dy) * HalfTileHeight);
+        enemy.attackTarget = targetId;
+        enemy.attackTime = 0;
+        enemy.attackImpactPending = true;
+        enemy.cooldown = CharacterPresentation::BeastAttackDuration(enemy.kind) + .35f;
+        enemy.moving = enemy.running = false;
+        enemy.model = "beast" + std::to_string(enemy.kind) + "_attack0";
+        Perf::Count(Perf::Counter::EnemyAttacksStarted);
+        return true;
+    }
+
+    void FirstLevel::CancelEnemyAttack(Enemy& enemy)
+    {
+        if (enemy.attackTime >= 0)
+        {
+            Perf::Count(Perf::Counter::EnemyAttacksCanceled);
+        }
+        enemy.attackTime = -1;
+        enemy.attackTarget = InvalidActorId;
+        enemy.attackImpactPending = false;
+        enemy.moving = enemy.running = false;
+        enemy.model = "beast" + std::to_string(enemy.kind) + "_idle";
+    }
+
+    void FirstLevel::CancelEnemyAttacksTargeting(ActorId target)
+    {
+        // May be called inside enemy_combat on player death; avoid nesting the same CPU key.
+        Perf::Scope scope(Perf::Cpu::Combat);
+        for (Enemy* enemy : scene.Actors<Enemy>(ActorKind::Enemy))
+        {
+            if (enemy->attackTarget == target)
+            {
+                CancelEnemyAttack(*enemy);
+            }
+        }
+    }
+
+    void FirstLevel::UpdateEnemyAttack(Enemy& enemy, float dt)
+    {
+        Perf::Scope scope(Perf::Cpu::EnemyCombat);
+        Perf::Count(Perf::Counter::EnemyAttackUpdates);
+        enemy.moving = enemy.running = false;
+        Actor* target = scene.Find(enemy.attackTarget);
+        if (!target || !target->IsActive())
+        {
+            CancelEnemyAttack(enemy);
+            return;
+        }
+        const float duration = CharacterPresentation::BeastAttackDuration(enemy.kind);
+        enemy.attackTime = (std::min)(duration, enemy.attackTime + dt);
+        if (enemy.attackImpactPending &&
+            enemy.attackTime >= duration * CharacterPresentation::BeastImpactFraction)
+        {
+            enemy.attackImpactPending = false;
+            Perf::Count(Perf::Counter::EnemyAttackImpacts);
+            const Position from = enemy.WorldPosition(), to = target->WorldPosition();
+            const float dx = to.x - from.x, dy = to.y - from.y, distance = std::hypot(dx, dy);
+            const bool inFront = distance < .001f ||
+                                 (dx * enemy.attackForward.x + dy * enemy.attackForward.y) / distance >= .45f;
+            const Position gridTarget = ToGrid(to);
+            const bool safe = target->Id() == Player().Id() && InCamp(int(gridTarget.x), int(gridTarget.y));
+            if (distance <= CharacterPresentation::BeastAttackRange && inFront && !safe &&
+                ClearLine(from, to))
+            {
+                if (target->Id() == Player().Id())
+                {
+                    if (invulnerability <= 0)
+                    {
+                        DamagePlayer(11 + enemy.kind * 3);
+                        Perf::Count(Perf::Counter::EnemyAttackHits);
+                    }
+                    else
+                    {
+                        Perf::Count(Perf::Counter::EnemyAttackMisses);
+                    }
+                }
+                else
+                {
+                    // Harbor owns NPC health and consumes this one-shot impact before NPC movement.
+                    enemyAttackImpacts.push_back({enemy.Id(), target->Id(), 5 + enemy.kind * 2});
+                }
+            }
+            else
+            {
+                Perf::Count(Perf::Counter::EnemyAttackMisses);
+            }
+        }
+        if (enemy.attackTime >= duration)
+        {
+            enemy.attackTime = -1;
+            enemy.attackTarget = InvalidActorId;
+            enemy.attackImpactPending = false;
+        }
+    }
+
+    std::vector<EnemyAttackImpact> FirstLevel::ConsumeEnemyAttackImpacts()
+    {
+        std::vector<EnemyAttackImpact> impacts;
+        impacts.swap(enemyAttackImpacts);
+        return impacts;
+    }
+
     void FirstLevel::DamagePlayer(int damage)
     {
         if (invulnerability > 0 || !Player().IsActive())
@@ -1139,6 +1291,7 @@ namespace Level
         hurtFlash = .22f;
         if (stats.health <= 0)
         {
+            CancelEnemyAttacksTargeting(Player().Id());
             attackAnimation = 0;
             attackImpactPending = attackImpactReady = false;
             Player().SetWorldPosition(ToWorld(Camp));
@@ -1390,11 +1543,23 @@ namespace Level
                     continue;
                 }
 
+                if (enemy.attackTime >= 0)
+                {
+                    UpdateEnemyAttack(enemy, dt);
+                    continue;
+                }
+
                 float distance = Distance(Player().WorldPosition(), enemy.WorldPosition());
                 Position target = enemy.HomePosition();
                 bool chasing =
                     distance < 6 && Player().IsActive() &&
                     !InCamp(int(ToGrid(Player().WorldPosition()).x), int(ToGrid(Player().WorldPosition()).y));
+                if (chasing && distance <= CharacterPresentation::BeastAttackStartRange &&
+                    BeginEnemyAttack(enemy, Player().Id()))
+                {
+                    // Do not consume this frame's dt: the first rendered pose is the wind-up.
+                    continue;
+                }
                 if (chasing)
                 {
                     if (ClearLine(enemy.WorldPosition(), Player().WorldPosition()))
@@ -1445,19 +1610,15 @@ namespace Level
                     Move(enemy, dx / length * amount, dy / length * amount);
                 }
                 enemy.moving = Distance(before, enemy.WorldPosition()) > .0001f;
+                enemy.running = chasing && enemy.moving;
                 if (enemy.moving)
                 {
+                    enemy.locomotionPhase +=
+                        Distance(before, enemy.WorldPosition()) * (enemy.running ? 9.0f : 18.0f);
                     const Position after = enemy.WorldPosition();
                     enemy.visualDirection = CharacterPresentation::ScreenDirection(
                         ((after.x - before.x) - (after.y - before.y)) * HalfTileWidth,
                         ((after.x - before.x) + (after.y - before.y)) * HalfTileHeight);
-                }
-
-                if (chasing && distance < .9f && enemy.cooldown <= 0 && invulnerability <= 0 &&
-                    ClearLine(enemy.WorldPosition(), Player().WorldPosition()))
-                {
-                    enemy.cooldown = 1.1f;
-                    DamagePlayer(11 + enemy.kind * 3);
                 }
             }
         }

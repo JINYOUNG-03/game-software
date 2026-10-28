@@ -59,11 +59,17 @@ namespace Level
         int health = 0;
         int maxHealth = 0;
         float phase = 0;
+        float locomotionPhase = 0;
+        float attackTime = -1;
+        bool attackImpactPending = false;
+        ActorId attackTarget = InvalidActorId;
+        Position attackForward;
         float cooldown = 0;
         float respawn = 0;
         Position deathPosition;
         float flash = 0;
         bool moving = false;
+        bool running = false;
 
         Position HomePosition() const
         {
@@ -71,6 +77,13 @@ namespace Level
             Position local = LocalPosition();
             return {world.x - local.x + home.x, world.y - local.y + home.y, world.z - local.z + home.z};
         }
+    };
+
+    struct EnemyAttackImpact
+    {
+        ActorId source = InvalidActorId;
+        ActorId target = InvalidActorId;
+        int damage = 0;
     };
 
     enum class LootKind
@@ -97,6 +110,9 @@ namespace Level
         bool Attack();
         bool ConsumeAttackImpact();
         bool DamageEnemy(Enemy& enemy, int damage, bool playerCredit);
+        bool BeginEnemyAttack(Enemy& enemy, ActorId target);
+        void CancelEnemyAttacksTargeting(ActorId target);
+        std::vector<EnemyAttackImpact> ConsumeEnemyAttackImpacts();
         void DamagePlayer(int damage);
         void MoveActor(Actor& actor, float dx, float dy);
         std::vector<Position> FindPath(const Position& from, const Position& to) const;
@@ -191,6 +207,7 @@ namespace Level
         bool generating = false;
         std::mt19937 random;
         std::vector<Position> spawnCandidates;
+        std::vector<EnemyAttackImpact> enemyAttackImpacts;
         float attackCooldown = 0;
         bool attackImpactPending = false;
         bool attackImpactReady = false;
@@ -207,6 +224,8 @@ namespace Level
         void AddLoot(const Position& position, LootKind kind, int amount);
         void UpdateActorModels();
         void ResolveAttackImpact();
+        void UpdateEnemyAttack(Enemy& enemy, float dt);
+        void CancelEnemyAttack(Enemy& enemy);
         void RefreshTerrainAppearance();
         void BuildHarborScenery();
         Position ToGrid(const Position& world) const;

@@ -3,8 +3,16 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const {load, sample, geometry, swordPose, poseSwordArm, raster, encodePng} =
-    require("./Compile-ResourceSprites.cjs");
+const {
+    load,
+    sample,
+    geometry,
+    swordPose,
+    poseSwordArm,
+    raster,
+    encodePng,
+    humanDirectionYaws : directionYaws
+} = require("./Compile-ResourceSprites.cjs");
 const asset = load("human_protagonist");
 const index = name => asset.doc.nodes.findIndex(n => n.name === name);
 const position = (globals, name) => globals[index(name)].slice(12, 15);
@@ -92,18 +100,18 @@ assert(swordPose(.56).blade[2] > .95, "Impact must cut forward, not behind the p
 assert(swordPose(.30).blade[1] > .7 && swordPose(.72).blade[1] < -.5);
 if (process.argv.includes("--preview"))
 {
-    const width = 12 * 128, height = 4 * 160;
+    const width = 12 * 128, height = directionYaws.length * 160;
     const pixels = Buffer.alloc(width * height * 4);
     for (let i = 0; i < pixels.length; i += 4)
     {
         pixels.set([ 206, 209, 197, 255 ], i);
     }
-    for (let direction = 0; direction < 4; direction++)
+    for (let direction = 0; direction < directionYaws.length; direction++)
     {
         for (let frame = 0; frame < 12; frame++)
         {
             const mesh = geometry({asset : "human_protagonist", weapon : true}, "sword_slash", frame / 11);
-            const image = raster(mesh, [ 135, 45, 315, 225 ][direction]);
+            const image = raster(mesh, directionYaws[direction]);
             for (let y = 0; y < 160; y++)
             {
                 for (let x = 0; x < 128; x++)
