@@ -5,6 +5,7 @@
 #include <Windows.h>
 #include <algorithm>
 #include <cmath>
+#include <chrono>
 #include <iostream>
 #include <vector>
 #include <map>
@@ -99,7 +100,7 @@ namespace
     bool dialogueNextPressed = false;
     bool dialogueClosePressed = false;
     int dialogueChoicePressed = -1;
-    int previousTime = 0;
+    std::chrono::steady_clock::time_point previousTime{};
     int outputWidth = ScreenWidth;
     int outputHeight = ScreenHeight;
     float elapsed = 0;
@@ -422,7 +423,9 @@ namespace
         case ActorEffect::SwordTrail:
             if (firstLevel.attackAnimation > 0)
             {
-                int frame = CharacterPresentation::AttackFrame(firstLevel.attackAnimation);
+                float frame = CharacterPresentation::Clamp01(1 - firstLevel.attackAnimation /
+                                                                     CharacterPresentation::AttackDuration) *
+                              (CharacterPresentation::AttackFrames - 1);
                 renderer->DrawResourceSwordTrail(
                     frame,
                     firstLevel.Player().visualDirection,
@@ -589,7 +592,9 @@ namespace
                                                         y,
                                                         actor.mirrorModel,
                                                         actor.visualDirection,
-                                                        firstLevel.HitFlash(actor));
+                                                        firstLevel.HitFlash(actor),
+                                                        actor.nextModel,
+                                                        actor.poseBlend);
                                 }
                                 if (actor.Kind() == ActorKind::Effect)
                                 {
@@ -1827,8 +1832,10 @@ void RenderScene()
     }
     auto& profiler = Perf::Profiler::Get();
     profiler.BeginFrame();
-    int now = glutGet(GLUT_ELAPSED_TIME);
-    float dt = previousTime ? float(now - previousTime) / 1000 : 0;
+    const auto now = std::chrono::steady_clock::now();
+    float dt = previousTime.time_since_epoch().count()
+                   ? std::chrono::duration<float>(now - previousTime).count()
+                   : 0;
     previousTime = now;
     Update((std::min)(dt, .05f));
     const Vec3 player = PlayerPosition();

@@ -107,8 +107,11 @@ void Renderer::Flush()
                                   offsetof(Instance, color),
                                   offsetof(Instance, uv),
                                   offsetof(Instance, material),
-                                  offsetof(Instance, surface)};
-        for (GLuint i = 0; i < 6; ++i)
+                                  offsetof(Instance, surface),
+                                  offsetof(Instance, nextUV),
+                                  offsetof(Instance, poseMap),
+                                  offsetof(Instance, nextPoseMap)};
+        for (GLuint i = 0; i < 9; ++i)
         {
             glEnableVertexAttribArray(i);
             glVertexAttribPointer(i,

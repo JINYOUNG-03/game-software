@@ -93,14 +93,16 @@ class Renderer
 
     bool LoadResourceSprites(const std::wstring& directory);
     float ModelVisualHeight(const std::string& name) const;
-    void DrawResourceSwordTrail(int frame, int direction, float x, float y, float strength);
+    void DrawResourceSwordTrail(float frame, int direction, float x, float y, float strength);
     bool HasModel(const std::string& name) const;
     void DrawModel(const std::string& name,
                    float x,
                    float y,
                    bool mirrorX = false,
                    int direction = 1,
-                   float hitFlash = 0);
+                   float hitFlash = 0,
+                   const std::string& nextModel = "",
+                   float poseBlend = 0);
     void DrawModelPreview(
         const std::string& name, float x, float y, float width, float height, int direction = 1);
     void DrawScene(const SceneGraph& scene, ScenePass pass, const std::function<void(const Actor&)>& draw);
@@ -128,9 +130,12 @@ class Renderer
         float uv[4]{0, 0, 1, 1};
         float material = 0;
         float surface[4]{};
+        float nextUV[4]{};
+        float poseMap[4]{0, 0, 1, 1};
+        float nextPoseMap[4]{0, 0, 1, 1};
     };
 
-    static_assert(sizeof(Instance) == sizeof(float) * 21, "Instance data must not contain padding.");
+    static_assert(sizeof(Instance) == sizeof(float) * 33, "Instance data must not contain padding.");
 
     struct GpuBatch
     {

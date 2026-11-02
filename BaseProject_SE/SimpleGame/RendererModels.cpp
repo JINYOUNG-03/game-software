@@ -242,8 +242,14 @@ float Renderer::ModelVisualHeight(const std::string& name) const
     return height;
 }
 
-void Renderer::DrawModel(
-    const std::string& name, float x, float y, bool mirrorX, int direction, float hitFlash)
+void Renderer::DrawModel(const std::string& name,
+                         float x,
+                         float y,
+                         bool mirrorX,
+                         int direction,
+                         float hitFlash,
+                         const std::string& nextModel,
+                         float poseBlend)
 {
     // Imported direction-specific poses replace mirroring; keep the Actor flag compatible.
     (void)mirrorX;
@@ -266,7 +272,48 @@ void Renderer::DrawModel(
     const auto surface = m_SurfaceData;
     if (sprite->material == 22)
     {
+        // x is reserved for pose mixing on sprites, w for the existing hit flash.
+        m_SurfaceData[0] = 0;
         m_SurfaceData[3] = hitFlash;
+    }
+    const bool animated = character || name.compare(0, 5, "beast") == 0;
+    if (animated && !nextModel.empty() && poseBlend > 0)
+    {
+        Perf::Scope scope(Perf::Cpu::PoseBlend);
+        const auto* next = FindResourceSprite(nextModel, direction);
+        if (next && next->material == 22 && sprite->material == 22)
+        {
+            const auto& n = next->rect;
+            // A common foot-anchored canvas prevents cropped frames from sliding or clipping the blade.
+            const float left = (std::min)(r[0], n[0]), top = (std::min)(r[1], n[1]);
+            const float width = (std::max)(r[0] + r[2], n[0] + n[2]) - left;
+            const float height = (std::max)(r[1] + r[3], n[1] + n[3]) - top;
+            Instance item{};
+            const float corners[] = {x + left * widthScale,
+                                     y + top,
+                                     x + left * widthScale,
+                                     y + top + height,
+                                     x + (left + width) * widthScale,
+                                     y + top + height,
+                                     x + (left + width) * widthScale,
+                                     y + top};
+            std::copy(corners, corners + 8, item.corners);
+            std::copy(color, color + 4, item.color);
+            std::copy(r.data() + 4, r.data() + 8, item.uv);
+            std::copy(n.data() + 4, n.data() + 8, item.nextUV);
+            const float maps[] = {(left - r[0]) / r[2], (top - r[1]) / r[3], width / r[2], height / r[3]};
+            const float nextMaps[] = {(left - n[0]) / n[2], (top - n[1]) / n[3], width / n[2], height / n[3]};
+            std::copy(maps, maps + 4, item.poseMap);
+            std::copy(nextMaps, nextMaps + 4, item.nextPoseMap);
+            item.material = 22;
+            m_SurfaceData[0] = CharacterPresentation::Clamp01(poseBlend);
+            QueueInstance(item, m_ResourceAtlas);
+            m_SurfaceData = surface;
+            Perf::Count(Perf::Counter::PoseBlendedInstances);
+            Perf::Count(Perf::Counter::ResourceLookupHit);
+            return;
+        }
+        Perf::Count(Perf::Counter::PoseBlendFallbacks);
     }
     // Scale local offsets with the width so the Actor's world foot anchor never drifts.
     QueueRect(x + (r[0] + r[2] * .5f) * widthScale,
@@ -302,20 +349,33 @@ void Renderer::DrawModelPreview(
     Perf::Count(Perf::Counter::InventoryPreviews);
 }
 
-void Renderer::DrawResourceSwordTrail(int frame, int direction, float x, float y, float strength)
+void Renderer::DrawResourceSwordTrail(float frame, int direction, float x, float y, float strength)
 {
-    if (frame < 1 || strength <= .01f)
+    if (frame <= 0 || strength <= .01f)
     {
         return;
     }
-    auto* current = FindResourceSprite("hero_attack" + std::to_string(frame), direction);
-    auto* previous = FindResourceSprite("hero_attack" + std::to_string(frame - 1), direction);
-    if (!current || !previous)
+    auto weaponAt = [&](float position, std::array<float, 4>& weapon)
+    {
+        const auto sample = CharacterPresentation::SamplePose(
+            position / (CharacterPresentation::AttackFrames - 1), CharacterPresentation::AttackFrames, false);
+        auto* current = FindResourceSprite("hero_attack" + std::to_string(sample.current), direction);
+        auto* next = FindResourceSprite("hero_attack" + std::to_string(sample.next), direction);
+        if (!current || !next)
+        {
+            return false;
+        }
+        for (size_t i = 0; i < weapon.size(); ++i)
+        {
+            weapon[i] = current->weapon[i] + (next->weapon[i] - current->weapon[i]) * sample.blend;
+        }
+        return true;
+    };
+    std::array<float, 4> a{}, b{};
+    if (!weaponAt(frame, a) || !weaponAt((std::max)(0.0f, frame - 1), b))
     {
         return;
     }
-    const auto& a = current->weapon;
-    const auto& b = previous->weapon;
     const float widthScale = CharacterPresentation::HumanWidthScale;
     DrawQuad(x + a[0] * widthScale,
              y + a[1],

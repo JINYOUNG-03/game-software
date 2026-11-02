@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include "WorldLayout.h"
+#include "Actor.h"
 
 // Shared by cached poses, gameplay impact timing and the existing SwordTrail Actor.
 namespace CharacterPresentation
@@ -61,8 +62,41 @@ namespace CharacterPresentation
 
     inline int AttackFrame(float remaining)
     {
-        int frame = int(Clamp01(1 - remaining / AttackDuration) * AttackFrames);
-        return frame < AttackFrames ? frame : AttackFrames - 1;
+        return int(Clamp01(1 - remaining / AttackDuration) * (AttackFrames - 1));
+    }
+
+    struct PoseSample
+    {
+        int current = 0;
+        int next = 0;
+        float blend = 0;
+    };
+
+    inline PoseSample SamplePose(float position, int frames, bool loop)
+    {
+        if (!std::isfinite(position) || frames < 2)
+        {
+            return {};
+        }
+        position = loop ? std::fmod(std::fmod(position, float(frames)) + frames, float(frames))
+                        : Clamp01(position) * (frames - 1);
+        int current = int(position);
+        int next = loop ? (current + 1) % frames : (current + 1 < frames ? current + 1 : current);
+        return {current, next, position - current};
+    }
+
+    inline void SetPose(Actor& actor, const std::string& prefix, const PoseSample& sample)
+    {
+        actor.model = prefix + std::to_string(sample.current);
+        actor.nextModel = prefix + std::to_string(sample.next);
+        actor.poseBlend = sample.blend;
+    }
+
+    inline void SetIdle(Actor& actor, const std::string& name)
+    {
+        actor.model = name;
+        actor.nextModel.clear();
+        actor.poseBlend = 0;
     }
 
 } // namespace CharacterPresentation

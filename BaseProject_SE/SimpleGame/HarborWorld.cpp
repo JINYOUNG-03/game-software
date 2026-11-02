@@ -1310,11 +1310,20 @@ namespace Harbor
                 npc.mirrorModel = screenDirection < 0;
             }
         }
-        npc.model =
-            "citizen" + std::to_string(npc.appearance) + "_" +
-            (npc.moving ? std::to_string(int(npc.phase * CharacterPresentation::WalkFrames / 6.2831853f) %
-                                         CharacterPresentation::WalkFrames)
-                        : "idle");
+        const std::string prefix = "citizen" + std::to_string(npc.appearance) + "_";
+        if (npc.moving)
+        {
+            CharacterPresentation::SetPose(
+                npc,
+                prefix,
+                CharacterPresentation::SamplePose(npc.phase * CharacterPresentation::WalkFrames / 6.2831853f,
+                                                  CharacterPresentation::WalkFrames,
+                                                  true));
+        }
+        else
+        {
+            CharacterPresentation::SetIdle(npc, prefix + "idle");
+        }
         npc.cooldown = (std::max)(0.0f, npc.cooldown - dt);
         npc.threatTime = (std::max)(0.0f, npc.threatTime - dt);
         npc.raidCooldown = (std::max)(0.0f, npc.raidCooldown - dt);

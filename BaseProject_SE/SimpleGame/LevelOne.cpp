@@ -212,35 +212,40 @@ namespace Level
     void FirstLevel::UpdateActorModels()
     {
         Perf::Scope scope(Perf::Cpu::Animation);
-        int frame = moving ? int(walkPhase * CharacterPresentation::WalkFrames / 6.2831853f) %
-                                 CharacterPresentation::WalkFrames
-                           : 0;
+        using namespace CharacterPresentation;
         if (attackAnimation > 0)
         {
-            int pose = CharacterPresentation::AttackFrame(attackAnimation);
-            Player().model = "hero_attack" + std::to_string(pose);
+            SetPose(Player(),
+                    "hero_attack",
+                    SamplePose(Clamp01(1 - attackAnimation / AttackDuration), AttackFrames, false));
+        }
+        else if (moving)
+        {
+            SetPose(Player(), "hero", SamplePose(walkPhase * WalkFrames / 6.2831853f, WalkFrames, true));
         }
         else
         {
-            Player().model = moving ? "hero" + std::to_string(frame) : "hero_idle";
+            SetIdle(Player(), "hero_idle");
         }
         for (Enemy* enemy : scene.Actors<Enemy>(ActorKind::Enemy))
         {
             const std::string prefix = "beast" + std::to_string(enemy->kind) + "_";
             if (enemy->attackTime >= 0)
             {
-                int pose = (std::min)(
-                    CharacterPresentation::BeastAttackFrames - 1,
-                    int(enemy->attackTime / CharacterPresentation::BeastAttackDuration(enemy->kind) *
-                        CharacterPresentation::BeastAttackFrames));
-                enemy->model = prefix + "attack" + std::to_string(pose);
+                SetPose(*enemy,
+                        prefix + "attack",
+                        SamplePose(
+                            enemy->attackTime / BeastAttackDuration(enemy->kind), BeastAttackFrames, false));
+            }
+            else if (enemy->moving)
+            {
+                SetPose(*enemy,
+                        prefix + (enemy->running ? "run" : ""),
+                        SamplePose(enemy->locomotionPhase * WalkFrames / 6.2831853f, WalkFrames, true));
             }
             else
             {
-                int pose = int(enemy->locomotionPhase * CharacterPresentation::WalkFrames / 6.2831853f) %
-                           CharacterPresentation::WalkFrames;
-                enemy->model =
-                    prefix + (enemy->moving ? (enemy->running ? "run" : "") + std::to_string(pose) : "idle");
+                SetIdle(*enemy, prefix + "idle");
             }
         }
     }

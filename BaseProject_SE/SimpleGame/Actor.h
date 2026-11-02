@@ -111,6 +111,8 @@ class Actor
     // Group nodes do not render. Children inherit position, visibility and activity.
     ScenePass pass = ScenePass::World;
     std::string model;
+    std::string nextModel;
+    float poseBlend = 0;
     int drawOrder = 0;
     int variant = 0;
     float shadowWidth = 0;

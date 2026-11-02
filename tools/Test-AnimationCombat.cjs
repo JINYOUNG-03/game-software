@@ -52,7 +52,7 @@ const update = source.slice(source.indexOf("void FirstLevel::Update(float dt)"))
 assert(!update.includes("DamagePlayer("), "Touch damage remains in the AI movement loop");
 assert(update.includes("UpdateEnemyAttack(enemy, dt)"));
 assert(update.includes("BeginEnemyAttack(enemy, Player().Id())"));
-assert(source.includes('enemy->model = prefix + "attack"'));
+assert(/SetPose\(\s*\*enemy,\s*prefix \+ "attack"/.test(source));
 assert(source.includes('enemy->running ? "run" : ""'));
 assert(source.match(/void FirstLevel::Kill[\s\S]*?CancelEnemyAttack\(enemy\)/));
 assert(source.match(/bool FirstLevel::RespawnEnemy[\s\S]*?CancelEnemyAttack\(enemy\)/));

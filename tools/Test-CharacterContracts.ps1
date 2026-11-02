@@ -18,7 +18,7 @@ foreach ($contract in @('firstLevel.HitFlash(actor)',
     if (-not $game.Contains($contract)) { throw "Missing imported character integration: $contract" }
 }
 foreach ($contract in @('Player().visualDirection = CharacterPresentation::ScreenDirection',
-                       '"hero_idle"', '"hero_attack" + std::to_string(pose)',
+                       '"hero_idle"', 'SetPose(Player(),',
                        'attackCooldown = .48f', 'attackAnimation = CharacterPresentation::AttackDuration',
                        'attackImpactPending = true', 'ResolveAttackImpact();', 'if (attackAnimation <= 0)'))
 {
@@ -32,7 +32,7 @@ foreach ($contract in @('CharacterPresentation::ScreenDirection(',
 if (-not $actor.Contains('int visualDirection = 1') -or -not $actor.Contains('float visualHeight = 0'))
 { throw 'Facing/visual height must belong to Actor.' }
 foreach ($contract in @('ResourceLookupHit', 'ResourceLookupMiss', 'CharacterInstances',
-                       'r.data() + 4', 'current->weapon', 'previous->weapon'))
+                       'r.data() + 4', 'current->weapon', 'next->weapon'))
 {
     if (-not $models.Contains($contract)) { throw "Missing resource rendering contract: $contract" }
 }
@@ -52,12 +52,12 @@ $seenPoses = [Collections.Generic.HashSet[int]]::new()
 for ($sample = -1; $sample -le 101; $sample++)
 {
     $progress = [Math]::Clamp($sample / 100.0, 0.0, 1.0)
-    $pose = [Math]::Min($frames - 1, [int][Math]::Truncate($progress * $frames))
+    $pose = [Math]::Min($frames - 1, [int][Math]::Truncate($progress * ($frames - 1)))
     if ($pose -lt 0 -or $pose -ge $frames) { throw 'Attack pose exceeds cached models.' }
     [void]$seenPoses.Add($pose)
 }
 if ($seenPoses.Count -ne $frames) { throw 'Attack clip does not reach every pose.' }
-$impactPoseProgress = [Math]::Truncate($impactFraction * $frames) / ($frames - 1)
+$impactPoseProgress = [Math]::Truncate($impactFraction * ($frames - 1)) / ($frames - 1)
 if ($impactPoseProgress -le .45 -or $impactPoseProgress -ge .70)
 { throw 'Damage must occur during the visible cut, not during wind-up or recovery.' }
 

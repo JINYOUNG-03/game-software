@@ -71,6 +71,7 @@ namespace Perf
         HitFeedbackRender,
         InventoryUI,
         InventoryInput,
+        PoseBlend,
         Count
     };
     enum class Counter
@@ -158,6 +159,8 @@ namespace Perf
         InventorySlotsDrawn,
         InventoryStacksDrawn,
         InventoryPreviews,
+        PoseBlendedInstances,
+        PoseBlendFallbacks,
         Count
     };
 

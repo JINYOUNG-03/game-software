@@ -32,13 +32,13 @@ foreach ($contract in @('edgeDistance(cell, int(v_Surface.x))', 'u_Lights[8]', '
 {
     if (-not $fs.Contains($contract)) { throw "Missing visual material contract: $contract" }
 }
-foreach ($contract in @('offsetof(Instance, surface)', 'i < 6',
+foreach ($contract in @('offsetof(Instance, surface)', 'i < 9',
                        'std::copy(m_SurfaceData.begin(), m_SurfaceData.end(), instance.surface)',
                        'glUniform4fv(m_BatchLocations.lights, 8, m_Lights.data())'))
 {
     if (-not $batch.Contains($contract)) { throw "Missing instanced surface/light binding: $contract" }
 }
-if (-not $header.Contains('sizeof(float) * 21') -or -not $header.Contains('float surface[4]'))
+if (-not $header.Contains('sizeof(float) * 33') -or -not $header.Contains('float surface[4]'))
 { throw 'CPU/GPU instance layout mismatch.' }
 foreach ($contract in @('LoadResourceSprites(directory + L"Resources")', 'kind < 20', 'SetSurfaceData(actor.surfaceData)',
                        'UpdateWorldLights()', 'count < 8', 'ActorEffect::WarmLight', 'ActorEffect::HarborMist'))

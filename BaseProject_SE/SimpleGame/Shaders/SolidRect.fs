@@ -7,6 +7,10 @@ in vec2 v_TexCoord;
 in vec2 v_Local;
 in vec2 v_World;
 in vec2 v_Screen;
+in vec2 v_PoseCoord;
+in vec2 v_NextPoseCoord;
+flat in vec4 v_PoseUV;
+flat in vec4 v_NextUV;
 uniform sampler2D u_Texture;
 uniform float u_Time;
 uniform bool u_WorldShading;
@@ -38,6 +42,20 @@ float edgeDistance(vec2 cell, int mask)
     return d;
 }
 
+vec4 poseTexel(vec2 local, vec4 bounds)
+{
+    // Never sample neighbouring packed images outside this cropped frame.
+    if (any(lessThan(local, vec2(0))) || any(greaterThan(local, vec2(1))))
+    {
+        return vec4(0);
+    }
+    vec2 halfTexel = .5 / vec2(textureSize(u_Texture, 0));
+    vec2 uv = clamp(bounds.xy + local * bounds.zw,
+                    bounds.xy + halfTexel, bounds.xy + bounds.zw - halfTexel);
+    vec4 sampleColor = texture(u_Texture, uv);
+    return vec4(sampleColor.rgb * sampleColor.a, sampleColor.a);
+}
+
 void main()
 {
     if (v_Material == 10)
@@ -58,7 +76,21 @@ void main()
     // Resource PNGs use straight RGBA and top-down rows (not the flipped minimap FBO).
     if (v_Material >= 22 && v_Material <= 27)
     {
-        vec4 sprite = texture(u_Texture, v_TexCoord);
+        vec4 sprite;
+        if (v_Material == 22 && v_Surface.x > 0.0)
+        {
+            // Interpolate premultiplied colours, then restore straight RGBA for the shared blend state.
+            sprite = mix(poseTexel(v_PoseCoord, v_PoseUV),
+                         poseTexel(v_NextPoseCoord, v_NextUV), v_Surface.x);
+            if (sprite.a > .0001)
+            {
+                sprite.rgb /= sprite.a;
+            }
+        }
+        else
+        {
+            sprite = texture(u_Texture, v_TexCoord);
+        }
         c *= sprite.rgb;
         a *= sprite.a;
         if (a < .003) discard;
