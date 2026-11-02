@@ -86,6 +86,17 @@ namespace Level
         int damage = 0;
     };
 
+    struct HitImpact : public Actor
+    {
+        float age = 0;
+        float duration = .46f;
+        float directionX = 1;
+        float directionY = 0;
+        int damage = 0;
+        bool outgoing = false;
+        bool incoming = false;
+    };
+
     enum class LootKind
     {
         Coins,
@@ -109,11 +120,14 @@ namespace Level
         void MovePlayer(float screenX, float screenY, float dt);
         bool Attack();
         bool ConsumeAttackImpact();
-        bool DamageEnemy(Enemy& enemy, int damage, bool playerCredit);
+        bool DamageEnemy(Enemy& enemy, int damage, bool playerCredit, ActorId source = InvalidActorId);
+        void ReportHit(Actor& target, int damage, ActorId source);
+        float HitFlash(const Actor& actor) const;
+        Position HitCameraOffset() const;
         bool BeginEnemyAttack(Enemy& enemy, ActorId target);
         void CancelEnemyAttacksTargeting(ActorId target);
         std::vector<EnemyAttackImpact> ConsumeEnemyAttackImpacts();
-        void DamagePlayer(int damage);
+        void DamagePlayer(int damage, ActorId source = InvalidActorId);
         void MoveActor(Actor& actor, float dx, float dy);
         std::vector<Position> FindPath(const Position& from, const Position& to) const;
         bool PickUp();
@@ -203,6 +217,12 @@ namespace Level
         ActorId lootRoot = InvalidActorId;
         ActorId npcRoot = InvalidActorId;
         ActorId overlayRoot = InvalidActorId;
+        ActorId impactRoot = InvalidActorId;
+        std::array<ActorId, 48> impactActors{};
+        size_t impactCount = 0;
+        size_t nextImpact = 0;
+        float feedbackTime = 0;
+        float cameraImpulse = 0;
         mutable std::uint64_t collisionRevision = 0;
         bool generating = false;
         std::mt19937 random;
@@ -226,6 +246,7 @@ namespace Level
         void ResolveAttackImpact();
         void UpdateEnemyAttack(Enemy& enemy, float dt);
         void CancelEnemyAttack(Enemy& enemy);
+        void UpdateHitFeedback(float dt);
         void RefreshTerrainAppearance();
         void BuildHarborScenery();
         Position ToGrid(const Position& world) const;

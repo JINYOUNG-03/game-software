@@ -10,7 +10,7 @@ $actor = Get-Content -Raw (Join-Path $characterRoot 'Actor.h')
 $fs = Get-Content -Raw (Join-Path $characterRoot 'Shaders/SolidRect.fs')
 $presentation = Get-Content -Raw (Join-Path $characterRoot 'CharacterPresentation.h')
 
-foreach ($contract in @('actor.visualDirection)',
+foreach ($contract in @('firstLevel.HitFlash(actor)',
                        'DrawResourceSwordTrail(', 'CharacterPresentation::AttackTrailStrength(',
                        'ModelVisualHeight(actor.model)', 'npc->visualHeight + 36',
                        'y - npc->visualHeight - 12', 'CompactNpcMarker('))

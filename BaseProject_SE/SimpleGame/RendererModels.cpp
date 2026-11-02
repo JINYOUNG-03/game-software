@@ -242,7 +242,8 @@ float Renderer::ModelVisualHeight(const std::string& name) const
     return height;
 }
 
-void Renderer::DrawModel(const std::string& name, float x, float y, bool mirrorX, int direction)
+void Renderer::DrawModel(
+    const std::string& name, float x, float y, bool mirrorX, int direction, float hitFlash)
 {
     // Imported direction-specific poses replace mirroring; keep the Actor flag compatible.
     (void)mirrorX;
@@ -262,6 +263,11 @@ void Renderer::DrawModel(const std::string& name, float x, float y, bool mirrorX
     const float widthScale = character || name == "corpse" ? CharacterPresentation::HumanWidthScale : 1.0f;
     const float color[] = {1, 1, 1, 1};
     const bool terrain = sprite->material >= 23 && sprite->material <= 25;
+    const auto surface = m_SurfaceData;
+    if (sprite->material == 22)
+    {
+        m_SurfaceData[3] = hitFlash;
+    }
     // Scale local offsets with the width so the Actor's world foot anchor never drifts.
     QueueRect(x + (r[0] + r[2] * .5f) * widthScale,
               y + r[1] + r[3] * .5f,
@@ -271,6 +277,29 @@ void Renderer::DrawModel(const std::string& name, float x, float y, bool mirrorX
               int(sprite->material),
               m_ResourceAtlas,
               r.data() + 4);
+    m_SurfaceData = surface;
+}
+
+void Renderer::DrawModelPreview(
+    const std::string& name, float x, float y, float width, float height, int direction)
+{
+    const ResourceSprite* sprite = FindResourceSprite(name, direction);
+    if (!sprite || width <= 0 || height <= 0)
+    {
+        Perf::Count(Perf::Counter::ResourceLookupMiss);
+        return;
+    }
+    const auto& r = sprite->rect;
+    const bool character = name.compare(0, 4, "hero") == 0;
+    const float aspect = character ? CharacterPresentation::HumanWidthScale : 1.0f;
+    const float fit = (std::min)(width / (r[2] * aspect), height / r[3]);
+    const float color[] = {1, 1, 1, 1};
+    const auto surface = m_SurfaceData;
+    m_SurfaceData = {{0, 0, -1, 0}};
+    QueueRect(x, y, r[2] * aspect * fit, r[3] * fit, color, 22, m_ResourceAtlas, r.data() + 4);
+    m_SurfaceData = surface;
+    Perf::Count(Perf::Counter::ResourceLookupHit);
+    Perf::Count(Perf::Counter::InventoryPreviews);
 }
 
 void Renderer::DrawResourceSwordTrail(int frame, int direction, float x, float y, float strength)

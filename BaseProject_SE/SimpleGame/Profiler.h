@@ -66,6 +66,11 @@ namespace Perf
         EnemyRespawn,
         ResourceLoad,
         EnemyCombat,
+        HitFeedbackSpawn,
+        HitFeedbackUpdate,
+        HitFeedbackRender,
+        InventoryUI,
+        InventoryInput,
         Count
     };
     enum class Counter
@@ -145,6 +150,14 @@ namespace Perf
         EnemyAttackHits,
         EnemyAttackMisses,
         EnemyAttacksCanceled,
+        HitEffectsSpawned,
+        HitEffectsActive,
+        HitEffectsOverwritten,
+        HitEffectsSkipped,
+        HitNumbersDrawn,
+        InventorySlotsDrawn,
+        InventoryStacksDrawn,
+        InventoryPreviews,
         Count
     };
 

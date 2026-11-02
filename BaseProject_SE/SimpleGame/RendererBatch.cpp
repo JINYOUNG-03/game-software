@@ -340,10 +340,10 @@ float Renderer::TextWidth(const wchar_t* text, void* dc, void* font)
 }
 
 void Renderer::DrawText(
-    float x, float y, const wchar_t* text, float r, float g, float b, void* dc, void* font)
+    float x, float y, const wchar_t* text, float r, float g, float b, void* dc, void* font, float alpha)
 {
     Perf::Scope scope(Perf::Cpu::Text);
-    const float color[] = {r, g, b, 1};
+    const float color[] = {r, g, b, alpha};
     for (const wchar_t* c = text; *c; ++c)
     {
         auto it = m_Glyphs.find(*c);

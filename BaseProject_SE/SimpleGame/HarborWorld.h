@@ -189,6 +189,14 @@ namespace Harbor
         ActorId ObjectiveTarget() const;
         ObjectiveGuide Guide() const;
         std::string SnapshotJson() const;
+        bool PlayerOwnsLedger() const;
+        bool PlayerOwnsKey() const;
+
+        bool PlayerHasLedgerCopy() const
+        {
+            return copied;
+        }
+
         static const wchar_t* JobLabel(Job job);
         static const wchar_t* ActionLabel(Action action);
 

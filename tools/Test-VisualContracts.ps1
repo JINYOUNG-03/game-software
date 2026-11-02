@@ -60,7 +60,7 @@ $scenery = [regex]::Match($level,
 if ($scenery.Contains('Carve(') -or $scenery.Contains('true)') -or $scenery.Contains('SetVariant('))
 { throw 'Decoration must not carve roads, block paths or change gameplay terrain.' }
 $drawModel = [regex]::Match($models,
-    '(?s)void Renderer::DrawModel\(.*?(?=void Renderer::DrawResourceSwordTrail)').Value
+    '(?s)void Renderer::DrawModel\(.*?(?=void Renderer::DrawModelPreview)').Value
 if ([regex]::Matches($drawModel, '\bQueueRect\(').Count -ne 1 -or $drawModel.Contains('glDraw'))
 { throw 'Each imported model must submit one quad without an immediate draw call.' }
 $endWorld = [regex]::Match($renderer, '(?s)void Renderer::EndWorld\(.*?(?=void Renderer::DrawQuad\()').Value

@@ -51,7 +51,7 @@ foreach ($contract in @('UiPart::Dialogue', 'void DrawStoryIntro()', 'introPage 
                        'void DrawDialogue()', 'DrawWrapped(32, 584, page.text, 796, 3)',
                        "key >= '1' && key <= '3'", "key == 'e' || key == 13", 'dialogueClosePressed',
                        'ClearGameplayInput()', 'harbor.Conversation().Active()',
-                       'worldMonitor.Tick(harbor, paused || helpVisible || harbor.Conversation().Active(), dt)'))
+                       'worldMonitor.Tick(harbor, WorldPaused(), dt)'))
 {
     if (-not $game.Contains($contract)) { throw "Missing dialogue UI/input behavior: $contract" }
 }

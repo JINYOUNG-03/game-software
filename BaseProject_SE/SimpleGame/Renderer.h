@@ -27,7 +27,15 @@ class Renderer
     void EndWorld(float time);
     void EndFrame();
     void Flush();
-    void DrawText(float x, float y, const wchar_t* text, float r, float g, float b, void* dc, void* font);
+    void DrawText(float x,
+                  float y,
+                  const wchar_t* text,
+                  float r,
+                  float g,
+                  float b,
+                  void* dc,
+                  void* font,
+                  float alpha = 1);
     float TextWidth(const wchar_t* text, void* dc, void* font);
     float TextAdvance(wchar_t character, void* dc, void* font);
     void DrawMiniMapLayer(std::uint64_t revision, float cx, float cy, const std::function<void()>& draw);
@@ -87,7 +95,14 @@ class Renderer
     float ModelVisualHeight(const std::string& name) const;
     void DrawResourceSwordTrail(int frame, int direction, float x, float y, float strength);
     bool HasModel(const std::string& name) const;
-    void DrawModel(const std::string& name, float x, float y, bool mirrorX = false, int direction = 1);
+    void DrawModel(const std::string& name,
+                   float x,
+                   float y,
+                   bool mirrorX = false,
+                   int direction = 1,
+                   float hitFlash = 0);
+    void DrawModelPreview(
+        const std::string& name, float x, float y, float width, float height, int direction = 1);
     void DrawScene(const SceneGraph& scene, ScenePass pass, const std::function<void(const Actor&)>& draw);
 
     void SetScreenOffset(float x, float y)

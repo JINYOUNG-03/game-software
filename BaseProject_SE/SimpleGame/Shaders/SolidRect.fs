@@ -64,6 +64,31 @@ void main()
         if (a < .003) discard;
     }
     vec2 p = v_Local;
+    if (v_Material == 22)
+    {
+        c = mix(c, vec3(1.0, .96, .76), clamp(v_Surface.w, 0.0, 1.0) * .88);
+    }
+    if (v_Material == 28) // One batched quad: contact flash, expanding ring and six flying sparks.
+    {
+        float t = clamp(v_Surface.x, 0.0, 1.0);
+        vec2 q = (p - .5) * vec2(2.0, -2.0);
+        vec2 direction = normalize(v_Surface.yz + vec2(.00001));
+        float fade = pow(1.0 - t, 2.0);
+        float ring = 1.0 - smoothstep(.018, .065, abs(length(q) - (.10 + t * .85)));
+        float cut = exp(-65.0 * abs(dot(q, vec2(-direction.y, direction.x)))) *
+                    (1.0 - smoothstep(.22 + t * .5, .42 + t * .5, abs(dot(q, direction))));
+        float sparks = 0.0;
+        for (int i = 0; i < 6; ++i)
+        {
+            float angle = float(i) * 1.0472 + v_Surface.w * .37;
+            vec2 ray = vec2(cos(angle), sin(angle));
+            vec2 delta = q - ray * (.12 + t * .9);
+            sparks += exp(-120.0 * abs(dot(delta, vec2(-ray.y, ray.x)))) *
+                      (1.0 - smoothstep(.025, .15, abs(dot(delta, ray))));
+        }
+        a *= clamp(ring * .55 + cut * (1.0 - t) + sparks, 0.0, 1.0) * fade;
+        c = mix(c, vec3(1.0, .98, .86), exp(-dot(q, q) * 24.0) * (1.0 - t));
+    }
     // Invert the diamond's local axes for neighbour masks, even if a parent moves the terrain root.
     // Waves/noise remain continuous in v_World; only the shoreline distance is tile-local.
     vec2 cell = clamp(vec2(p.x - p.y + .5, 1.5 - p.x - p.y), 0.0, 1.0);
@@ -203,7 +228,7 @@ void main()
         c *= (.87 + .13 * p.y) * (1.0 - .10 * smoothstep(.45, 1.0, p.x));
     }
 
-    if (u_WorldShading && v_Material != 8 && v_Material != 16 && v_Material != 17 && v_Material != 19)
+    if (u_WorldShading && v_Material != 8 && v_Material != 16 && v_Material != 17 && v_Material != 19 && v_Material != 28)
     {
         c *= vec3(.91, .96, 1.0);
         for (int i = 0; i < 8; ++i)

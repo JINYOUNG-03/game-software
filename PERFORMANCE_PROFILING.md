@@ -35,6 +35,14 @@
   전용 칼 베기 키와 2본 팔 IK는 아틀라스 변환 때만 계산하며 런타임 IK 비용은 없다.
 - uniform 위치는 초기화 시 캐싱한다. OpenGL 상태/버퍼 설정은 개별 도형이 아니라 배치 단위다.
 
+- 타격 섬광/고리/불티는 material 28의 쿼드 하나로 계산한다. 피해 숫자는 기존 글리프 아틀라스다.
+  생성 때 준비한 HitImpact Actor 48개를 재사용하고 종료 시 비활성화한다. 초과 명중은 순환 덮어쓰기한다.
+  플레이어와 무관한 30타일 밖 전투의 이펙트 배치는 생략한다. 전투 자체는 생략하지 않는다.
+- 인벤토리는 기존 Stats UI Actor와 24칸 스택 뷰를 사용한다. 별도 아이템 수량/소유권을 복제하지 않는다.
+  캐릭터 프리뷰는 기존 아틀라스에서 한 쿼드로 영역에 맞춰 그린다. 아이콘 뒤에 글자를 모아 그린다.
+  인벤토리 중 월드/전투/이펙트를 정지시키고 scene_state.paused와 로컬 모니터에 반영한다.
+  카메라 흔들림은 렌더 카메라에만 적용하며 로그의 플레이어 위치는 실제 Actor 좌표를 유지한다.
+
 ## 출력과 보존
 
 기본적으로 실행 중 지속 계측한다. 외부 서버로 전송하지 않는다.
@@ -64,7 +72,7 @@
 
 모든 CPU/GPU 시간은 ms, 크기는 bytes, 누적 이벤트는 count 단위다.
 안정적인 영문 snake_case 키를 사용한다. 스키마를 바꾸면 schema_version을 올린다.
-현재 스키마는 10이며 분석기는 기존 스키마 1·2·3·4·5·6·7·8·9 로그도 읽는다.
+현재 스키마는 11이며 분석기는 기존 스키마 1·2·3·4·5·6·7·8·9·10 로그도 읽는다.
 
 | 필드 | 의미 |
 |---|---|
@@ -124,6 +132,12 @@
 | cpu_ms.enemy_combat | 짐승 공격 시작·진행의 중첩 포함 CPU ms. AI 또는 NPC 갱신의 자식 구간이며 합산하지 않음. 대상 사망 일괄 취소는 combat으로 계측해 같은 키의 중첩을 피함 |
 | counters.enemy_attacks_started / enemy_attack_updates | 시작한 공격 횟수 / 공격 상태를 갱신한 작업 수. 프레임·인구·드로우콜 수와 구분 |
 | counters.enemy_attack_impacts / enemy_attack_hits / enemy_attack_misses | 1회 타격 창 시도 / 플레이어·NPC 실제 피해 / 거리·방향·차폐·보호·무적·사망 대상으로 무효화된 판정 |
+| cpu_ms.hit_feedback_spawn / hit_feedback_update / hit_feedback_render | 승인된 피해의 효과 배치 / 48개 풀 수명 갱신 / 가시 효과와 숫자 제출의 중첩 포함 CPU ms. combat·world_update·render_effects의 자식 구간이므로 합산하지 않음 |
+| counters.hit_effects_spawned / hit_effects_active | 활성화한 명중 효과 / 해당 갱신에서 수명을 처리한 활성 슬롯 수. 고유 Actor 수/인구/가시 수와 구분 |
+| counters.hit_effects_overwritten / hit_effects_skipped | 48개 풀에서 아직 활성인 슬롯을 덮어쓴 횟수 / 먼 비플레이어 전투의 효과 배치를 생략한 횟수 |
+| counters.hit_numbers_drawn | 이번 프레임 가시 효과에서 제출한 피해 숫자 문자열 수. 글리프 수는 glyph_instances로 별도 집계 |
+| cpu_ms.inventory_ui / inventory_input | 열린 인벤토리 그리기 / 선택·클릭·사용·능력 배분 처리의 중첩 포함 CPU ms. render_ui/update의 자식 구간 |
+| counters.inventory_slots_drawn / inventory_stacks_drawn / inventory_previews | 그린 슬롯 수(열린 프레임당 24) / 비어 있지 않은 종류 수(수량 합계 아님) / 아틀라스 프리뷰 쿼드 수 |
 | counters.enemy_attacks_canceled | 사망·리스폰·대상 사망/제거로 취소된 공격. 타격 뒤 회복 중 취소도 포함하므로 hits와 상호 배타적이지 않음 |
 | cpu_ms.rumor_update / counters.rumor_candidates / rumor_transfers | 2초 간격 근접 소문 처리 시간 / 공간 버킷 내 후보 검사 수 / 새 지식 전달 메시지 수(지식 비트 수가 아님) |
 | counters.courier_departures | 장터 체류를 마치고 다음 마을로 출발한 횟수. 최초 출발은 제외하며 고유 전달꾼 수가 아님 |
@@ -131,7 +145,7 @@
 | cpu_ms.enemy_respawn / counters.respawn_candidates / enemy_respawns | 몹 재생성 탐색 시간 / 검사한 캐시 후보 수 / 성공한 재생성 수 |
 
 로컬 HTML 모니터는 WORLD_MONITOR.md를 따른다. 브라우저가 수신하는 모니터 스키마 1은
-프로파일링 스키마 10과 별개다. 최대 1초 간격으로 게시하고, 구독이 5초간 없으면 생성하지 않는다.
+프로파일링 스키마 11과 별개다. 최대 1초 간격으로 게시하고, 구독이 5초간 없으면 생성하지 않는다.
 일시정지 중에도 모니터 표본과 전송 통계는 갱신한다. 네트워크 스레드는 프로파일러의
 프레임 배열에 직접 접근하지 않고 atomic 통계를 게임 스레드에서 회수한다.
 world_state에도 이름·집계·최근 사건이 추가되며 영문 키와 단위는 기존 규약을 유지한다.

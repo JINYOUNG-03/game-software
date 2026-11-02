@@ -47,7 +47,8 @@ enum class ActorEffect
     EnemyStatus,
     NpcStatus,
     WarmLight,
-    HarborMist
+    HarborMist,
+    HitImpact
 };
 
 class SceneGraph;
@@ -115,6 +116,7 @@ class Actor
     float shadowWidth = 0;
     float shadowHeight = 0;
     float visualHeight = 0;
+    float hitFlashUntil = 0;
     bool mirrorModel = false;
     int visualDirection = 1; // Screen R/D/L/U/DR/DL/UL/UR; sampled from the supplied GLB poses.
     // Derived from shared terrain, not a second collision/position representation.

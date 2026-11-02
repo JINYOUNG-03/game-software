@@ -1142,12 +1142,14 @@ namespace Harbor
             Perf::Count(Perf::Counter::RaidAttemptsBlocked);
             return;
         }
-        if (victim.health <= 0)
+        if (victim.health <= 0 || damage <= 0)
         {
             return;
         }
         Perf::Count(Perf::Counter::NpcCombatHits);
+        const int appliedDamage = (std::min)(victim.health, damage);
         victim.health = (std::max)(0, victim.health - damage);
+        level.ReportHit(victim, appliedDamage, attacker);
         victim.threat = attacker;
         victim.threatTime = 15;
         victim.thinkTime = 0;
@@ -1376,7 +1378,7 @@ namespace Harbor
                         level.stats.coins -= stolen;
                         npc.coins += stolen;
                     }
-                    level.DamagePlayer(14);
+                    level.DamagePlayer(14, npc.Id());
                 }
                 Perf::Count(Perf::Counter::NpcRaidCoins, stolen);
                 if (npc.action == Action::Raid && ++npc.raidHits >= 2)
@@ -1400,7 +1402,7 @@ namespace Harbor
                 Perf::Scope combat(Perf::Cpu::NpcCombat);
                 npc.cooldown = 1.0f;
                 Perf::Count(Perf::Counter::NpcCombatHits);
-                if (level.DamageEnemy(*beast, 20 + npc.experience / 50, false))
+                if (level.DamageEnemy(*beast, 20 + npc.experience / 50, false, npc.Id()))
                 {
                     npc.hides += 2 + beast->kind;
                     ++npc.food;
@@ -1681,6 +1683,16 @@ namespace Harbor
             logTime = 2;
             Log();
         }
+    }
+
+    bool World::PlayerOwnsLedger() const
+    {
+        return Holder(ledger) == level.Player().Id();
+    }
+
+    bool World::PlayerOwnsKey() const
+    {
+        return Holder(key) == level.Player().Id();
     }
 
     void World::PlayerAttack()

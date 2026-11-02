@@ -102,6 +102,7 @@ namespace Level
         enemyRoot = scene.Create(characters.Id(), "Beasts").Id();
         lootRoot = scene.Create(world.Id(), "Loot").Id();
         overlayRoot = scene.Create(scene.Root().Id(), "UI").Id();
+        impactRoot = scene.Create(world.Id(), "HitFeedback").Id();
         Actor& hero = scene.Create(characters.Id(), "Player", ActorKind::Player);
         playerId = hero.Id();
         hero.SetLocalPosition(Camp);
@@ -434,6 +435,20 @@ namespace Level
         scene.DestroyChildren(propRoot);
         scene.DestroyChildren(enemyRoot);
         scene.DestroyChildren(lootRoot);
+        scene.DestroyChildren(impactRoot);
+        feedbackTime = cameraImpulse = 0;
+        nextImpact = 0;
+        impactCount = impactActors.size();
+        Player().hitFlashUntil = 0;
+        for (size_t i = 0; i < impactCount; ++i)
+        {
+            HitImpact& impact = scene.Create<HitImpact>(impactRoot, "HitImpact", ActorKind::Effect);
+            impactActors[i] = impact.Id();
+            impact.pass = ScenePass::Effects;
+            impact.variant = int(ActorEffect::HitImpact);
+            impact.drawable = true;
+            impact.SetActive(false);
+        }
         for (int cy = 0; cy < WorldLayout::ChunksPerSide; ++cy)
         {
             for (int cx = 0; cx < WorldLayout::ChunksPerSide; ++cx)
@@ -1142,13 +1157,15 @@ namespace Level
         }
     }
 
-    bool FirstLevel::DamageEnemy(Enemy& enemy, int damage, bool playerCredit)
+    bool FirstLevel::DamageEnemy(Enemy& enemy, int damage, bool playerCredit, ActorId source)
     {
         if (enemy.health <= 0 || !enemy.IsActive() || damage <= 0)
         {
             return false;
         }
+        const int appliedDamage = (std::min)(enemy.health, damage);
         enemy.health -= damage;
+        ReportHit(enemy, appliedDamage, playerCredit ? Player().Id() : source);
         enemy.flash = .18f;
         if (enemy.health <= 0)
         {
@@ -1156,6 +1173,89 @@ namespace Level
             return true;
         }
         return false;
+    }
+
+    float FirstLevel::HitFlash(const Actor& actor) const
+    {
+        return (std::max)(0.0f, (std::min)(1.0f, (actor.hitFlashUntil - feedbackTime) / .13f));
+    }
+
+    Position FirstLevel::HitCameraOffset() const
+    {
+        const float sx = std::sin(feedbackTime * 91) * cameraImpulse;
+        const float sy = std::cos(feedbackTime * 77) * cameraImpulse * .45f;
+        return {sx / 96 + sy / 48, sy / 48 - sx / 96, 0};
+    }
+
+    void FirstLevel::ReportHit(Actor& target, int damage, ActorId source)
+    {
+        Perf::Scope scope(Perf::Cpu::HitFeedbackSpawn);
+        if (damage <= 0 || impactCount == 0)
+        {
+            return;
+        }
+        target.hitFlashUntil = feedbackTime + .13f;
+        const bool outgoing = source == Player().Id();
+        const bool incoming = target.Id() == Player().Id();
+        if (!outgoing && !incoming && Distance(target.WorldPosition(), Player().WorldPosition()) > 30)
+        {
+            Perf::Count(Perf::Counter::HitEffectsSkipped);
+            return;
+        }
+        HitImpact& impact = static_cast<HitImpact&>(scene.Get(impactActors[nextImpact]));
+        nextImpact = (nextImpact + 1) % impactCount;
+        if (impact.IsActive())
+        {
+            Perf::Count(Perf::Counter::HitEffectsOverwritten);
+        }
+        Position p = target.WorldPosition();
+        p.z += (std::max)(24.0f, target.visualHeight * .48f);
+        impact.SetWorldPosition(p);
+        impact.age = 0;
+        impact.damage = damage;
+        impact.outgoing = outgoing;
+        impact.incoming = incoming;
+        if (const Actor* attacker = scene.Find(source))
+        {
+            const Position from = attacker->WorldPosition(), to = target.WorldPosition();
+            float dx = ((to.x - from.x) - (to.y - from.y)) * HalfTileWidth;
+            float dy = ((to.x - from.x) + (to.y - from.y)) * HalfTileHeight;
+            float length = std::hypot(dx, dy);
+            impact.directionX = length > .001f ? dx / length : 1.0f;
+            impact.directionY = length > .001f ? dy / length : 0.0f;
+        }
+        else
+        {
+            impact.directionX = 1;
+            impact.directionY = 0;
+        }
+        impact.SetActive(true);
+        if (outgoing || incoming)
+        {
+            cameraImpulse = (std::max)(cameraImpulse, incoming ? 4.0f : 2.6f);
+        }
+        Perf::Count(Perf::Counter::HitEffectsSpawned);
+    }
+
+    void FirstLevel::UpdateHitFeedback(float dt)
+    {
+        Perf::Scope scope(Perf::Cpu::HitFeedbackUpdate);
+        feedbackTime += dt;
+        cameraImpulse *= std::exp(-24.0f * dt);
+        for (size_t i = 0; i < impactCount; ++i)
+        {
+            HitImpact& impact = static_cast<HitImpact&>(scene.Get(impactActors[i]));
+            if (!impact.IsActive())
+            {
+                continue;
+            }
+            Perf::Count(Perf::Counter::HitEffectsActive);
+            impact.age += dt;
+            if (impact.age >= impact.duration)
+            {
+                impact.SetActive(false);
+            }
+        }
     }
 
     bool FirstLevel::BeginEnemyAttack(Enemy& enemy, ActorId targetId)
@@ -1246,7 +1346,7 @@ namespace Level
                 {
                     if (invulnerability <= 0)
                     {
-                        DamagePlayer(11 + enemy.kind * 3);
+                        DamagePlayer(11 + enemy.kind * 3, enemy.Id());
                         Perf::Count(Perf::Counter::EnemyAttackHits);
                     }
                     else
@@ -1280,13 +1380,15 @@ namespace Level
         return impacts;
     }
 
-    void FirstLevel::DamagePlayer(int damage)
+    void FirstLevel::DamagePlayer(int damage, ActorId source)
     {
         if (invulnerability > 0 || !Player().IsActive())
         {
             return;
         }
-        stats.health -= (std::max)(1, damage - stats.Defense());
+        const int appliedDamage = (std::min)(stats.health, (std::max)(1, damage - stats.Defense()));
+        stats.health -= appliedDamage;
+        ReportHit(Player(), appliedDamage, source);
         invulnerability = .6f;
         hurtFlash = .22f;
         if (stats.health <= 0)
@@ -1486,6 +1588,7 @@ namespace Level
     void FirstLevel::Update(float dt)
     {
         Perf::Scope scope(Perf::Cpu::WorldUpdate);
+        UpdateHitFeedback(dt);
         attackCooldown = (std::max)(0.0f, attackCooldown - dt);
         attackAnimation = (std::max)(0.0f, attackAnimation - dt);
         if (attackImpactPending && attackAnimation <= CharacterPresentation::AttackDuration -

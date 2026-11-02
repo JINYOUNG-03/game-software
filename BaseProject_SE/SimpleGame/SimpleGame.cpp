@@ -19,6 +19,7 @@
 #include "HarborWorld.h"
 #include "WorldMonitor.h"
 #include "CharacterPresentation.h"
+#include "InventoryPresentation.h"
 
 namespace
 {
@@ -56,6 +57,7 @@ namespace
     };
     ActorId promptId = InvalidActorId;
     ActorId questMarkerId = InvalidActorId;
+    ActorId inventoryPanelId = InvalidActorId;
     float uiOriginX = 0;
     float uiOriginY = 0;
 
@@ -79,6 +81,14 @@ namespace
     bool worldMap = false;
     int attributePressed = 0;
     bool statsPanel = false;
+    bool inventoryTogglePressed = false;
+    bool inventoryClosePressed = false;
+    bool inventoryUsePressed = false;
+    bool inventoryClickPressed = false;
+    int inventoryMovePressed = 0;
+    int inventorySelection = 0;
+    float inventoryClickX = 0, inventoryClickY = 0;
+    std::wstring inventoryActionNote;
     bool paused = false;
     bool helpVisible = true;
     bool helpPressed = false;
@@ -133,9 +143,15 @@ namespace
                                  L"Malgun Gothic");
     }
 
-    void DrawText(float x, float y, const wchar_t* text, float r = .93f, float g = .88f, float b = .73f)
+    void DrawText(float x,
+                  float y,
+                  const wchar_t* text,
+                  float r = .93f,
+                  float g = .88f,
+                  float b = .73f,
+                  float alpha = 1)
     {
-        renderer->DrawText(x, y, text, r, g, b, fontDC, fontHandle);
+        renderer->DrawText(x, y, text, r, g, b, fontDC, fontHandle, alpha);
     }
 
     void Say(const wchar_t* name, const wchar_t* line)
@@ -262,10 +278,15 @@ namespace
         {
             Actor& ui = scene.Create(firstLevel.OverlayRoot(), "UIPanel", ActorKind::UI);
             ui.variant = int(part);
+            if (part == UiPart::Stats)
+            {
+                inventoryPanelId = ui.Id();
+            }
             ui.drawable = true;
             ui.pass = ScenePass::Overlay;
             ui.drawOrder = part == UiPart::GuideHelp  ? 200
                            : part == UiPart::Dialogue ? 150
+                           : part == UiPart::Stats    ? 120
                            : part == UiPart::Pause    ? 100
                                                       : int(part);
         }
@@ -356,6 +377,24 @@ namespace
         renderer->SetMaterial(0);
         switch (ActorEffect(actor.variant))
         {
+        case ActorEffect::HitImpact:
+            if (const auto* hit = dynamic_cast<const Level::HitImpact*>(&actor))
+            {
+                Perf::Scope scope(Perf::Cpu::HitFeedbackRender);
+                const float progress = hit->age / hit->duration;
+                renderer->SetSurfaceData(
+                    {{progress, hit->directionX, hit->directionY, float(hit->Id() % 17)}});
+                renderer->SetMaterial(28);
+                renderer->DrawSolidRect(x,
+                                        y,
+                                        hit->outgoing ? 106.0f : 82.0f,
+                                        82,
+                                        1,
+                                        hit->incoming ? .30f : .78f,
+                                        hit->incoming ? .18f : .37f,
+                                        hit->outgoing || hit->incoming ? 1.0f : .65f);
+            }
+            break;
         case ActorEffect::WarmLight:
             renderer->SetMaterial(17);
             renderer->DrawSolidRect(x, y, 150, 110, 1, .66f, .29f, .065f);
@@ -545,14 +584,43 @@ namespace
                                 renderer->SetSurfaceData(actor.surfaceData);
                                 if (!actor.model.empty())
                                 {
-                                    renderer->DrawModel(
-                                        actor.model, x, y, actor.mirrorModel, actor.visualDirection);
+                                    renderer->DrawModel(actor.model,
+                                                        x,
+                                                        y,
+                                                        actor.mirrorModel,
+                                                        actor.visualDirection,
+                                                        firstLevel.HitFlash(actor));
                                 }
                                 if (actor.Kind() == ActorKind::Effect)
                                 {
                                     DrawEffectActor(actor, x, y);
                                 }
                             });
+        if (pass == ScenePass::Effects)
+        {
+            // All burst quads precede all numbers: avoid atlas/font switches for every hit.
+            Perf::Scope feedback(Perf::Cpu::HitFeedbackRender);
+            for (const Actor* actor : scene.FrameList(ScenePass::Effects))
+            {
+                const auto* hit = dynamic_cast<const Level::HitImpact*>(actor);
+                if (!hit)
+                {
+                    continue;
+                }
+                float x, y;
+                WorldToScreen(hit->WorldPosition(), x, y);
+                const float progress = hit->age / hit->duration;
+                const std::wstring damage = L"-" + std::to_wstring(hit->damage);
+                DrawText(x - renderer->TextWidth(damage.c_str(), fontDC, fontHandle) * .5f,
+                         y - 17 - progress * 32,
+                         damage.c_str(),
+                         1,
+                         hit->incoming ? .55f : .93f,
+                         hit->incoming ? .42f : .62f,
+                         std::pow(1 - progress, .7f));
+                Perf::Count(Perf::Counter::HitNumbersDrawn);
+            }
+        }
         renderer->Flush();
         Perf::Profiler::Get().GpuMark(pass == ScenePass::Ground  ? "ground"
                                       : pass == ScenePass::World ? "world"
@@ -1007,7 +1075,7 @@ namespace
         {
             renderer->DrawSolidRect(560 + xpWidth * .5f, 84, xpWidth, 7, .45f, .66f, .47f, 1);
         }
-        std::wstring points = L"TAB \ub2a5\ub825 \uc810\uc218 " + std::to_wstring(stats.points);
+        std::wstring points = L"I / TAB \uac00\ubc29 \u00b7 \uc810\uc218 " + std::to_wstring(stats.points);
         DrawText(780, 65, points.c_str(), .97f, .8f, .49f);
 
         if (!journalPanel && !harbor.Conversation().Active())
@@ -1035,30 +1103,238 @@ namespace
         DrawWrapped(
             28,
             777,
-            L"WASD \uc774\ub3d9  E \ub300\ud654\u00b7\uc90d\uae30  F \uc870\uc0ac  H \uc9c0\uae08 \ud560 \uc77c  SPACE \uacf5\uaca9  Q \uc57d  M \uc9c0\ub3c4  J \uc77c\uc9c0  TAB \ub2a5\ub825  ESC",
+            L"WASD \uc774\ub3d9  E \ub300\ud654\u00b7\uc90d\uae30  F \uc870\uc0ac  H \uc9c0\uae08 \ud560 \uc77c  SPACE \uacf5\uaca9  Q \uc57d  M \uc9c0\ub3c4  J \uc77c\uc9c0  I \uac00\ubc29  ESC",
             1220,
             1);
     }
 
+    const wchar_t* InventoryName(Inventory::Item item)
+    {
+        switch (item)
+        {
+        case Inventory::Item::Potion:
+            return L"\ud68c\ubcf5\uc57d";
+        case Inventory::Item::Coins:
+            return L"\uc5fd\uc804";
+        case Inventory::Item::Hide:
+            return L"\uac00\uc8fd";
+        case Inventory::Item::Ledger:
+            return L"\uc61b \uc7a5\ubd80";
+        case Inventory::Item::Key:
+            return L"\uc218\ubb38 \uc5f4\uc1e0";
+        case Inventory::Item::LedgerCopy:
+            return L"\uc7a5\ubd80 \uc0ac\ubcf8";
+        default:
+            return L"\ube48 \uce78";
+        }
+    }
+
+    const wchar_t* InventoryDescription(Inventory::Item item)
+    {
+        switch (item)
+        {
+        case Inventory::Item::Potion:
+            return L"\uc4f4 \uc57d\uc774\uc9c0\ub9cc \uc0c1\ucc98\uc5d0\ub294 \uc798 \ub4e4\uc5b4\uc694. \uccb4\ub825\uc744 45\ub9cc\ud07c \ud68c\ubcf5\ud574\uc694.";
+        case Inventory::Item::Coins:
+            return L"\uc7a5\ud130\uc5d0\uc11c \ubb3c\uac74\uc744 \uc0ac\uace0\ud314 \ub54c \uc4f0\ub294 \ub3c8\uc774\uc5d0\uc694.";
+        case Inventory::Item::Hide:
+            return L"\uc0ac\ub0e5\ud574\uc11c \uc5bb\uc740 \uac00\uc8fd\uc774\uc5d0\uc694. \ub9c8\uc744 \uc0c1\uc778\uc5d0\uac8c \ud314 \uc218 \uc788\uc5b4\uc694.";
+        case Inventory::Item::Ledger:
+            return L"\ubb34\uc5f0\ud56d\uc758 \uc61b \uc774\ub984\ub4e4\uc774 \uc801\ud600 \uc788\uc5b4\uc694. \ub204\uad6c\uc5d0\uac8c \ub9e1\uae38\uc9c0\ub294 \ub2f9\uc2e0 \ubaab\uc774\uc5d0\uc694.";
+        case Inventory::Item::Key:
+            return L"\uc61b \uc218\ubb38\uc758 \uc7a0\uae08\uc7a5\uce58\ub97c \uc5ec\ub294 \uc5f4\uc1e0\uc608\uc694. \uc218\ubb38\uc5d0\uc11c F\ub85c \uc870\uc0ac\ud574 \ubcf4\uc138\uc694.";
+        case Inventory::Item::LedgerCopy:
+            return L"\uc6d0\ubcf8\uc744 \ub118\uaca8\ub3c4 \ub0a8\uaca8 \ub458 \uc218 \uc788\ub294 \uae30\ub85d\uc774\uc5d0\uc694. \uc801\ud78c \uc774\ub984\uc744 \uc78a\uc9c0 \ub9c8\uc138\uc694.";
+        default:
+            return L"\uc544\uc9c1 \ube44\uc5b4 \uc788\uc5b4\uc694. \uc804\ub9ac\ud488\uc740 \uac00\uae4c\uc774 \ub2e4\uac00\uac00 E\ub85c \ucc59\uae38 \uc218 \uc788\uc5b4\uc694.";
+        }
+    }
+
+    std::array<Inventory::Stack, Inventory::SlotCount> InventorySlots()
+    {
+        return Inventory::Snapshot(firstLevel.stats,
+                                   harbor.PlayerOwnsLedger(),
+                                   harbor.PlayerOwnsKey(),
+                                   harbor.PlayerHasLedgerCopy());
+    }
+
+    void DrawInventoryIcon(Inventory::Item item, float x, float y)
+    {
+        if (item == Inventory::Item::Potion)
+        {
+            renderer->DrawSolidRect(x, y, 22, 29, .30f, .65f, .48f, 1);
+            renderer->DrawSolidRect(x, y - 18, 12, 9, .67f, .54f, .33f, 1);
+            renderer->DrawSolidRect(x, y + 1, 16, 11, .88f, .86f, .66f, 1);
+            renderer->DrawSolidRect(x - 6, y - 5, 3, 13, .75f, .91f, .76f, .8f);
+        }
+        else if (item == Inventory::Item::Coins)
+        {
+            renderer->DrawEllipse(x, y, 32, 29, .85f, .62f, .22f, 1);
+            renderer->DrawEllipse(x, y, 24, 22, 1, .79f, .34f, 1);
+            renderer->DrawSolidRect(x, y, 7, 7, .16f, .19f, .17f, 1);
+        }
+        else if (item == Inventory::Item::Key)
+        {
+            renderer->DrawEllipse(x - 9, y - 7, 18, 18, .88f, .72f, .37f, 1);
+            renderer->DrawEllipse(x - 9, y - 7, 9, 9, .12f, .17f, .17f, 1);
+            renderer->DrawSolidRect(x + 5, y + 1, 23, 5, .88f, .72f, .37f, 1);
+            renderer->DrawSolidRect(x + 14, y + 5, 5, 10, .88f, .72f, .37f, 1);
+        }
+        else if (item == Inventory::Item::Ledger || item == Inventory::Item::LedgerCopy)
+        {
+            renderer->DrawSolidRect(x, y, 27, 34, .73f, .68f, .48f, 1);
+            renderer->DrawSolidRect(x - 11, y, 4, 34, .29f, .39f, .41f, 1);
+            for (int line = 0; line < 4; ++line)
+            {
+                renderer->DrawSolidRect(x + 2, y - 9 + float(line) * 6, 15, 2, .28f, .29f, .24f, 1);
+            }
+        }
+        else if (item == Inventory::Item::Hide)
+        {
+            renderer->DrawModelPreview("loot2", x, y, 43, 37);
+        }
+    }
+
     void DrawStatsPanel()
     {
-        const auto& stats = firstLevel.stats;
-
-        if (statsPanel)
+        if (!statsPanel)
         {
-            renderer->DrawSolidRect(1060, 445, 390, 354, .03f, .055f, .06f, .96f);
-            DrawText(885, 300, L"\ub2a5\ub825\uce58", .97f, .79f, .44f);
-            std::wstring points = L"\ub0a8\uc740 \uc810\uc218: " + std::to_wstring(stats.points);
-            DrawText(885, 337, points.c_str());
-            DrawText(885, 374, L"1  \ud798 \uc62c\ub9ac\uae30       \uacf5\uaca9 +3");
-            DrawText(885, 409, L"2  \uccb4\ub825 \uc62c\ub9ac\uae30     \ucd5c\ub300 \uccb4\ub825 +15");
-            DrawText(885, 444, L"3  \ub9f7\uc9d1 \uc62c\ub9ac\uae30     \ubc29\uc5b4 +2");
-            DrawText(885, 487, L"\ub808\ubca8\uc5c5: \uccb4\ub825 +20 / \uacf5\uaca9 +4");
-            DrawText(885, 519, L"\ubc29\uc5b4 +1 / \ubc30\ubd84 \uc810\uc218 +2");
+            return;
+        }
+        Perf::Scope scope(Perf::Cpu::InventoryUI);
+        const auto& stats = firstLevel.stats;
+        const auto slots = InventorySlots();
+        renderer->SetMaterial(0);
+        renderer->DrawSolidRect(640, 400, 1280, 800, .015f, .025f, .03f, .72f);
+        renderer->DrawSolidRect(640, 420, 1004, 604, .46f, .39f, .25f, 1);
+        renderer->DrawSolidRect(640, 420, 1000, 600, .055f, .085f, .09f, .99f);
+        renderer->DrawSolidRect(640, 180, 950, 1, .42f, .38f, .26f, 1);
+        renderer->DrawSolidRect(300, 440, 274, 490, .035f, .057f, .065f, 1);
+        renderer->DrawEllipse(300, 395, 100, 20, .1f, .15f, .15f, 1);
+        renderer->DrawModelPreview("hero_idle", 300, 306, 190, 192, 1);
+        renderer->DrawSolidRect(300, 464, 214, 10, .18f, .21f, .20f, 1);
+        const float hpWidth = 210.0f * stats.health / stats.MaxHealth();
+        if (hpWidth > 0)
+        {
+            renderer->DrawSolidRect(195 + hpWidth * .5f, 464, hpWidth, 6, .62f, .33f, .28f, 1);
+        }
+        renderer->DrawSolidRect(300, 562, 214, 8, .18f, .21f, .20f, 1);
+        const float xpWidth = stats.level == Level::MaximumLevel
+                                  ? 210.0f
+                                  : 210.0f * stats.experience / stats.RequiredExperience();
+        if (xpWidth > 0)
+        {
+            renderer->DrawSolidRect(195 + xpWidth * .5f, 562, xpWidth, 4, .46f, .62f, .47f, 1);
+        }
+        for (int index = 0; index < Inventory::SlotCount; ++index)
+        {
+            const float x = Inventory::GridX + float(index % Inventory::Columns) * Inventory::SlotStride;
+            const float y = Inventory::GridY + float(index / Inventory::Columns) * Inventory::SlotStride;
+            const bool selected = index == inventorySelection;
+            renderer->DrawSolidRect(x + 40,
+                                    y + 40,
+                                    84,
+                                    84,
+                                    selected ? .80f : .26f,
+                                    selected ? .67f : .31f,
+                                    selected ? .37f : .29f,
+                                    1);
+            renderer->DrawSolidRect(x + 40, y + 40, 80, 80, .075f, .11f, .115f, 1);
+            DrawInventoryIcon(slots[size_t(index)].item, x + 40, y + 27);
+            Perf::Count(Perf::Counter::InventorySlotsDrawn);
+            if (slots[size_t(index)].quantity > 0)
+            {
+                Perf::Count(Perf::Counter::InventoryStacksDrawn);
+            }
+        }
+        renderer->DrawSolidRect(795, 639, 610, 90, .035f, .057f, .065f, 1);
+        renderer->DrawSolidRect(1040, 674, 118, 27, .25f, .34f, .29f, 1);
+
+        // Text follows all icons so the atlas/font texture does not change for every slot.
+        DrawText(166, 158, L"\uc18c\uc9c0\ud488\uacfc \ub0b4 \ubab8 \uc0c1\ud0dc", .98f, .83f, .52f);
+        DrawText(860, 158, L"I / TAB / ESC  \ub2eb\uae30", .73f, .79f, .76f);
+        DrawText(1090, 158, L"X", .98f, .83f, .52f);
+        DrawText(
+            188, 211, (L"\ub5a0\ub3cc\uc774  \u00b7  \ub808\ubca8 " + std::to_wstring(stats.level)).c_str());
+        DrawText(188, 419, L"\uc190\uc5d0 \ub4e0 \uce7c", .72f, .78f, .75f);
+        DrawText(
+            188,
+            451,
+            (L"\uccb4\ub825  " + std::to_wstring(stats.health) + L" / " + std::to_wstring(stats.MaxHealth()))
+                .c_str());
+        DrawText(188, 495, (L"\uacf5\uaca9\ub825  " + std::to_wstring(stats.Attack())).c_str());
+        DrawText(188, 520, (L"\ubc29\uc5b4\ub825  " + std::to_wstring(stats.Defense())).c_str());
+        DrawText(188,
+                 550,
+                 (L"\uacbd\ud5d8\uce58  " + std::to_wstring(stats.experience) + L" / " +
+                  std::to_wstring(stats.RequiredExperience()))
+                     .c_str());
+        DrawText(188,
+                 592,
+                 (L"\ub0a8\uc740 \ub2a5\ub825 \uc810\uc218  " + std::to_wstring(stats.points)).c_str(),
+                 .95f,
+                 .80f,
+                 .46f);
+        DrawText(188, 620, L"1 \ud798   2 \uccb4\ub825   3 \ub9f7\uc9d1");
+        DrawWrapped(188,
+                    647,
+                    L"\uc810\uc218\ub97c \uc368\uc11c \ub2a5\ub825\uc744 \uc62c\ub824 \ubcf4\uc138\uc694.",
+                    220,
+                    2);
+        DrawText(
+            490,
+            194,
+            L"\uac00\ubc29  \u00b7  \uac19\uc740 \ubb3c\uac74\uc740 \ud55c \uce78\uc5d0 \ubaa8\uc544\uc694.",
+            .82f,
+            .85f,
+            .75f);
+        for (int index = 0; index < Inventory::SlotCount; ++index)
+        {
+            const auto stack = slots[size_t(index)];
+            if (stack.quantity <= 0)
+            {
+                continue;
+            }
+            const float x = Inventory::GridX + float(index % Inventory::Columns) * Inventory::SlotStride;
+            const float y = Inventory::GridY + float(index / Inventory::Columns) * Inventory::SlotStride;
+            DrawText(x + 6, y + 58, InventoryName(stack.item), .87f, .88f, .77f);
+            const std::wstring count = stack.quantity > 9999 ? L"9999+" : std::to_wstring(stack.quantity);
+            DrawText(x + 74 - renderer->TextWidth(count.c_str(), fontDC, fontHandle),
+                     y + 75,
+                     count.c_str(),
+                     1,
+                     .84f,
+                     .48f);
+        }
+        const auto selected = slots[size_t(inventorySelection)];
+        DrawText(
+            502,
+            613,
+            (std::wstring(InventoryName(selected.item)) + L"  " + std::to_wstring(selected.quantity)).c_str(),
+            .98f,
+            .84f,
+            .52f);
+        DrawWrapped(502, 637, InventoryDescription(selected.item), 580, 2);
+        DrawText(992,
+                 679,
+                 selected.item == Inventory::Item::Potion ? L"E / ENTER \uc0ac\uc6a9"
+                                                          : L"Q  \ud68c\ubcf5\uc57d",
+                 .87f,
+                 .91f,
+                 .79f);
+        if (inventoryActionNote.empty())
+        {
             DrawText(
-                885, 553, L"\ub808\ubca8\uc5c5\ud558\uba74 \uccb4\ub825\ub3c4 \ud68c\ubcf5\ub41c\ub2e4.");
-            std::wstring seed = L"\uc9c0\ub3c4 \ubc88\ud638: " + std::to_wstring(firstLevel.seed);
-            DrawText(885, 590, seed.c_str(), .65f, .72f, .71f);
+                490,
+                705,
+                L"\ud074\ub9ad / WASD / \ubc29\ud5a5\ud0a4\ub85c \uc120\ud0dd  \u00b7  \ud68c\ubcf5\uc57d\uc740 Q\ub85c\ub3c4 \ub9c8\uc2e4 \uc218 \uc788\uc5b4\uc694.",
+                .72f,
+                .79f,
+                .75f);
+        }
+        else
+        {
+            DrawWrapped(490, 705, inventoryActionNote, 610, 1);
         }
     }
 
@@ -1150,6 +1426,7 @@ namespace
     void RenderOverlay()
     {
         Perf::Scope scope(Perf::Cpu::RenderUI);
+        renderer->SetSurfaceData({{0, 0, -1, 0}});
         worldLabelBounds.clear();
         const Npc* focusedNpc = harbor.Nearest(NpcNameDistance);
         const ActorId focusedNpcId = focusedNpc ? focusedNpc->Id() : InvalidActorId;
@@ -1354,7 +1631,52 @@ namespace
     {
         interactionPressed = potionPressed = tradePressed = sitePressed = revealPressed = false;
         attributePressed = 0;
+        inventoryTogglePressed = inventoryClosePressed = inventoryUsePressed = inventoryClickPressed = false;
+        inventoryMovePressed = 0;
         std::fill(std::begin(keys), std::end(keys), false);
+    }
+
+    bool WorldPaused()
+    {
+        return paused || helpVisible || statsPanel || harbor.Conversation().Active();
+    }
+
+    void UpdateInventoryInput()
+    {
+        Perf::Scope scope(Perf::Cpu::InventoryInput);
+        inventorySelection = Inventory::MoveSelection(inventorySelection, inventoryMovePressed);
+        if (inventoryClickPressed)
+        {
+            const Vec3 origin = firstLevel.Scene().Get(inventoryPanelId).WorldPosition();
+            const float clickX = inventoryClickX - origin.x, clickY = inventoryClickY - origin.y;
+            const int slot = Inventory::HitSlot(clickX, clickY);
+            if (slot >= 0)
+            {
+                inventorySelection = slot;
+            }
+            if (clickX >= 1070 && clickX <= 1120 && clickY >= 135 && clickY <= 170)
+            {
+                inventoryClosePressed = true;
+            }
+            if (clickX >= 981 && clickX <= 1099 && clickY >= 660 && clickY <= 688)
+            {
+                potionPressed = true;
+            }
+        }
+        const auto slots = InventorySlots();
+        if (potionPressed ||
+            (inventoryUsePressed && slots[size_t(inventorySelection)].item == Inventory::Item::Potion))
+        {
+            firstLevel.UsePotion();
+            inventoryActionNote = firstLevel.message;
+        }
+        if (attributePressed)
+        {
+            firstLevel.Allocate(attributePressed);
+            inventoryActionNote = firstLevel.message;
+        }
+        inventoryMovePressed = attributePressed = 0;
+        inventoryClickPressed = inventoryUsePressed = potionPressed = false;
     }
 
     void Update(float dt)
@@ -1392,6 +1714,13 @@ namespace
             helpPressed = false;
             journalPanel = statsPanel = false;
         }
+        if (inventoryTogglePressed || inventoryClosePressed)
+        {
+            statsPanel = inventoryClosePressed || paused || helpVisible ? false : !statsPanel;
+            inventoryActionNote.clear();
+            journalPanel = false;
+            ClearGameplayInput();
+        }
         if (helpVisible && (continueHelpPressed || skipIntroPressed))
         {
             if (introVisible && continueHelpPressed && !skipIntroPressed && introPage < 2)
@@ -1404,6 +1733,12 @@ namespace
             }
             continueHelpPressed = skipIntroPressed = false;
             ClearGameplayInput();
+            UpdatePromptActor();
+            return;
+        }
+        if (statsPanel && !paused && !helpVisible)
+        {
+            UpdateInventoryInput();
             UpdatePromptActor();
             return;
         }
@@ -1496,16 +1831,18 @@ void RenderScene()
     float dt = previousTime ? float(now - previousTime) / 1000 : 0;
     previousTime = now;
     Update((std::min)(dt, .05f));
-    const Vec3 camera = PlayerPosition();
+    const Vec3 player = PlayerPosition();
+    Vec3 camera = player;
+    if (!WorldPaused())
+    {
+        const Vec3 kick = firstLevel.HitCameraOffset();
+        camera.x += kick.x;
+        camera.y += kick.y;
+    }
     renderCamera = camera;
     firstLevel.UpdateVisibleChunks();
-    profiler.SetSceneState(firstLevel.seed,
-                           camera.x,
-                           camera.y,
-                           (std::min)(dt, .05f),
-                           paused || helpVisible || harbor.Conversation().Active(),
-                           outputWidth,
-                           outputHeight);
+    profiler.SetSceneState(
+        firstLevel.seed, player.x, player.y, (std::min)(dt, .05f), WorldPaused(), outputWidth, outputHeight);
     firstLevel.Scene().PrepareFrame(
         [&](const Actor& actor)
         {
@@ -1528,7 +1865,7 @@ void RenderScene()
         Perf::Scope swap(Perf::Cpu::Swap);
         glutSwapBuffers();
     }
-    worldMonitor.Tick(harbor, paused || helpVisible || harbor.Conversation().Active(), dt);
+    worldMonitor.Tick(harbor, WorldPaused(), dt);
     renderer->EndFrame();
 }
 
@@ -1581,17 +1918,50 @@ void KeyDown(unsigned char key, int, int)
         helpPressed = true;
         return;
     }
+    if ((key == 'i' || key == '\t') && !paused)
+    {
+        inventoryTogglePressed = true;
+        return;
+    }
+    if (statsPanel)
+    {
+        if (key == 27)
+        {
+            inventoryClosePressed = true;
+        }
+        if (key == 'e' || key == 13)
+        {
+            inventoryUsePressed = true;
+        }
+        if (key == 'q')
+        {
+            potionPressed = true;
+        }
+        if (key == 'a')
+        {
+            inventoryMovePressed = -1;
+        }
+        if (key == 'd')
+        {
+            inventoryMovePressed = 1;
+        }
+        if (key == 'w')
+        {
+            inventoryMovePressed = -Inventory::Columns;
+        }
+        if (key == 's')
+        {
+            inventoryMovePressed = Inventory::Columns;
+        }
+        if (key >= '1' && key <= '3')
+        {
+            attributePressed = key - '0';
+        }
+        return;
+    }
     if (key == 27)
     {
         paused = !paused;
-    }
-    else if (key == '\t')
-    {
-        statsPanel = !statsPanel;
-        if (statsPanel)
-        {
-            journalPanel = false;
-        }
     }
     else if (key == 'j')
     {
@@ -1641,6 +2011,40 @@ void KeyUp(unsigned char key, int, int)
         key += 32;
     }
     keys[key] = false;
+}
+
+void InventoryMouse(int button, int state, int x, int y)
+{
+    if (statsPanel && button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
+    {
+        inventoryClickX = float(x) * ScreenWidth / (std::max)(1, outputWidth);
+        inventoryClickY = float(y) * ScreenHeight / (std::max)(1, outputHeight);
+        inventoryClickPressed = true;
+    }
+}
+
+void InventorySpecialKey(int key, int, int)
+{
+    if (!statsPanel)
+    {
+        return;
+    }
+    if (key == GLUT_KEY_LEFT)
+    {
+        inventoryMovePressed = -1;
+    }
+    if (key == GLUT_KEY_RIGHT)
+    {
+        inventoryMovePressed = 1;
+    }
+    if (key == GLUT_KEY_UP)
+    {
+        inventoryMovePressed = -Inventory::Columns;
+    }
+    if (key == GLUT_KEY_DOWN)
+    {
+        inventoryMovePressed = Inventory::Columns;
+    }
 }
 
 void Entry(int state)
@@ -1723,6 +2127,8 @@ int main(int argc, char** argv)
     glutIdleFunc(Idle);
     glutKeyboardFunc(KeyDown);
     glutKeyboardUpFunc(KeyUp);
+    glutMouseFunc(InventoryMouse);
+    glutSpecialFunc(InventorySpecialKey);
     glutMainLoop();
     if (renderer && wglGetCurrentContext())
     {
