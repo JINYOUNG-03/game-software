@@ -1188,7 +1188,7 @@ namespace Harbor
     {
         Perf::Scope scope(Perf::Cpu::NpcTrade);
         if (!IsMerchant(buyer) || buyer.health <= 0 || seller.hides <= 0 || buyer.coins < 6 ||
-            !WorldLayout::InVillage(buyer.WorldPosition()))
+            !WorldLayout::ShareMarket(seller.WorldPosition(), buyer.WorldPosition()))
         {
             return;
         }
@@ -1472,7 +1472,7 @@ namespace Harbor
             for (Npc* merchant : level.Scene().Actors<Npc>(ActorKind::Npc))
             {
                 if (merchant != &npc && IsMerchant(*merchant) && merchant->health > 0 && merchant->food > 0 &&
-                    Distance(merchant->WorldPosition(), Site(2)) < WorldLayout::MarketRadius &&
+                    WorldLayout::ShareMarket(npc.WorldPosition(), merchant->WorldPosition()) &&
                     Distance(merchant->WorldPosition(), npc.WorldPosition()) < 1.5f)
                 {
                     npc.coins -= 8;
@@ -2110,7 +2110,7 @@ namespace Harbor
         Perf::Scope scope(Perf::Cpu::NpcTrade);
         Npc* npc = Nearest();
         if (!npc || npc->health <= 0 || npc->affinity < -20 || npc->threatTime > 0 ||
-            Distance(npc->WorldPosition(), Site(2)) > WorldLayout::MarketRadius)
+            !WorldLayout::ShareMarket(level.Player().WorldPosition(), npc->WorldPosition()))
         {
             Event(
                 L"\uac70\ub798\ud558\ub824\uba74 \uc7a5\ud130 \uadfc\ucc98\uc758 \uc0b4\uc544 \uc788\ub294 \uc8fc\ubbfc\uc5d0\uac8c \ub2e4\uac00\uac00\uc790. \uc801\ub300\uc801\uc778 \uc0c1\ub300\ub294 \uac70\ub798\ud558\uc9c0 \uc54a\ub294\ub2e4.");

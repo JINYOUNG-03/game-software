@@ -109,6 +109,26 @@ namespace WorldLayout
         return village == 0 ? VillageSpawn() : VillageCenter(village);
     }
 
+    inline int MarketAt(const ActorPosition& position)
+    {
+        for (int village = 0; village < VillageCount; ++village)
+        {
+            const ActorPosition market = VillageMarket(village);
+            if (std::hypot(position.x - market.x, position.y - market.y) <= MarketRadius)
+            {
+                return village;
+            }
+        }
+        return -1;
+    }
+
+    inline bool ShareMarket(const ActorPosition& first, const ActorPosition& second)
+    {
+        // Visiting merchants trade where they are, independently of their registered home village.
+        const int market = MarketAt(first);
+        return market >= 0 && market == MarketAt(second);
+    }
+
     inline bool BetweenVillages(const ActorPosition& p)
     {
         if (VillageAt(p) >= 0)

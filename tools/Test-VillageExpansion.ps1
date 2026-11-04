@@ -76,9 +76,75 @@ $known = @(8, 0, 0); $next = $known.Clone()
 foreach ($edge in @(@(0,1), @(1,2))) { $next[$edge[1]] = $next[$edge[1]] -bor $known[$edge[0]] }
 if ($next[1] -ne 8 -or $next[2] -ne 0) { throw 'Rumours cascade without a later physical meeting.' }
 if ((Constant $layout 'RespawnDelaySeconds') -ne 2) { throw 'Fast respawn delay must be two seconds.' }
+
+# All five markets must permit local trade, including merchants visiting from another home village.
+# Coordinates/radius come from production layout; these are geometry and source checks, not a C++ execution.
+$markets = $centres.Clone()
+$spawn = [regex]::Match($layout, '(?s)inline ActorPosition VillageSpawn\(\).*?return Town\(([.\d]+)f, ([.\d]+)f')
+if (-not $spawn.Success) { throw 'Missing first village market position.' }
+$markets[0] = @(((Constant $layout 'TownOffsetX') + [double]$spawn.Groups[1].Value),
+               ((Constant $layout 'TownOffsetY') + [double]$spawn.Groups[2].Value))
+$marketRadius = Constant $layout 'MarketRadius'
+function Find-Market([double]$x, [double]$y)
+{
+    for ($village = 0; $village -lt $markets.Count; $village++)
+    {
+        $dx = $x - $markets[$village][0]; $dy = $y - $markets[$village][1]
+        if ([Math]::Sqrt($dx * $dx + $dy * $dy) -le $marketRadius) { return $village }
+    }
+    return -1
+}
+function Share-Market($first, $second)
+{
+    $market = Find-Market $first[0] $first[1]
+    return $market -ge 0 -and $market -eq (Find-Market $second[0] $second[1])
+}
+for ($village = 0; $village -lt $villages; $village++)
+{
+    $market = $markets[$village]
+    if ((Find-Market $market[0] $market[1]) -ne $village -or
+        -not (Share-Market $market @(($market[0] + 1), $market[1])))
+    { throw "Local trade rejected in village $village" }
+    if ((Find-Market ($market[0] + $marketRadius) $market[1]) -ne $village -or
+        (Find-Market ($market[0] + $marketRadius + .01) $market[1]) -ne -1)
+    { throw "Market radius boundary incorrect in village $village" }
+    $inside = @(($market[0] + $marketRadius - .1), $market[1])
+    $outside = @(($market[0] + $marketRadius + .1), $market[1])
+    if ((Share-Market $inside $outside) -or (Share-Market $outside $inside))
+    { throw 'Both trade participants must be inside the same market.' }
+    for ($other = 0; $other -lt $villages; $other++)
+    {
+        if ($other -ne $village -and (Share-Market $market $markets[$other]))
+        { throw 'Trade participants in different villages share a market.' }
+    }
+}
+if ((Find-Market 0 0) -ne -1 -or (Share-Market @(0,0) @(0,0)))
+{ throw 'Being together outside all markets must not allow trade.' }
+$marketPolicy = [regex]::Match($layout, '(?s)inline int MarketAt\(.*?(?=inline bool BetweenVillages)').Value
+if (-not $marketPolicy.Contains('village < VillageCount') -or
+    -not $marketPolicy.Contains('VillageMarket(village)') -or
+    -not $marketPolicy.Contains('<= MarketRadius') -or
+    -not $marketPolicy.Contains('market >= 0 && market == MarketAt(second)') -or
+    $marketPolicy.Contains('homeVillage'))
+{ throw 'Trade locations must use all current physical markets, not a home-village restriction.' }
+$playerTrade = [regex]::Match($world, '(?s)void World::Trade\(\).*?(?=void World::InteractSite)').Value
+$exchange = [regex]::Match($world, '(?s)void World::Exchange\(.*?(?=void World::Disclose)').Value
+$npcStep = [regex]::Match($world, '(?s)void World::Step\(.*?(?=void World::SpreadRumors)').Value
+if (-not $playerTrade.Contains('WorldLayout::ShareMarket(level.Player().WorldPosition(), npc->WorldPosition())') -or
+    -not $exchange.Contains('WorldLayout::ShareMarket(seller.WorldPosition(), buyer.WorldPosition())') -or
+    -not $npcStep.Contains('WorldLayout::ShareMarket(npc.WorldPosition(), merchant->WorldPosition())') -or
+    $playerTrade.Contains('Site(2)') -or $npcStep.Contains('Distance(merchant->WorldPosition(), Site(2))'))
+{ throw 'Player, NPC hide trade and NPC food purchases must share the five-market policy.' }
+foreach ($token in @('npc->health <= 0', 'npc->affinity < -20', 'npc->threatTime > 0', 'Npc* npc = Nearest()',
+                     'npc->variant == 2 || npc->variant == 3', 'recordChoice == RecordChoice::Undecided',
+                     'level.stats.hides, npc->coins / 6', 'level.stats.coins >= 8', 'npc->food > 0'))
+{
+    if (-not $playerTrade.Contains($token)) { throw "Trade safeguard/story condition missing: $token" }
+}
 [pscustomobject]@{
     event = 'village_expansion_static_contracts'; passed = $true; map_size_tiles = $mapSize
     village_count = $villages; resident_counts = $slots; courier_counts = $couriers
     projected_neighbour_travel_seconds = $seconds; monster_target = $monsters; respawn_delay_seconds = 2
+    local_trade_markets = $markets.Count; shared_market_boundary_checks = $true
     game_build_performed = $false; game_execution_performed = $false; actual_travel_measured = $false
 } | ConvertTo-Json -Depth 4
