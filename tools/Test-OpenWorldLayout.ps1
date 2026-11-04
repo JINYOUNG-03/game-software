@@ -7,6 +7,7 @@ $layoutSource = Get-Content -Raw (Join-Path $openWorldSourceRoot 'WorldLayout.h'
 $levelSource = Get-Content -Raw (Join-Path $openWorldSourceRoot 'LevelOne.cpp')
 $npcSource = Get-Content -Raw (Join-Path $openWorldSourceRoot 'HarborWorld.cpp')
 $renderSource = Get-Content -Raw (Join-Path $openWorldSourceRoot 'SimpleGame.cpp')
+$fontSource = Get-Content -Raw (Join-Path $openWorldSourceRoot 'KoreanFont.cpp')
 
 # Catch accidental duplicate function prefixes independently of the geometry checks.
 if ([regex]::Matches($npcSource, '\bvoid\s+World::Witness\s*\(').Count -ne 1 -or
@@ -102,7 +103,8 @@ $helpSource = [regex]::Match($renderSource,
 if ($trackerSource.Contains('guide.reason') -or -not $helpSource.Contains('guide.reason') -or
     -not $trackerSource.Contains('guide.action') -or -not $trackerSource.Contains('TravelHint(guide)'))
 { throw 'Compact tracker must retain action/navigation and leave detail in H help.' }
-if (-not $renderSource.Contains('CreateFontW(-UiFontHeight,') -or
+if (-not $renderSource.Contains('koreanFont.Initialize(UiFontHeight)') -or
+    -not $fontSource.Contains('CreateFontW(-height,') -or
     -not $trackerSource.Contains('QuestPanelWidth, QuestPanelHeight') -or
     -not $helpSource.Contains('HelpPanelWidth, HelpPanelHeight'))
 { throw 'Compact UI dimensions are not used by drawing code.' }

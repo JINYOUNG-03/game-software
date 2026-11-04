@@ -2,6 +2,7 @@
 
 원본 명세: `C:/Users/정진영/Documents/Codex/2026-09-23/1-2-x20-npc-3-x20/outputs/초기_스토리_설정.md`.
 기존 C++ 게임과 프로젝트에 통합된 플레이용 프로토타입이다.
+창·입력·실행 루프는 GLFW를 사용한다. Windows 빌드·동봉 소스·폰트 배포는 [GLFW_MIGRATION.md](GLFW_MIGRATION.md)를 따른다.
 
 ## 이번 플레이 흐름
 

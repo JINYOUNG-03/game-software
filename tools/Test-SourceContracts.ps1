@@ -4,7 +4,7 @@ $ErrorActionPreference = 'Stop'
 $sourceCheckRoot = Join-Path (Split-Path $PSScriptRoot -Parent) 'BaseProject_SE/SimpleGame'
 $checkedFiles = @('Actor.h', 'Actor.cpp', 'WorldLayout.h', 'CharacterPresentation.h', 'InventoryPresentation.h', 'LevelOne.h', 'LevelOne.cpp',
                   'HarborWorld.h', 'HarborWorld.cpp', 'HarborTrade.cpp', 'Trade.h', 'TradePresentation.h', 'Renderer.h', 'Renderer.cpp', 'RendererModels.cpp', 'RendererBatch.cpp',
-                  'SimpleGame.cpp', 'Profiler.h', 'Profiler.cpp', 'WorldMonitor.h', 'WorldMonitor.cpp')
+                  'SimpleGame.cpp', 'GlfwInput.h', 'KoreanFont.h', 'KoreanFont.cpp', 'Profiler.h', 'Profiler.cpp', 'WorldMonitor.h', 'WorldMonitor.cpp')
 $ignoredTokens = @'
 (?s)/\*.*?\*/|//[^\r\n]*|L?"(?:\\.|[^"\\])*"|L?'(?:\\.|[^'\\])*'
 '@

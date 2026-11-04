@@ -72,7 +72,7 @@ for (let ownership = 0; ownership < 8; ownership++)
 for (const contract
          of ['DrawModelPreview("hero_idle"', "stats.MaxHealth()", "stats.Attack()", "stats.Defense()",
              "InventorySlotsDrawn", "InventoryStacksDrawn", "Inventory::HitSlot",
-             "glutMouseFunc(InventoryMouse)", "glutSpecialFunc(InventorySpecialKey)",
+             "glfwSetMouseButtonCallback(gameWindow, WindowMouse)", "InventorySpecialKey(key)",
              "inventoryTogglePressed = true", "WorldPaused(), dt)"])
 {
     assert(game.includes(contract), `Inventory integration missing ${contract}`);

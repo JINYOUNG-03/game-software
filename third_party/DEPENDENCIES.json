@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "tree_hash_rule": "sorted_relative_path + NUL + lowercase_file_sha256 + LF, UTF-8; raw upstream bytes",
+  "bundles": [
+    {
+      "name": "GLFW",
+      "version": "3.4",
+      "directory": "third_party/glfw",
+      "url": "https://github.com/glfw/glfw/releases/download/3.4/glfw-3.4.zip",
+      "archive_sha256": "b5ec004b2712fd08e8861dc271428f048775200a2df719ccf575143ba749a3e9",
+      "files": 362,
+      "tree_sha256": "083c7dfd17a1ec2ca48f11cde21d1dbb71f535cce13af3ce2da1f6c40afb7fbb",
+      "license": "third_party/glfw/LICENSE.md"
+    },
+    {
+      "name": "GLEW",
+      "version": "2.2.0",
+      "directory": "third_party/glew",
+      "url": "https://github.com/nigels-com/glew/releases/download/glew-2.2.0/glew-2.2.0.tgz",
+      "archive_sha256": "d4fc82893cfb00109578d0a1a2337fb8ca335b3ceccf97b97e5cc7f08e4353e1",
+      "files": 1486,
+      "tree_sha256": "8ccfcd49fe29ed86360aa7e95cc72da96356ca06a29eae7b4f1aa3d1b4b219d6",
+      "license": "third_party/glew/LICENSE.txt"
+    }
+  ],
+  "font": {
+    "name": "NanumGothic Regular",
+    "file": "resource/Fonts/NanumGothic-Regular.ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/nanumgothic/NanumGothic-Regular.ttf",
+    "sha256": "76f45ef4a6bcff344c837c95a7dcc26e017e38b5846d5ae0cdcb5b86be2e2d31",
+    "license": "resource/Fonts/OFL-NanumGothic.txt"
+  }
+}

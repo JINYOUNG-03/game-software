@@ -4,3 +4,9 @@ resource/**/*.glb binary
 resource/**/*.png binary
 resource/haedong_runtime/*.bin binary
 tools/*.cjs text eol=lf
+third_party/** -text
+# Keep upstream releases byte-for-byte; do not rewrite their existing whitespace.
+third_party/glfw/** -whitespace
+third_party/glew/** -whitespace
+resource/Fonts/*.ttf binary
+resource/Fonts/OFL-NanumGothic.txt -whitespace

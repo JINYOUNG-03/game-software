@@ -10,7 +10,7 @@
 #include <string>
 #include <thread>
 #include <vector>
-#include "Dependencies/glew.h"
+#include <GL/glew.h>
 
 namespace Perf
 {
@@ -76,6 +76,8 @@ namespace Perf
         TradeInput,
         TradeOffers,
         TradeCommit,
+        WindowInit,
+        WindowEvents,
         Count
     };
     enum class Counter
@@ -171,6 +173,10 @@ namespace Perf
         ShopRejected,
         ShopUnits,
         ShopRowsDrawn,
+        WindowKeyEvents,
+        WindowMouseEvents,
+        WindowResizeEvents,
+        WindowFocusEvents,
         Count
     };
 
@@ -179,9 +185,10 @@ namespace Perf
       public:
         static Profiler& Get();
         ~Profiler();
-        void Initialize();
+        void Initialize(int swapInterval = 0);
         void Shutdown();
         void BeginFrame();
+        void ResetFrameClock();
         void EndFrame(const char* event = "frame");
         void Add(Cpu key, double ms);
 

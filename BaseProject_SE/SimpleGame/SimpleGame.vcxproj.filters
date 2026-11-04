@@ -30,6 +30,8 @@
     <ClInclude Include="Renderer.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="GlfwInput.h" />
+    <ClInclude Include="KoreanFont.h" />
     <ClInclude Include="LevelOne.h" />
     <ClInclude Include="CharacterPresentation.h" />
     <ClInclude Include="InventoryPresentation.h" />
@@ -53,6 +55,7 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="RendererModels.cpp" />
+    <ClCompile Include="KoreanFont.cpp" />
     <ClCompile Include="RendererBatch.cpp" />
     <ClCompile Include="Profiler.cpp" />
     <ClCompile Include="LevelOne.cpp" />

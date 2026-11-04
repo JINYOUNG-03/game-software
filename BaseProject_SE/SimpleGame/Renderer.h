@@ -14,7 +14,7 @@ class Actor;
 class SceneGraph;
 enum class ScenePass;
 
-#include "Dependencies\glew.h"
+#include <GL/glew.h>
 
 class Renderer
 {

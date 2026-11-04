@@ -20,3 +20,7 @@
 
 # Local rotating profiling output (never commit runtime traces).
 **/Profiles/profile_*.jsonl
+
+# Optional CMake configuration/output (native VS intermediates use LocalAppData).
+/out/
+/CMakeUserPresets.json

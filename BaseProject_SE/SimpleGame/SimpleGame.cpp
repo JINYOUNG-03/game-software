@@ -12,8 +12,9 @@
 #include <string>
 #include <random>
 #include <iterator>
-#include "Dependencies/glew.h"
-#include "Dependencies/freeglut.h"
+#include <GL/glew.h>
+#include "GlfwInput.h"
+#include "KoreanFont.h"
 #include "Renderer.h"
 #include "LevelOne.h"
 #include "Profiler.h"
@@ -66,6 +67,8 @@ namespace
     float uiOriginY = 0;
 
     Renderer* renderer = nullptr;
+    GLFWwindow* gameWindow = nullptr;
+    KoreanFont koreanFont;
     Level::FirstLevel firstLevel;
     Harbor::World harbor(firstLevel);
     Vec3 renderCamera;
@@ -116,6 +119,8 @@ namespace
     std::chrono::steady_clock::time_point previousTime{};
     int outputWidth = ScreenWidth;
     int outputHeight = ScreenHeight;
+    int inputWidth = ScreenWidth;
+    int inputHeight = ScreenHeight;
     float elapsed = 0;
     HDC fontDC = nullptr;
     HFONT fontHandle = nullptr;
@@ -137,24 +142,16 @@ namespace
         return x > -260 && x < ScreenWidth + 260 && y > -100 && y < ScreenHeight + 260;
     }
 
-    void InitializeKoreanFont()
+    bool InitializeKoreanFont()
     {
-        Perf::Scope scope(Perf::Cpu::FontInit);
-        fontDC = wglGetCurrentDC();
-        fontHandle = CreateFontW(-UiFontHeight,
-                                 0,
-                                 0,
-                                 0,
-                                 FW_NORMAL,
-                                 FALSE,
-                                 FALSE,
-                                 FALSE,
-                                 HANGUL_CHARSET,
-                                 OUT_TT_PRECIS,
-                                 CLIP_DEFAULT_PRECIS,
-                                 ANTIALIASED_QUALITY,
-                                 FF_DONTCARE,
-                                 L"Malgun Gothic");
+        if (!koreanFont.Initialize(UiFontHeight))
+        {
+            std::cerr << "[font] initialization_failed; deploy Fonts/NanumGothic-Regular.ttf\n";
+            return false;
+        }
+        fontDC = static_cast<HDC>(koreanFont.Context());
+        fontHandle = static_cast<HFONT>(koreanFont.Handle());
+        return true;
     }
 
     void DrawText(float x,
@@ -2130,6 +2127,20 @@ void RenderScene()
     }
     auto& profiler = Perf::Profiler::Get();
     profiler.BeginFrame();
+    {
+        Perf::Scope events(Perf::Cpu::WindowEvents);
+        glfwPollEvents();
+    }
+    if (glfwWindowShouldClose(gameWindow) || glfwGetWindowAttrib(gameWindow, GLFW_ICONIFIED) ||
+        outputWidth <= 0 || outputHeight <= 0)
+    {
+        const Vec3 player = PlayerPosition();
+        profiler.SetSceneState(firstLevel.seed, player.x, player.y, 0, true, outputWidth, outputHeight);
+        profiler.EndFrame("window_suspended");
+        profiler.ResetFrameClock();
+        return;
+    }
+    renderer->SetOutputSize(outputWidth, outputHeight);
     const auto now = std::chrono::steady_clock::now();
     float dt = previousTime.time_since_epoch().count()
                    ? std::chrono::duration<float>(now - previousTime).count()
@@ -2168,18 +2179,13 @@ void RenderScene()
     RenderOverlay();
     {
         Perf::Scope swap(Perf::Cpu::Swap);
-        glutSwapBuffers();
+        glfwSwapBuffers(gameWindow);
     }
     worldMonitor.Tick(harbor, WorldPaused(), dt);
     renderer->EndFrame();
 }
 
-void Idle()
-{
-    glutPostRedisplay();
-}
-
-void KeyDown(unsigned char key, int, int)
+void KeyDown(unsigned char key)
 {
     if (key >= 'A' && key <= 'Z')
     {
@@ -2337,7 +2343,7 @@ void KeyDown(unsigned char key, int, int)
     }
 }
 
-void KeyUp(unsigned char key, int, int)
+void KeyUp(unsigned char key)
 {
     if (key >= 'A' && key <= 'Z')
     {
@@ -2346,40 +2352,40 @@ void KeyUp(unsigned char key, int, int)
     keys[key] = false;
 }
 
-void InventoryMouse(int button, int state, int x, int y)
+void InventoryMouse(int button, int state, double x, double y)
 {
-    if (harbor.Trading().Active() && button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
+    if (harbor.Trading().Active() && button == GLFW_MOUSE_BUTTON_LEFT && state == GLFW_PRESS)
     {
-        tradeClickX = float(x) * ScreenWidth / (std::max)(1, outputWidth);
-        tradeClickY = float(y) * ScreenHeight / (std::max)(1, outputHeight);
+        tradeClickX = float(x) * ScreenWidth / (std::max)(1, inputWidth);
+        tradeClickY = float(y) * ScreenHeight / (std::max)(1, inputHeight);
         tradeClickPressed = true;
         return;
     }
-    if (statsPanel && button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
+    if (statsPanel && button == GLFW_MOUSE_BUTTON_LEFT && state == GLFW_PRESS)
     {
-        inventoryClickX = float(x) * ScreenWidth / (std::max)(1, outputWidth);
-        inventoryClickY = float(y) * ScreenHeight / (std::max)(1, outputHeight);
+        inventoryClickX = float(x) * ScreenWidth / (std::max)(1, inputWidth);
+        inventoryClickY = float(y) * ScreenHeight / (std::max)(1, inputHeight);
         inventoryClickPressed = true;
     }
 }
 
-void InventorySpecialKey(int key, int, int)
+void InventorySpecialKey(int key)
 {
     if (harbor.Trading().Active())
     {
-        if (key == GLUT_KEY_UP)
+        if (key == GLFW_KEY_UP)
         {
             tradeMovePressed = -1;
         }
-        if (key == GLUT_KEY_DOWN)
+        if (key == GLFW_KEY_DOWN)
         {
             tradeMovePressed = 1;
         }
-        if (key == GLUT_KEY_LEFT)
+        if (key == GLFW_KEY_LEFT)
         {
             tradeQuantityPressed = -1;
         }
-        if (key == GLUT_KEY_RIGHT)
+        if (key == GLFW_KEY_RIGHT)
         {
             tradeQuantityPressed = 1;
         }
@@ -2389,76 +2395,182 @@ void InventorySpecialKey(int key, int, int)
     {
         return;
     }
-    if (key == GLUT_KEY_LEFT)
+    if (key == GLFW_KEY_LEFT)
     {
         inventoryMovePressed = -1;
     }
-    if (key == GLUT_KEY_RIGHT)
+    if (key == GLFW_KEY_RIGHT)
     {
         inventoryMovePressed = 1;
     }
-    if (key == GLUT_KEY_UP)
+    if (key == GLFW_KEY_UP)
     {
         inventoryMovePressed = -Inventory::Columns;
     }
-    if (key == GLUT_KEY_DOWN)
+    if (key == GLFW_KEY_DOWN)
     {
         inventoryMovePressed = Inventory::Columns;
     }
 }
 
-void Entry(int state)
+void Entry(GLFWwindow*, int entered)
 {
-    if (state == GLUT_LEFT)
+    if (!entered)
     {
-        std::fill(std::begin(keys), std::end(keys), false);
+        ClearGameplayInput();
     }
 }
 
-void Reshape(int w, int h)
+void FocusChanged(GLFWwindow*, int focused)
 {
-    outputWidth = w > 0 ? w : 1;
-    outputHeight = h > 0 ? h : 1;
-    if (renderer)
+    Perf::Count(Perf::Counter::WindowFocusEvents);
+    if (!focused)
     {
-        renderer->SetOutputSize(outputWidth, outputHeight);
+        ClearGameplayInput();
     }
+}
+
+void Reshape(GLFWwindow*, int width, int height)
+{
+    outputWidth = width;
+    outputHeight = height;
+    Perf::Count(Perf::Counter::WindowResizeEvents);
+}
+
+void WindowSizeChanged(GLFWwindow*, int width, int height)
+{
+    inputWidth = width;
+    inputHeight = height;
+}
+
+void WindowKey(GLFWwindow*, int key, int, int action, int)
+{
+    Perf::Count(Perf::Counter::WindowKeyEvents);
+    if (action == GLFW_REPEAT)
+    {
+        return;
+    }
+    const unsigned char command = WindowInput::CommandKey(key);
+    if (command)
+    {
+        if (action == GLFW_PRESS)
+        {
+            KeyDown(command);
+        }
+        else if (action == GLFW_RELEASE)
+        {
+            KeyUp(command);
+        }
+    }
+    else if (action == GLFW_PRESS)
+    {
+        InventorySpecialKey(key);
+    }
+}
+
+void WindowMouse(GLFWwindow* window, int button, int action, int)
+{
+    Perf::Count(Perf::Counter::WindowMouseEvents);
+    double x = 0, y = 0;
+    glfwGetCursorPos(window, &x, &y);
+    InventoryMouse(button, action, x, y);
+}
+
+void WindowError(int code, const char* message)
+{
+    std::cerr << "[window] error_code=" << code << " message=" << (message ? message : "") << '\n';
 }
 
 void Close()
 {
+    // Stop the reader and release every GL resource while the GLFW context is still current.
+    if (gameWindow)
+    {
+        glfwMakeContextCurrent(gameWindow);
+    }
     worldMonitor.Stop();
     Perf::Profiler::Get().Shutdown();
     delete renderer;
     renderer = nullptr;
+    koreanFont.Shutdown();
+    fontDC = nullptr;
+    fontHandle = nullptr;
+    if (gameWindow)
+    {
+        glfwDestroyWindow(gameWindow);
+        gameWindow = nullptr;
+    }
+    glfwTerminate();
 }
 
-int main(int argc, char** argv)
+int main()
 {
-    glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
-    glutInitWindowSize(ScreenWidth, ScreenHeight);
-    glutCreateWindow("Muyeon Harbor - Living World");
-    SetWindowTextW(GetActiveWindow(), L"\ubb34\uc5f0\ud56d \u00b7 \uc0b4\uc544 \uc788\ub294 \ud56d\uad6c");
-    if (glewInit() != GLEW_OK || !glewIsSupported("GL_VERSION_3_3"))
     {
-        return 1;
+        Perf::Scope windowInit(Perf::Cpu::WindowInit);
+        glfwSetErrorCallback(WindowError);
+        if (!glfwInit())
+        {
+            return 1;
+        }
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
+        glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
+        glfwWindowHint(GLFW_RED_BITS, 8);
+        glfwWindowHint(GLFW_GREEN_BITS, 8);
+        glfwWindowHint(GLFW_BLUE_BITS, 8);
+        glfwWindowHint(GLFW_ALPHA_BITS, 0);
+        glfwWindowHint(GLFW_DEPTH_BITS, 0);
+        glfwWindowHint(GLFW_STENCIL_BITS, 0);
+        glfwWindowHint(GLFW_SAMPLES, 0);
+        glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_FALSE);
+        glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_FALSE);
+        gameWindow = glfwCreateWindow(ScreenWidth,
+                                      ScreenHeight,
+                                      u8"\ubb34\uc5f0\ud56d \u00b7 \uc0b4\uc544 \uc788\ub294 \ud56d\uad6c",
+                                      nullptr,
+                                      nullptr);
+        if (!gameWindow)
+        {
+            Close();
+            return 1;
+        }
+        glfwMakeContextCurrent(gameWindow);
+        glewExperimental = GL_TRUE;
+        const GLenum loader = glewInit();
+        if (loader != GLEW_OK || !glewIsSupported("GL_VERSION_3_3"))
+        {
+            std::cerr << "[window] OpenGL_3_3_required; glew_status=" << loader << '\n';
+            Close();
+            return 1;
+        }
+        // Preserve the continuously rendered loop; opt into vsync with SIMPLEGAME_VSYNC=1.
+        char vsync[8]{};
+        GetEnvironmentVariableA("SIMPLEGAME_VSYNC", vsync, sizeof(vsync));
+        glfwSwapInterval(vsync[0] == '1' ? 1 : 0);
+        glfwGetWindowSize(gameWindow, &inputWidth, &inputHeight);
+        glfwGetFramebufferSize(gameWindow, &outputWidth, &outputHeight);
+        glfwSetWindowSizeCallback(gameWindow, WindowSizeChanged);
+        glfwSetFramebufferSizeCallback(gameWindow, Reshape);
+        glfwSetKeyCallback(gameWindow, WindowKey);
+        glfwSetMouseButtonCallback(gameWindow, WindowMouse);
+        glfwSetCursorEnterCallback(gameWindow, Entry);
+        glfwSetWindowFocusCallback(gameWindow, FocusChanged);
+        glDisable(GL_DEPTH_TEST);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        Perf::Profiler::Get().Initialize(vsync[0] == '1' ? 1 : 0);
+        Perf::Profiler::Get().BeginFrame();
     }
-    glDisable(GL_DEPTH_TEST);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    Perf::Profiler::Get().Initialize();
-    Perf::Profiler::Get().BeginFrame();
     {
         Perf::Scope scope(Perf::Cpu::RendererInit);
         renderer = new Renderer(ScreenWidth, ScreenHeight);
     }
-    if (!renderer->IsInitialized())
+    if (!renderer->IsInitialized() || !InitializeKoreanFont())
     {
         Close();
         return 1;
     }
-    InitializeKoreanFont();
     std::random_device random;
     firstLevel.Generate(random());
     if (!firstLevel.AllWalkableConnected())
@@ -2469,8 +2581,7 @@ int main(int argc, char** argv)
     }
     if (!InitializeModels())
     {
-        std::cerr
-            << "Resource atlas missing or invalid. Rebuild to deploy Resources/world_atlas.png and world_sprites.bin.\n";
+        std::cerr << "Resource atlas missing or invalid. Rebuild to deploy Resources assets.\n";
         Close();
         return 1;
     }
@@ -2478,25 +2589,18 @@ int main(int argc, char** argv)
     UpdatePromptActor();
     worldMonitor.Start();
     Perf::Profiler::Get().EndFrame("startup");
-    glutIgnoreKeyRepeat(1);
-    glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
-    glutReshapeFunc(Reshape);
-    glutCloseFunc(Close);
-    glutEntryFunc(Entry);
-    glutDisplayFunc(RenderScene);
-    glutIdleFunc(Idle);
-    glutKeyboardFunc(KeyDown);
-    glutKeyboardUpFunc(KeyUp);
-    glutMouseFunc(InventoryMouse);
-    glutSpecialFunc(InventorySpecialKey);
-    glutMainLoop();
-    if (renderer && wglGetCurrentContext())
+    while (!glfwWindowShouldClose(gameWindow))
     {
-        Close();
+        if (glfwGetWindowAttrib(gameWindow, GLFW_ICONIFIED) || outputWidth <= 0 || outputHeight <= 0)
+        {
+            glfwWaitEventsTimeout(.05);
+            previousTime = std::chrono::steady_clock::now();
+            Perf::Profiler::Get().ResetFrameClock();
+            worldMonitor.Tick(harbor, true, .05);
+            continue;
+        }
+        RenderScene();
     }
-    if (fontHandle)
-    {
-        DeleteObject(fontHandle);
-    }
+    Close();
     return 0;
 }

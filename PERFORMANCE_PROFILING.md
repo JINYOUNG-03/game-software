@@ -67,6 +67,23 @@
 - 거래 중 `scene_state.paused`와 모니터의 일시정지 표시를 켜며 월드 시간·NPC·전투는 정지한다.
   콘솔 FPS·드로우콜 출력은 추가하지 않는다.
 
+## GLFW 창 계측 (스키마 14)
+
+- `cpu_ms.window_init`: 창/context·GLEW·콜백 등록과 프로파일 초기화에 걸린 startup CPU 시간(ms).
+- session의 `window_backend`, `glew_version`, `swap_interval_requested`로 실행 환경을 구분한다.
+  swap interval은 요청값이며 드라이버가 강제 적용한 실제 동기화 상태를 뜻하지 않는다.
+- `cpu_ms.window_events`: 프레임 시작 후 GLFW 이벤트 처리와 입력 콜백에 쓴 CPU 시간(ms).
+  `cpu_ms.frame`에 포함되므로 두 시간을 합산하지 않는다. 기존 FreeGLUT 때와 CPU 측정 포함 범위가 다르다.
+- `window_key_events`, `window_mouse_events`, `window_resize_events`, `window_focus_events`는
+  프레임에서 수신한 각각의 이벤트 수(count)다. 키 반복도 수신량에 포함하지만 게임 명령으로 처리하지 않는다.
+  창 크기 콜백과 프레임버퍼 크기 콜백 중 resize 작업량은 프레임버퍼 크기 이벤트를 센다.
+- 최소화·0픽셀·닫기 요청을 이벤트 처리 중 발견하면 `window_suspended`를 기록하고 그리지 않는다.
+  이후 이벤트 대기 중에는 프레임 로그를 계속 만들지 않는다. 복원 직후 첫 간격은 FPS 통계에서 제외한다.
+- 최소화 중 모니터는 paused=true를 게시한다. GPU 시간은 기존 world/post/overlay, 표시 대기는
+  `swap_wait`로 비교한다. 기본 swap interval=0, `SIMPLEGAME_VSYNC=1`로 동기화를 선택할 수 있다.
+- 한글 폰트 초기화는 기존 `font_init`, 글리프 생성과 캐시 누락·업로드는 기존 키로 계속 계측한다.
+  전환 범위·의존성·검사 방법은 [GLFW_MIGRATION.md](GLFW_MIGRATION.md)를 참고한다.
+
 ## 출력과 보존
 
 기본적으로 실행 중 지속 계측한다. 외부 서버로 전송하지 않는다.
@@ -96,7 +113,7 @@
 
 모든 CPU/GPU 시간은 ms, 크기는 bytes, 누적 이벤트는 count 단위다.
 안정적인 영문 snake_case 키를 사용한다. 스키마를 바꾸면 schema_version을 올린다.
-현재 스키마는 13이며 분석기는 기존 스키마 1·2·3·4·5·6·7·8·9·10·11·12 로그도 읽는다.
+현재 스키마는 14이며 분석기는 기존 스키마 1·2·3·4·5·6·7·8·9·10·11·12·13 로그도 읽는다.
 
 | 필드 | 의미 |
 |---|---|
