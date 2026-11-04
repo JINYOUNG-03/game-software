@@ -53,6 +53,20 @@
   인스턴스 전송량 증가는 `upload_bytes`·`scope_upload_bytes`(bytes)에서 확인한다.
   자세 보간은 FPS 향상을 의미하지 않는다. 자세·메모리·검사 방법은 [ANIMATION_SMOOTHING.md](ANIMATION_SMOOTHING.md)에 정리했다.
 
+## 거래창 계측 (스키마 13)
+
+- CPU 구간 `trade_ui`는 창의 배치·텍스트 명령 생성, `trade_input`은 선택·수량·확인 처리,
+  `trade_offers`는 현재 상대의 상품·가격·재고·거래 한도 계산, `trade_commit`은 최종 검증과 실제 거래를 측정한다(ms).
+- `shop_opened`는 창을 연 횟수, `shop_offers_listed`는 조회할 때 구성한 상품 행 수,
+  `shop_rows_drawn`은 화면에 그린 상품 행 수다(count). 조회는 입력·그리기·확정에서 각각 발생할 수 있다.
+- `shop_attempts`는 최종 거래 함수 호출 수, `shop_rejected`는 재고·돈·수량·상대 조건에 의해 거절된 수,
+  `shop_units`는 성공한 거래 수량의 합이다(count). 장부·열쇠·식사는 각각 1로 센다.
+- 기존 `npc_trades`는 플레이어 또는 NPC의 성공한 거래 건수를 유지한다. 창을 열거나 확인을 취소하면 증가하지 않는다.
+- CPU 구간은 중첩될 수 있다. `trade_offers`와 `trade_commit`을 `trade_ui`·`trade_input` 또는 상위 구간에 더하지 않는다.
+  실제 업로드·드로우는 기존 `scope_upload_bytes`·`scope_draw_calls` 및 비동기 GPU overlay 구간으로 확인한다.
+- 거래 중 `scene_state.paused`와 모니터의 일시정지 표시를 켜며 월드 시간·NPC·전투는 정지한다.
+  콘솔 FPS·드로우콜 출력은 추가하지 않는다.
+
 ## 출력과 보존
 
 기본적으로 실행 중 지속 계측한다. 외부 서버로 전송하지 않는다.
@@ -82,7 +96,7 @@
 
 모든 CPU/GPU 시간은 ms, 크기는 bytes, 누적 이벤트는 count 단위다.
 안정적인 영문 snake_case 키를 사용한다. 스키마를 바꾸면 schema_version을 올린다.
-현재 스키마는 12이며 분석기는 기존 스키마 1·2·3·4·5·6·7·8·9·10·11 로그도 읽는다.
+현재 스키마는 13이며 분석기는 기존 스키마 1·2·3·4·5·6·7·8·9·10·11·12 로그도 읽는다.
 
 | 필드 | 의미 |
 |---|---|

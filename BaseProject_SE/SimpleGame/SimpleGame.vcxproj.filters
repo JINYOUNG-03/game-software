@@ -34,6 +34,8 @@
     <ClInclude Include="CharacterPresentation.h" />
     <ClInclude Include="InventoryPresentation.h" />
     <ClInclude Include="HarborWorld.h" />
+    <ClInclude Include="Trade.h" />
+    <ClInclude Include="TradePresentation.h" />
     <ClInclude Include="WorldMonitor.h" />
     <ClInclude Include="WorldLayout.h" />
     <ClInclude Include="Profiler.h" />
@@ -55,6 +57,7 @@
     <ClCompile Include="Profiler.cpp" />
     <ClCompile Include="LevelOne.cpp" />
     <ClCompile Include="HarborWorld.cpp" />
+    <ClCompile Include="HarborTrade.cpp" />
     <ClCompile Include="WorldMonitor.cpp" />
     <ClCompile Include="Actor.cpp" />
     <ClCompile Include="SceneGraph.cpp" />

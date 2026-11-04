@@ -528,6 +528,7 @@ namespace Harbor
         flood = 0;
         briefed = recoveredLedger = recoveredKey = returned = explored = dealSettled = false;
         EndDialogue();
+        EndTrade();
         recordChoice = RecordChoice::Undecided;
         questStep = 0;
         consequence.clear();
@@ -2103,98 +2104,6 @@ namespace Harbor
             return;
         }
         level.messageTime = 8;
-    }
-
-    void World::Trade()
-    {
-        Perf::Scope scope(Perf::Cpu::NpcTrade);
-        Npc* npc = Nearest();
-        if (!npc || npc->health <= 0 || npc->affinity < -20 || npc->threatTime > 0 ||
-            !WorldLayout::ShareMarket(level.Player().WorldPosition(), npc->WorldPosition()))
-        {
-            Event(
-                L"\uac70\ub798\ud558\ub824\uba74 \uc7a5\ud130 \uadfc\ucc98\uc758 \uc0b4\uc544 \uc788\ub294 \uc8fc\ubbfc\uc5d0\uac8c \ub2e4\uac00\uac00\uc790. \uc801\ub300\uc801\uc778 \uc0c1\ub300\ub294 \uac70\ub798\ud558\uc9c0 \uc54a\ub294\ub2e4.");
-            return;
-        }
-        if (Holder(ledger) == npc->Id() && IsMerchant(*npc) && level.stats.coins >= 50)
-        {
-            level.stats.coins -= 50;
-            npc->coins += 50;
-            Transfer(ledger, level.Player().Id());
-            Event(
-                L"\uc270 \ub0e5\uc744 \ub0b4\uace0 \uc7a5\ubd80\ub97c \ub418\uc0c0\ub2e4. \uac12\uc744 \uce58\ub800\ub2e4\uace0 \ucc45\uc784\uae4c\uc9c0 \uc0ac\ub77c\uc9c0\ub294 \uac74 \uc544\ub2c8\ub2e4.");
-        }
-        else if (Holder(key) == level.Player().Id() &&
-                 (npc->job == Job::Engineer || npc->job == Job::Apprentice))
-        {
-            npc->knowledge |= Knowledge::Key | Knowledge::Plans;
-            Transfer(key, npc->Id());
-            npc->thinkTime = 0;
-            Event(
-                npc->name +
-                L"\uc5d0\uac8c \uc5f4\uc1e0\ub97c \ub9e1\uacbc\ub2e4. \uc218\ubb38\uc744 \uc5f4\uc9c0 \uadf8 \uc0ac\ub78c\ub3c4 \ud310\ub2e8\ud560 \uac83\uc774\ub2e4.");
-        }
-        else if (Holder(ledger) == level.Player().Id() && (npc->variant == 2 || npc->variant == 3) &&
-                 recordChoice == RecordChoice::Undecided)
-        {
-            if (!copied)
-            {
-                Event(
-                    L"\uba3c\uc800 \uc7a5\ud130 \uac8c\uc2dc\ud310\uc5d0\uc11c F\ub85c \uc0ac\ubcf8\uc744 \ub0a8\uae30\uc790. \uc6d0\ubcf8\uc744 \ub118\uae30\uba74 \uae30\ub85d\uc744 \ub418\ucc3e\uae30 \uc5b4\ub835\ub2e4.");
-                return;
-            }
-            int price = npc->job == Job::Broker ? 40 : 30;
-            if (npc->coins < price)
-            {
-                Event(
-                    L"\uc0c1\ub300\uc5d0\uac8c \uc7a5\ubd80 \uac12\uc744 \uce58\ub97c \ub3c8\uc774 \uc5c6\ub2e4.");
-                return;
-            }
-            npc->coins -= price;
-            level.stats.coins += price;
-            npc->knowledge |= Knowledge::Ledger;
-            npc->knownLedgerHolder = npc->Id();
-            npc->thinkTime = 0;
-            Transfer(ledger, npc->Id());
-            ChooseRecord(npc->job == Job::Guard ? RecordChoice::Authority : RecordChoice::Sold);
-            UpdateQuest();
-        }
-        else if (IsMerchant(*npc) && level.stats.hides > 0 && npc->coins >= 6)
-        {
-            int amount = (std::min)(level.stats.hides, npc->coins / 6);
-            level.stats.hides -= amount;
-            npc->hides += amount;
-            level.stats.coins += amount * 6;
-            npc->coins -= amount * 6;
-            Event(
-                L"\uac00\uc8fd\uc744 \ud314\uc558\ub2e4. \ud55c \uc7a5\uc5d0 \uc5ec\uc12f \ub0e5, \uc11c\ub85c \ub3c8\uacfc \ubb3c\uac74\uc744 \ubc14\uafe8\ub2e4.");
-        }
-        else if (IsMerchant(*npc) && npc->food > 0 && level.stats.coins >= 8)
-        {
-            level.stats.coins -= 8;
-            npc->coins += 8;
-            --npc->food;
-            ++level.stats.potions;
-            Event(
-                L"\uc5ec\ub35f \ub0e5\uc744 \ub0b4\uace0 \ud68c\ubcf5\uc57d \ud55c \ubcd1\uc744 \uc0c0\ub2e4.");
-        }
-        else if (npc->job == Job::Resident && npc->food > 0 && level.stats.coins >= 4 &&
-                 level.stats.health < level.stats.MaxHealth())
-        {
-            level.stats.coins -= 4;
-            npc->coins += 4;
-            --npc->food;
-            level.stats.health = (std::min)(level.stats.MaxHealth(), level.stats.health + 35);
-            Event(
-                L"\ub530\ub73b\ud55c \uad6d\uc744 \uba39\uc5c8\ub2e4. \uc228\uc774 \uc870\uae08 \ud3b8\ud574\uc84c\ub2e4.");
-        }
-        else
-        {
-            Event(
-                L"\uc9c0\uae08 \ubc14\uafc0 \ubb3c\uac74\uc774\ub098 \ub3c8\uc774 \ubd80\uc871\ud558\ub2e4. \uc0c1\uc778\uc740 \uac00\uc8fd\uc744 \uc0ac\uace0, \uc57d\uc744 \ud310\ub2e4.");
-            return;
-        }
-        Perf::Count(Perf::Counter::NpcTrades);
     }
 
     void World::InteractSite()

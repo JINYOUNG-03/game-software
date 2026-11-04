@@ -13,7 +13,7 @@ function World-Method([string]$name, [string]$next)
     return $body.Value
 }
 
-$talk = World-Method 'Talk' 'Trade'
+$talk = World-Method 'Talk' 'InteractSite'
 foreach ($forbidden in @('briefed = true', 'returned = true', 'GainExperience(', 'knowledge |='))
 {
     if ($talk.Contains($forbidden)) { throw "Opening E dialogue still performs action: $forbidden" }

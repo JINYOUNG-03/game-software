@@ -72,6 +72,10 @@ namespace Perf
         InventoryUI,
         InventoryInput,
         PoseBlend,
+        TradeUI,
+        TradeInput,
+        TradeOffers,
+        TradeCommit,
         Count
     };
     enum class Counter
@@ -161,6 +165,12 @@ namespace Perf
         InventoryPreviews,
         PoseBlendedInstances,
         PoseBlendFallbacks,
+        ShopOpened,
+        ShopOffersListed,
+        ShopAttempts,
+        ShopRejected,
+        ShopUnits,
+        ShopRowsDrawn,
         Count
     };
 

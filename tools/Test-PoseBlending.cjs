@@ -116,7 +116,7 @@ assert(read("SimpleGame.cpp").includes("std::chrono::steady_clock::now()"));
 const profile = read("Profiler.cpp");
 assert(!profile.includes("std::cout") && !profile.includes("printf("), "Console profile output remains");
 assert(profile.includes("Queue(summary.str())"), "Keep file-based summary profiling");
-assert(profile.includes('schema_version\\":12'));
+assert(profile.includes('schema_version\\":13'));
 console.log(JSON.stringify({
     event : "pose_blending_contracts",
     passed : true,

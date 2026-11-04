@@ -1,6 +1,7 @@
 #pragma once
 
 #include "LevelOne.h"
+#include "Trade.h"
 #include <array>
 #include <deque>
 
@@ -175,6 +176,15 @@ namespace Harbor
         }
 
         void Trade();
+        void EndTrade();
+        bool ExecuteTrade(TradeAction action, int quantity);
+        std::vector<TradeOffer> TradeOffers() const;
+
+        const TradeSession& Trading() const
+        {
+            return trade;
+        }
+
         void InteractSite();
         void Reveal();
         Npc* Nearest(float radius = 1.5f);
@@ -246,6 +256,9 @@ namespace Harbor
         int questStep = 0;
         std::wstring consequence;
         DialogueState dialogue;
+        TradeSession trade;
+
+        bool CanTradeWith(const Npc& npc) const;
 
         Level::Position Site(int index) const;
         ActorId Holder(ActorId artifact) const;

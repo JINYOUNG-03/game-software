@@ -127,17 +127,17 @@ if (-not $marketPolicy.Contains('village < VillageCount') -or
     -not $marketPolicy.Contains('market >= 0 && market == MarketAt(second)') -or
     $marketPolicy.Contains('homeVillage'))
 { throw 'Trade locations must use all current physical markets, not a home-village restriction.' }
-$playerTrade = [regex]::Match($world, '(?s)void World::Trade\(\).*?(?=void World::InteractSite)').Value
+$playerTrade = Get-Content -Raw (Join-Path $root 'HarborTrade.cpp')
 $exchange = [regex]::Match($world, '(?s)void World::Exchange\(.*?(?=void World::Disclose)').Value
 $npcStep = [regex]::Match($world, '(?s)void World::Step\(.*?(?=void World::SpreadRumors)').Value
-if (-not $playerTrade.Contains('WorldLayout::ShareMarket(level.Player().WorldPosition(), npc->WorldPosition())') -or
+if (-not $playerTrade.Contains('WorldLayout::ShareMarket(hero, partner)') -or
     -not $exchange.Contains('WorldLayout::ShareMarket(seller.WorldPosition(), buyer.WorldPosition())') -or
     -not $npcStep.Contains('WorldLayout::ShareMarket(npc.WorldPosition(), merchant->WorldPosition())') -or
     $playerTrade.Contains('Site(2)') -or $npcStep.Contains('Distance(merchant->WorldPosition(), Site(2))'))
 { throw 'Player, NPC hide trade and NPC food purchases must share the five-market policy.' }
-foreach ($token in @('npc->health <= 0', 'npc->affinity < -20', 'npc->threatTime > 0', 'Npc* npc = Nearest()',
+foreach ($token in @('npc.health > 0', 'npc.affinity >= -20', 'npc.threatTime <= 0', 'Npc* npc = Nearest()',
                      'npc->variant == 2 || npc->variant == 3', 'recordChoice == RecordChoice::Undecided',
-                     'level.stats.hides, npc->coins / 6', 'level.stats.coins >= 8', 'npc->food > 0'))
+                     'TransferLimit(npc->coins, stats.hides, 6', 'TransferLimit(stats.coins, npc->food, 8'))
 {
     if (-not $playerTrade.Contains($token)) { throw "Trade safeguard/story condition missing: $token" }
 }

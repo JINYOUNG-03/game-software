@@ -21,6 +21,7 @@
 #include "WorldMonitor.h"
 #include "CharacterPresentation.h"
 #include "InventoryPresentation.h"
+#include "TradePresentation.h"
 
 namespace
 {
@@ -54,11 +55,13 @@ namespace
         QuestMarker,
         QuestTracker,
         GuideHelp,
-        Dialogue
+        Dialogue,
+        Trade
     };
     ActorId promptId = InvalidActorId;
     ActorId questMarkerId = InvalidActorId;
     ActorId inventoryPanelId = InvalidActorId;
+    ActorId tradePanelId = InvalidActorId;
     float uiOriginX = 0;
     float uiOriginY = 0;
 
@@ -100,6 +103,16 @@ namespace
     bool dialogueNextPressed = false;
     bool dialogueClosePressed = false;
     int dialogueChoicePressed = -1;
+    bool tradeClosePressed = false;
+    bool tradeConfirmPressed = false;
+    bool tradeClickPressed = false;
+    bool tradeConfirmPending = false;
+    int tradeSelection = 0;
+    int tradeQuantity = 1;
+    int tradeMovePressed = 0;
+    int tradeQuantityPressed = 0;
+    float tradeClickX = 0;
+    float tradeClickY = 0;
     std::chrono::steady_clock::time_point previousTime{};
     int outputWidth = ScreenWidth;
     int outputHeight = ScreenHeight;
@@ -275,7 +288,8 @@ namespace
                             UiPart::Pause,
                             UiPart::QuestTracker,
                             UiPart::GuideHelp,
-                            UiPart::Dialogue})
+                            UiPart::Dialogue,
+                            UiPart::Trade})
         {
             Actor& ui = scene.Create(firstLevel.OverlayRoot(), "UIPanel", ActorKind::UI);
             ui.variant = int(part);
@@ -283,10 +297,15 @@ namespace
             {
                 inventoryPanelId = ui.Id();
             }
+            if (part == UiPart::Trade)
+            {
+                tradePanelId = ui.Id();
+            }
             ui.drawable = true;
             ui.pass = ScenePass::Overlay;
             ui.drawOrder = part == UiPart::GuideHelp  ? 200
                            : part == UiPart::Dialogue ? 150
+                           : part == UiPart::Trade    ? 140
                            : part == UiPart::Stats    ? 120
                            : part == UiPart::Pause    ? 100
                                                       : int(part);
@@ -1343,6 +1362,171 @@ namespace
         }
     }
 
+    Inventory::Item TradeIcon(Harbor::TradeAction action)
+    {
+        switch (action)
+        {
+        case Harbor::TradeAction::BuyPotion:
+            return Inventory::Item::Potion;
+        case Harbor::TradeAction::SellHide:
+            return Inventory::Item::Hide;
+        case Harbor::TradeAction::BuyLedger:
+        case Harbor::TradeAction::SellLedger:
+            return Inventory::Item::Ledger;
+        case Harbor::TradeAction::GiveKey:
+            return Inventory::Item::Key;
+        default:
+            return Inventory::Item::Coins;
+        }
+    }
+
+    void DrawTradePanel()
+    {
+        if (!harbor.Trading().Active())
+        {
+            return;
+        }
+        Perf::Scope scope(Perf::Cpu::TradeUI);
+        const auto offers = harbor.TradeOffers();
+        const auto* npc = dynamic_cast<const Npc*>(firstLevel.Scene().Find(harbor.Trading().partner));
+        renderer->SetMaterial(0);
+        renderer->DrawSolidRect(640, 400, 1280, 800, .015f, .025f, .03f, .65f);
+        renderer->DrawSolidRect(640, 410, 944, 584, .46f, .39f, .25f, 1);
+        renderer->DrawSolidRect(640, 410, 940, 580, .055f, .085f, .09f, .99f);
+        renderer->DrawSolidRect(640, 211, 890, 1, .42f, .38f, .26f, 1);
+        renderer->DrawSolidRect(905, 405, 370, 350, .035f, .057f, .065f, 1);
+        const int selected = offers.empty() ? -1 : (std::min)(tradeSelection, int(offers.size()) - 1);
+        for (size_t i = 0; i < offers.size(); ++i)
+        {
+            const float y = Shop::RowsY + float(i) * Shop::RowStride;
+            renderer->DrawSolidRect(440,
+                                    y + 32,
+                                    484,
+                                    68,
+                                    int(i) == selected ? .80f : .26f,
+                                    int(i) == selected ? .67f : .31f,
+                                    .29f,
+                                    1);
+            renderer->DrawSolidRect(440, y + 32, 480, 64, .075f, .11f, .115f, 1);
+            Perf::Count(Perf::Counter::ShopRowsDrawn);
+        }
+        for (const auto button : {Shop::Less, Shop::More, Shop::Maximum, Shop::Confirm, Shop::Close})
+        {
+            const bool confirm = button.y == Shop::Confirm.y;
+            const bool enabled = selected >= 0 && offers[size_t(selected)].maximum > 0;
+            renderer->DrawSolidRect(button.x + button.width * .5f,
+                                    button.y + button.height * .5f,
+                                    button.width,
+                                    button.height,
+                                    confirm && tradeConfirmPending ? .48f : .18f,
+                                    enabled ? .31f : .20f,
+                                    .24f,
+                                    1);
+        }
+        if (selected >= 0)
+        {
+            if (offers[size_t(selected)].action == Harbor::TradeAction::BuyMeal)
+            {
+                renderer->DrawEllipse(905, 314, 46, 25, .39f, .33f, .25f, 1);
+                renderer->DrawEllipse(905, 304, 50, 17, .74f, .66f, .48f, 1);
+                renderer->DrawEllipse(905, 304, 40, 11, .52f, .32f, .15f, 1);
+            }
+            else
+            {
+                DrawInventoryIcon(TradeIcon(offers[size_t(selected)].action), 905, 308);
+            }
+        }
+        DrawText(195,
+                 157,
+                 (npc ? npc->name + L" \u00b7 \uac70\ub798" : L"\uac70\ub798").c_str(),
+                 .98f,
+                 .83f,
+                 .52f);
+        DrawText(1074, 159, L"X");
+        DrawText(195,
+                 190,
+                 (L"\ub0b4 \ub3c8 " + std::to_wstring(firstLevel.stats.coins) +
+                  L"\ub0e5    \ud68c\ubcf5\uc57d " + std::to_wstring(firstLevel.stats.potions) +
+                  L"\ubcd1    \uac00\uc8fd " + std::to_wstring(firstLevel.stats.hides) + L"\uc7a5")
+                     .c_str());
+        DrawText(740,
+                 190,
+                 (L"\uc0c1\ub300\uc758 \ub3c8 " + std::to_wstring(npc ? npc->coins : 0) + L"\ub0e5").c_str());
+        DrawText(200,
+                 232,
+                 L"\uac70\ub798\ud560 \ubb3c\uac74\uc744 \uace8\ub77c \uc8fc\uc138\uc694.",
+                 .82f,
+                 .85f,
+                 .75f);
+        for (size_t i = 0; i < offers.size(); ++i)
+        {
+            const auto& offer = offers[i];
+            const float y = Shop::RowsY + float(i) * Shop::RowStride;
+            DrawText(213, y + 24, offer.name.c_str(), offer.maximum > 0 ? .96f : .64f, .83f, .65f);
+            const std::wstring line =
+                (Harbor::IsSale(offer.action) ? L"\ubc1b\ub294 \ub3c8 " : L"\ub0b4\ub294 \ub3c8 ") +
+                std::to_wstring(offer.price) + L"\ub0e5 / 1\uac1c    " +
+                (Harbor::IsSale(offer.action) ? L"\ub0b4 \ubcf4\uc720 " : L"\uc7ac\uace0 ") +
+                std::to_wstring(offer.stock);
+            DrawText(213, y + 49, line.c_str(), .72f, .79f, .75f);
+        }
+        if (selected >= 0)
+        {
+            const auto& offer = offers[size_t(selected)];
+            const int quantity = Shop::Quantity(tradeQuantity, offer.maximum);
+            DrawWrapped(740, 260, offer.name, 330, 1);
+            DrawWrapped(740, 357, offer.description, 330, 3);
+            DrawText(740,
+                     435,
+                     (L"\uac70\ub798 \uac00\ub2a5 \uc218\ub7c9: " + std::to_wstring(offer.maximum)).c_str());
+            if (!offer.unavailable.empty())
+            {
+                DrawWrapped(740, 463, offer.unavailable, 330, 2);
+            }
+            const std::wstring total =
+                (Harbor::IsSale(offer.action) ? L"\ubc1b\uc744 \ub3c8: " : L"\ub0bc \ub3c8: ") +
+                std::to_wstring(offer.price * quantity) + L"\ub0e5";
+            DrawText(740, 559, total.c_str(), .98f, .83f, .52f);
+            DrawText(837, 517, std::to_wstring(quantity).c_str());
+            DrawText(760, 517, L"-");
+            DrawText(910, 517, L"+");
+            DrawText(990, 517, L"\ucd5c\ub300");
+            DrawText(752,
+                     611,
+                     tradeConfirmPending  ? L"ENTER / \ud074\ub9ad: \uc815\ub9d0 \ub118\uae30\uae30"
+                     : offer.maximum <= 0 ? L"\uc9c0\uae08\uc740 \uac70\ub798\ud560 \uc218 \uc5c6\uc74c"
+                     : Harbor::IsSale(offer.action)
+                         ? L"ENTER / \ud074\ub9ad: \uc120\ud0dd\ud55c \uc218\ub7c9 \ud310\ub9e4"
+                     : offer.action == Harbor::TradeAction::GiveKey
+                         ? L"ENTER / \ud074\ub9ad: \uc5f4\uc1e0 \ub9e1\uae30\uae30"
+                         : L"ENTER / \ud074\ub9ad: \uc120\ud0dd\ud55c \uc218\ub7c9 \uad6c\ub9e4");
+        }
+        else
+        {
+            DrawWrapped(
+                200,
+                274,
+                L"\uc9c0\uae08 \uc774 \uc0ac\ub78c\uacfc \uac70\ub798\ud560 \uc218 \uc788\ub294 \ubb3c\uac74\uc774 \uc5c6\ub2e4.",
+                470,
+                2);
+        }
+        DrawWrapped(
+            195,
+            657,
+            tradeConfirmPending
+                ? L"\uc774 \uc120\ud0dd\uc740 \uc774\uc57c\uae30\uc758 \uc9c4\ud589\uc744 \ubc14\uafbc\ub2e4. \ud55c \ubc88 \ub354 \ud655\uc778\ud558\uba74 \uc6d0\ubcf8\uc774\ub098 \uc5f4\uc1e0\ub97c \ub118\uae34\ub2e4."
+                : harbor.Trading().message,
+            890,
+            1);
+        DrawText(
+            195,
+            685,
+            L"W/S\u00b7\u2191/\u2193 \uc120\ud0dd   A/D\u00b7\u2190/\u2192 \uc218\ub7c9   ENTER \uad6c\ub9e4\u00b7\ud310\ub9e4   T / ESC \ub2eb\uae30",
+            .72f,
+            .79f,
+            .75f);
+    }
+
     void DrawJournal()
     {
         if (!journalPanel)
@@ -1388,9 +1572,9 @@ namespace
     bool ReserveWorldLabel(float x, float y, float width, float height)
     {
         LabelBounds bounds = {x - width * .5f, y - height * .5f, x + width * .5f, y + height * .5f};
-        bool blocked = paused || helpVisible || harbor.Conversation().Active() || journalPanel ||
-                       statsPanel || bounds.left < 20 || bounds.right > 1000 || bounds.top < 226 ||
-                       bounds.bottom > 540;
+        bool blocked = paused || helpVisible || harbor.Conversation().Active() || harbor.Trading().Active() ||
+                       journalPanel || statsPanel || bounds.left < 20 || bounds.right > 1000 ||
+                       bounds.top < 226 || bounds.bottom > 540;
         for (const auto& other : worldLabelBounds)
         {
             blocked = blocked || (bounds.left < other.right + 4 && bounds.right + 4 > other.left &&
@@ -1460,7 +1644,8 @@ namespace
                 UiPart part = UiPart(actor.variant);
                 if (part == UiPart::QuestMarker)
                 {
-                    if (paused || helpVisible || harbor.Conversation().Active() || journalPanel || statsPanel)
+                    if (paused || helpVisible || harbor.Conversation().Active() ||
+                        harbor.Trading().Active() || journalPanel || statsPanel)
                     {
                         return;
                     }
@@ -1617,6 +1802,9 @@ namespace
                 case UiPart::Stats:
                     DrawStatsPanel();
                     break;
+                case UiPart::Trade:
+                    DrawTradePanel();
+                    break;
                 case UiPart::Journal:
                     DrawJournal();
                     break;
@@ -1632,18 +1820,27 @@ namespace
         renderer->FinishOverlay();
     }
 
-    void ClearGameplayInput()
+    void ClearGameplayInput(bool keepTradeKeys = false)
     {
+        const bool tradeHeld = keys['t'], escapeHeld = keys[27];
         interactionPressed = potionPressed = tradePressed = sitePressed = revealPressed = false;
         attributePressed = 0;
         inventoryTogglePressed = inventoryClosePressed = inventoryUsePressed = inventoryClickPressed = false;
         inventoryMovePressed = 0;
+        tradeClosePressed = tradeConfirmPressed = tradeClickPressed = false;
+        tradeMovePressed = tradeQuantityPressed = 0;
         std::fill(std::begin(keys), std::end(keys), false);
+        if (keepTradeKeys)
+        {
+            keys['t'] = tradeHeld;
+            keys[27] = escapeHeld;
+        }
     }
 
     bool WorldPaused()
     {
-        return paused || helpVisible || statsPanel || harbor.Conversation().Active();
+        return paused || helpVisible || statsPanel || harbor.Conversation().Active() ||
+               harbor.Trading().Active();
     }
 
     void UpdateInventoryInput()
@@ -1684,9 +1881,100 @@ namespace
         inventoryClickPressed = inventoryUsePressed = potionPressed = false;
     }
 
+    void UpdateTradeInput()
+    {
+        Perf::Scope scope(Perf::Cpu::TradeInput);
+        if (tradeClosePressed)
+        {
+            harbor.EndTrade();
+            tradeConfirmPending = false;
+            ClearGameplayInput(true);
+            return;
+        }
+        auto offers = harbor.TradeOffers();
+        auto select = [&](int row)
+        {
+            if (!offers.empty())
+            {
+                tradeSelection = (std::max)(0, (std::min)(row, int(offers.size()) - 1));
+                tradeQuantity = 1;
+                tradeConfirmPending = false;
+            }
+        };
+        if (tradeMovePressed)
+        {
+            select(tradeSelection + tradeMovePressed);
+        }
+        if (tradeClickPressed)
+        {
+            const Vec3 origin = firstLevel.Scene().Get(tradePanelId).WorldPosition();
+            const float x = tradeClickX - origin.x, y = tradeClickY - origin.y;
+            if (Shop::Close.Contains(x, y))
+            {
+                harbor.EndTrade();
+                tradeConfirmPending = false;
+                ClearGameplayInput(true);
+                return;
+            }
+            const int row = Shop::RowAt(x, y, int(offers.size()));
+            if (row >= 0)
+            {
+                select(row);
+            }
+            if (Shop::Less.Contains(x, y))
+            {
+                tradeQuantityPressed = -1;
+            }
+            if (Shop::More.Contains(x, y))
+            {
+                tradeQuantityPressed = 1;
+            }
+            if (Shop::Maximum.Contains(x, y))
+            {
+                tradeQuantityPressed = Shop::QuantityLimit;
+            }
+            if (Shop::Confirm.Contains(x, y))
+            {
+                tradeConfirmPressed = true;
+            }
+        }
+        if (!offers.empty())
+        {
+            tradeSelection = (std::max)(0, (std::min)(tradeSelection, int(offers.size()) - 1));
+            const auto& offer = offers[size_t(tradeSelection)];
+            if (tradeQuantityPressed)
+            {
+                tradeQuantity = Shop::Quantity(tradeQuantity + tradeQuantityPressed, offer.maximum);
+                tradeConfirmPending = false;
+            }
+            tradeQuantity = Shop::Quantity(tradeQuantity, offer.maximum);
+            if (tradeConfirmPressed)
+            {
+                if (offer.maximum > 0 && Harbor::NeedsTradeConfirmation(offer.action) && !tradeConfirmPending)
+                {
+                    tradeConfirmPending = true;
+                }
+                else
+                {
+                    harbor.ExecuteTrade(offer.action, tradeQuantity);
+                    tradeConfirmPending = false;
+                    tradeQuantity = 1;
+                }
+            }
+        }
+        tradeClosePressed = tradeConfirmPressed = tradeClickPressed = false;
+        tradeMovePressed = tradeQuantityPressed = 0;
+    }
+
     void Update(float dt)
     {
         Perf::Scope scope(Perf::Cpu::Update);
+        if (harbor.Trading().Active())
+        {
+            UpdateTradeInput();
+            UpdatePromptActor();
+            return;
+        }
         if (harbor.Conversation().Active())
         {
             if (dialogueClosePressed)
@@ -1787,6 +2075,16 @@ namespace
         {
             harbor.Trade();
             tradePressed = false;
+            if (harbor.Trading().Active())
+            {
+                tradeSelection = 0;
+                tradeQuantity = 1;
+                tradeConfirmPending = false;
+                journalPanel = statsPanel = false;
+                ClearGameplayInput(true);
+                UpdatePromptActor();
+                return;
+            }
         }
         if (sitePressed)
         {
@@ -1892,6 +2190,34 @@ void KeyDown(unsigned char key, int, int)
         return;
     }
     keys[key] = true;
+    if (harbor.Trading().Active())
+    {
+        if (key == 27 || key == 't')
+        {
+            tradeClosePressed = true;
+        }
+        if (key == 'e' || key == 13)
+        {
+            tradeConfirmPressed = true;
+        }
+        if (key == 'w')
+        {
+            tradeMovePressed = -1;
+        }
+        if (key == 's')
+        {
+            tradeMovePressed = 1;
+        }
+        if (key == 'a')
+        {
+            tradeQuantityPressed = -1;
+        }
+        if (key == 'd')
+        {
+            tradeQuantityPressed = 1;
+        }
+        return;
+    }
     if (harbor.Conversation().Active())
     {
         if (key == 27)
@@ -2022,6 +2348,13 @@ void KeyUp(unsigned char key, int, int)
 
 void InventoryMouse(int button, int state, int x, int y)
 {
+    if (harbor.Trading().Active() && button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
+    {
+        tradeClickX = float(x) * ScreenWidth / (std::max)(1, outputWidth);
+        tradeClickY = float(y) * ScreenHeight / (std::max)(1, outputHeight);
+        tradeClickPressed = true;
+        return;
+    }
     if (statsPanel && button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
     {
         inventoryClickX = float(x) * ScreenWidth / (std::max)(1, outputWidth);
@@ -2032,6 +2365,26 @@ void InventoryMouse(int button, int state, int x, int y)
 
 void InventorySpecialKey(int key, int, int)
 {
+    if (harbor.Trading().Active())
+    {
+        if (key == GLUT_KEY_UP)
+        {
+            tradeMovePressed = -1;
+        }
+        if (key == GLUT_KEY_DOWN)
+        {
+            tradeMovePressed = 1;
+        }
+        if (key == GLUT_KEY_LEFT)
+        {
+            tradeQuantityPressed = -1;
+        }
+        if (key == GLUT_KEY_RIGHT)
+        {
+            tradeQuantityPressed = 1;
+        }
+        return;
+    }
     if (!statsPanel)
     {
         return;

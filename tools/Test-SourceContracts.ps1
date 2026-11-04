@@ -3,7 +3,7 @@
 $ErrorActionPreference = 'Stop'
 $sourceCheckRoot = Join-Path (Split-Path $PSScriptRoot -Parent) 'BaseProject_SE/SimpleGame'
 $checkedFiles = @('Actor.h', 'Actor.cpp', 'WorldLayout.h', 'CharacterPresentation.h', 'InventoryPresentation.h', 'LevelOne.h', 'LevelOne.cpp',
-                  'HarborWorld.h', 'HarborWorld.cpp', 'Renderer.h', 'Renderer.cpp', 'RendererModels.cpp', 'RendererBatch.cpp',
+                  'HarborWorld.h', 'HarborWorld.cpp', 'HarborTrade.cpp', 'Trade.h', 'TradePresentation.h', 'Renderer.h', 'Renderer.cpp', 'RendererModels.cpp', 'RendererBatch.cpp',
                   'SimpleGame.cpp', 'Profiler.h', 'Profiler.cpp', 'WorldMonitor.h', 'WorldMonitor.cpp')
 $ignoredTokens = @'
 (?s)/\*.*?\*/|//[^\r\n]*|L?"(?:\\.|[^"\\])*"|L?'(?:\\.|[^'\\])*'
@@ -42,7 +42,8 @@ foreach ($schemaPair in @(@('Cpu', 'CpuNames'), @('Counter', 'CounterNames')))
     $keyCount = [regex]::Matches($arrayBody, '"[a-z_]+"').Count
     if ($enumCount -ne $keyCount) { throw "Profiler enum/key mismatch: $($schemaPair[0])" }
 }
-$worldSource = Get-Content -Raw (Join-Path $sourceCheckRoot 'HarborWorld.cpp')
+$worldSource = (Get-Content -Raw (Join-Path $sourceCheckRoot 'HarborWorld.cpp')) +
+               (Get-Content -Raw (Join-Path $sourceCheckRoot 'HarborTrade.cpp'))
 $definitions = [regex]::Matches($worldSource, '(?m)^\s+(?:void|bool|ActorId|Npc\*|Actor\*|std::string|std::wstring|std::vector<std::wstring>)\s+World::(\w+)\(')
 $duplicateMethods = $definitions | ForEach-Object { $_.Groups[1].Value } | Group-Object | Where-Object Count -gt 1
 if ($duplicateMethods) { throw 'Duplicate World method definition.' }
