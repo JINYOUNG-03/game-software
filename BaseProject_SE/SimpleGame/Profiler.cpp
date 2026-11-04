@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <iomanip>
+#include <iostream>
 #include <locale>
 #include <sstream>
 
@@ -220,7 +221,7 @@ namespace Perf
         std::wcout << L"[profile] log_path=" << m_FileStem << L"0.jsonl (4 rotating segments)\n";
         if (m_FileFailed)
         {
-            std::cerr << "[profile] file_open_failed; console summaries remain enabled\n";
+            std::cerr << "[profile] file_open_failed; JSONL logging unavailable\n";
         }
         GLint timerBits = 0;
         glGetQueryiv(GL_TIMESTAMP, GL_QUERY_COUNTER_BITS, &timerBits);
