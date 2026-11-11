@@ -28,9 +28,13 @@ for (const action of ["BuyPotion", "SellHide", "BuyMeal", "BuyLedger", "SellLedg
     assert(offers.includes("add(TradeAction::" + action) && commit.includes("case TradeAction::" + action));
 for (const condition
          of ["npc.affinity >= -20", "npc.health > 0", "npc.threatTime <= 0", "level.ClearLine(hero, partner)",
-             "WorldLayout::ShareMarket(hero, partner)", "recordChoice == RecordChoice::Undecided", "copied ?",
+             "WorldLayout::ShareMarket(hero, partner)", "recordChoice == RecordChoice::Undecided",
              "Holder(key) == level.Player().Id()"])
     assert(trade.includes(condition), condition);
+const ledgerOffer = section(offers, "const bool authority", "if (Holder(key)");
+assert(ledgerOffer.includes("const bool ready = copied && ledgerAccountsHeard.all()") &&
+       /ready\s*\?\s*\(std::min\)/.test(ledgerOffer) && ledgerOffer.includes(": 0,"),
+       "The ledger offer must stay unavailable until all four accounts are recorded");
 assert(header.includes("action == TradeAction::SellLedger || action == TradeAction::GiveKey"));
 const input = section(game, "void UpdateTradeInput()", "void Update(float dt)");
 assert(input.includes("Harbor::NeedsTradeConfirmation(offer.action) && !tradeConfirmPending"));

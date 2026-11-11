@@ -3,6 +3,7 @@
 #include "LevelOne.h"
 #include "Trade.h"
 #include <array>
+#include <bitset>
 #include <deque>
 
 namespace Harbor
@@ -128,6 +129,7 @@ namespace Harbor
         InspectDrain,
         RecoverEvidence,
         CopyLedger,
+        HearLedgerAccounts,
         DecideLedger,
         OpenSluice,
         ReportSluice,
@@ -152,6 +154,7 @@ namespace Harbor
         DeliverHideJob,
         AcceptQuest,
         CompleteQuest,
+        RecordLedgerAccount,
         ShareKnowledge,
         RecordTrailClue,
         PostTrailNames,
@@ -292,6 +295,7 @@ namespace Harbor
         bool returned = false;
         bool dealSettled = false;
         RecordChoice recordChoice = RecordChoice::Undecided;
+        std::bitset<4> ledgerAccountsHeard;
         size_t trailClues = 0;
         TrailNotice trailNotice = TrailNotice::None;
         int questStep = TakeHideJob;
@@ -323,6 +327,9 @@ namespace Harbor
         int VillageMood(int village, const std::vector<const Npc*>& npcs) const;
         void UpdateVillageStatistics(float dt, const std::vector<Npc*>& npcs);
         void ChooseRecord(RecordChoice choice);
+        size_t NextLedgerAccount() const;
+        size_t UnheardLedgerAccount(const Npc* npc) const;
+        void BeginLedgerAccount(size_t index, const Npc* npc);
         void BeginHideJob();
         void BeginDialogue(Npc* npc);
         void CompleteFirstQuest();

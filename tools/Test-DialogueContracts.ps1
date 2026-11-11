@@ -35,7 +35,7 @@ $complete = World-Method 'CompleteFirstQuest' 'ChooseDialogue'
 if (-not $complete.Contains('returned || questStep != ReportSluice') -or
     [regex]::Matches($world, 'level.stats.GainExperience\(120\)').Count -ne 1)
 { throw 'First quest reward is not guarded/centralized.' }
-$hideJob = World-Method 'BeginHideJob' 'BeginDialogue'
+$hideJob = World-Method 'BeginHideJob' 'BeginLedgerAccount'
 foreach ($forbidden in @('hideJob =', 'level.stats.hides -=', 'level.stats.coins +='))
 {
     if ($hideJob.Contains("$forbidden ")) { throw "Reading the hide order changes game state: $forbidden" }
@@ -67,6 +67,24 @@ foreach ($contract in @('DialogueChoice', 'DialoguePage', 'DialogueState', 'cons
 {
     if (-not $header.Contains($contract)) { throw "Missing dialogue data: $contract" }
 }
+
+$accounts = [regex]::Match($world, '(?s)constexpr LedgerAccount\s+LedgerAccounts\s*\[\]\s*=\s*\{(.*?)\};').Groups[1].Value
+$speakers = [regex]::Matches($accounts, '\{\s*(\d+),').ForEach({ $_.Groups[1].Value }) -join ','
+if ($speakers -ne '1,4,2,3') { throw 'Ledger inquiry must cover the family, guarantor, investigator and broker.' }
+$accountDialogue = World-Method 'BeginLedgerAccount' 'BeginDialogue'
+if (-not $accountDialogue.Contains('{account.question, 2, DialogueEffect::None}') -or
+    $accountDialogue.Contains('ledgerAccountsHeard.set(') -or
+    -not $choose.Contains('selected.effect == DialogueEffect::RecordLedgerAccount && questStep == HearLedgerAccounts') -or
+    [regex]::Matches($world, 'ledgerAccountsHeard\.set\(index\)').Count -ne 1)
+{ throw 'Hearing or leaving a dialogue cannot record an account before an explicit choice.' }
+if (-not $site.Contains('questStep == HearLedgerAccounts') -or
+    -not $world.Contains('!CanHearFrom(Person(LedgerAccounts[index].person))') -or
+    -not $world.Contains('lines.push_back(LedgerAccounts[i].journal)') -or
+    -not $talk.Contains('level.Scene().Find(ObjectiveTarget())'))
+{ throw 'An unavailable speaker needs a board fallback and the journal must retain recorded accounts.' }
+if (-not (World-Method 'Reveal' 'Log').Contains('else if (!ledgerAccountsHeard.all())') -or
+    -not (World-Method 'ChooseRecord' 'Initialize').Contains('|| !ledgerAccountsHeard.all()'))
+{ throw 'Public disclosure and record disposition require all four accounts.' }
 
 $stops = [regex]::Match($world, '(?s)constexpr TrailStop\s+TrailStops\[\]\s*=\s*\{(.*?)\};').Groups[1].Value
 $trailSites = [regex]::Matches($stops, '\{\s*(\d+),').ForEach({ $_.Groups[1].Value }) -join ','
@@ -113,6 +131,7 @@ foreach ($source in @($game, $world))
     e_opens_without_quest_commit = $true; explicit_accept_and_reward = $true
     contextual_main_npcs = 5; dialogue_is_actor_panel = $true
     hide_order_is_explicit = $true; drain_discovery_is_separate = $true
+    ledger_accounts = 4; ledger_disposition_requires_accounts = $true
     trail_boards_in_order = 4; trail_notice_choices = 2
     game_build_performed = $false; game_execution_performed = $false
 } | ConvertTo-Json

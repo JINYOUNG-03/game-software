@@ -121,17 +121,20 @@ namespace Harbor
         {
             const bool authority = npc->job == Job::Guard;
             const int price = authority ? 30 : 40;
+            const bool ready = copied && ledgerAccountsHeard.all();
             add(TradeAction::SellLedger,
                 authority ? L"\uc7a5\ubd80\ub97c \uad00\uccad\uc5d0 \ub9e1\uae30\uae30"
                           : L"\uc7a5\ubd80 \uc6d0\ubcf8 \ud310\ub9e4",
                 authority
-                    ? L"\uad00\uccad\uc758 \uc870\uc0ac\ub97c \ud0dd\ud55c\ub2e4. \uc6d0\ubcf8\uc744 \ub118\uae30\uba74 \ud604\uc7a5\uc774 \ud1b5\uc81c\ub418\uace0 \uc774 \uc120\ud0dd\uc774 \ud655\uc815\ub41c\ub2e4."
-                    : L"\uc911\uac1c\uc0c1\uc5d0\uac8c \uc6d0\ubcf8\uc744 \ud310\ub2e4. \uc0ac\uc801 \uac70\ub798\ub85c \ub118\uc5b4\uac00\uba70 \uc774 \uc120\ud0dd\uc774 \ud655\uc815\ub41c\ub2e4.",
+                    ? L"\uad00\uccad\uc774 \uc6d0\ubcf8\uc744 \ub300\uc870\ud558\uace0 \ud604\uc7a5\uc744 \ud1b5\uc81c\ud55c\ub2e4. \uacf5\uac1c \uc2dc\uc810\uc740 \uad00\uccad\uc774 \uc815\ud55c\ub2e4."
+                    : L"\uc6d0\ubcf8\uc740 \ubd80\ub450 \uc0c1\ud68c\ub85c \uac04\ub2e4. \uc0c1\ud68c\uac00 \uc625\ubd84\uc5d0\uac8c \uc61b \uc57d\uac12\uc744 \ubb3c\uc744 \uc218 \uc788\ub2e4.",
                 price,
                 1,
-                copied ? (std::min)(1, TransferLimit(npc->coins, 1, price, 0, stats.coins)) : 0,
+                ready ? (std::min)(1, TransferLimit(npc->coins, 1, price, 0, stats.coins)) : 0,
                 !copied
                     ? L"\uba3c\uc800 \uc7a5\ud130 \uac8c\uc2dc\ud310\uc5d0\uc11c \uc7a5\ubd80 \uc0ac\ubcf8\uc744 \ub0a8\uae30\uc790."
+                : !ledgerAccountsHeard.all()
+                    ? L"\uae08\ube5b \ud45c\uc2dc\ub97c \ub530\ub77c \uc7a5\ubd80\uc5d0 \uc5bd\ud78c \ub124 \uc0ac\ub78c\uc758 \uc0ac\uc815\uc744 \uba3c\uc800 \ub4e3\uc790."
                     : L"\uc0c1\ub300\uc758 \ub3c8\uc774\ub098 \uac70\ub798\ud560 \uc5ec\uc720\uac00 \ubd80\uc871\ud558\ub2e4.");
         }
         if (Holder(key) == level.Player().Id() && (npc->job == Job::Engineer || npc->job == Job::Apprentice))

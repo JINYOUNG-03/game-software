@@ -34,6 +34,74 @@ namespace Harbor
         constexpr int OpeningHuntSite = 9;
         constexpr float OpeningHuntRadius = 15.0f;
 
+        struct LedgerAccount
+        {
+            int person;
+            const wchar_t* name;
+            const wchar_t* title;
+            const wchar_t* opening;
+            const wchar_t* context;
+            const wchar_t* question;
+            const wchar_t* answer;
+            const wchar_t* journal;
+            const wchar_t* note;
+        };
+
+        constexpr LedgerAccount
+            LedgerAccounts
+                [] =
+                    {
+                        {
+                            1,
+                            L"\ub3c4\uc724",
+                            L"\uc0ac\ub77c\uc9c4 \ub3d9\uc0dd",
+                            L"\uc5ec\uae30 \ubd10. '\ub3c4\ud558, \uc57d \ub450 \ucca9, \ubcf4\uc99d\uc778 \uc625\ubd84.' \ub3c4\ud558\ub294 \ub0b4 \ub3d9\uc0dd\uc774\uc57c. \uc5f4\ub450 \ud574 \uc804 \uc57d\uc744 \ub098\ub974\ub7ec \ub098\uac04 \ub4a4\ub85c \ub3cc\uc544\uc624\uc9c0 \uc54a\uc558\uc5b4.",
+                            L"\uad00\uccad\uc5d0\uc120 \ubc30\uac00 \uac00\ub77c\uc549\uc558\ub2e4\uace0 \ud588\ub294\ub370 \uc2dc\uc2e0\ub3c4 \uc720\ud488\ub3c4 \uc5c6\uc5c8\uc5b4. \uc774 \ud55c \uc904\uc774\ub77c\ub3c4 \uc7a5\ud130\uc5d0 \uac78\uba74, \uadf8\ub0a0 \ub3c4\ud558\ub97c \ubcf8 \uc0ac\ub78c\uc774 \ub098\uc124\uc9c0 \ubab0\ub77c.",
+                            L"\uadf8\ub0a0 \ubcf8 \uc0ac\ub78c\uc744 \ucc3e\uc73c\ub824\uba74 \uc774\ub984\uc774 \ud544\uc694\ud55c \uac70\uc57c?",
+                            L"\uc751. \ubc30\uc5d0 \ud0d4\ub294\uc9c0, \uc911\uac04\uc5d0 \uc218\ub808\ub85c \uac08\uc544\ud0d4\ub294\uc9c0\ubd80\ud130 \uc54c\uace0 \uc2f6\uc5b4. \ub2e4\ub9cc \uc606\uc5d0 \uc801\ud78c \ubcf4\uc99d\uc778 \uc774\ub984\uae4c\uc9c0 \ub0b4\uac78\uba74 \uadf8 \uc9d1\uc5d0\ub3c4 \uc0ac\ub78c\uc774 \ucc3e\uc544\uac00\uaca0\uc9c0.",
+                            L"\ub3c4\uc724 \u00b7 \ub3d9\uc0dd \ub3c4\ud558\ub97c \ubcf8 \uc0ac\ub78c\uc744 \ucc3e\uc73c\ub824\uba74 \uc774\ub984\uc744 \uc54c\ub824\uc57c \ud55c\ub2e4.",
+                            L"\ub3d9\uc0dd \ub3c4\ud558\ub294 \uc57d\uc744 \ub098\ub974\ub7ec \ub098\uac14\ub2e4 \ub3cc\uc544\uc624\uc9c0 \uc54a\uc558\ub2e4. \uadf8\ub0a0 \ud568\uaed8 \ub098\uac14\ub358 \uc0ac\ub78c\uc774\ub77c\ub3c4 \ucc3e\uace0 \uc2f6\ub2e4.",
+                        },
+                        {
+                            4,
+                            L"\ud558\ub78c",
+                            L"\ubcf4\uc99d\uc778\uc758 \uc774\ub984",
+                            L"\uc625\ubd84\uc740 \uc6b0\ub9ac \uc5b4\uba38\ub2c8\uc57c. \uc0ac\ub78c\ub4e4\uc774 \uadf8 \uc774\ub984\uc744 \ubcf4\uace0 \uc57d\uc744 \ube7c\ub3cc\ub9b0 \uc0ac\ub78c\uc774\ub77c\uace0 \ud560\uae4c \ubd10 \uac81\ub098.",
+                            L"\uadf8\ub54c \uad00\ubb38\uc774 \ub2eb\ud614\uc5b4. \uc57d\uc744 \uaebc\ub0b4 \uc8fc\ub824\uba74 \uac12\uc774 \ub5bc\uc774\uac70\ub098 \uc9d0\uc774 \uc5c6\uc5b4\uc9c8 \ub54c \ub300\uc2e0 \ucc45\uc784\uc9c8 \uc0ac\ub78c\uc774 \ud544\uc694\ud588\ub300. \uc5b4\uba38\ub2c8\ub294 \uc9d1\uc9d1\ub9c8\ub2e4 \uc553\ub294 \uc560\ub4e4\uc774 \uc788\uc5b4\uc11c \uc774\ub984\uc744 \uc368 \uc92c\uace0.",
+                            L"\uadf8\ub7fc \uc774\ub984\uc774 \uc54c\ub824\uc9c0\uba74 \ub124 \uc5b4\uba38\ub2c8\ud55c\ud14c \ubb34\uc2a8 \uc77c\uc774 \uc0dd\uaca8?",
+                            L"\uc9c0\ub09c\ub2ec\uc5d0\ub3c4 \ubc30 \uc598\uae30\uac00 \ub098\uc624\uc790 \uc774\uc6c3\uc774 \uc6b0\ub9ac \uc9d1\uc5d0 \uc640\uc11c \uc57d\uc744 \uc5b4\ub514 \uc228\uacbc\ub0d0\uace0 \ubb3c\uc5c8\uc5b4. \uc7a5\ubd80\uc5d0 \uc774\ub984\uae4c\uc9c0 \ubcf4\uc774\uba74 \uc774\ubc88\uc5d4 \uc5b4\uba38\ub2c8 \ub9d0\ubcf4\ub2e4 \uadf8 \uc885\uc774\ub97c \ubbff\uaca0\uc9c0.",
+                            L"\ud558\ub78c \u00b7 \uc57d\uac12\uc744 \ubcf4\uc99d\ud55c \uc5b4\uba38\ub2c8 \uc625\ubd84\uc774 \uc57d\uc744 \ube7c\ub3cc\ub838\ub2e4\uace0 \ubab0\ub9b4 \uc218 \uc788\ub2e4.",
+                            L"\uc5b4\uba38\ub2c8 \uc625\ubd84\uc740 \uac07\ud78c \uc9d1\uc5d0 \uc57d\uc744 \ubcf4\ub0b4\ub824\uace0 \ubcf4\uc99d\uc744 \uc130\ub2e4. \uc774\uc6c3\uc740 \ubc30 \uc774\uc57c\uae30\ub9cc \ub098\uc640\ub3c4 \uc6b0\ub9ac \uc9d1\uc774 \uc57d\uc744 \uc228\uacbc\ub2e4\uace0 \uc758\uc2ec\ud55c\ub2e4.",
+                        },
+                        {
+                            2,
+                            L"\uc138\ub77c\ud2b8",
+                            L"\uad00\uccad\uc774 \ubd09\uc778\ud55c \uae30\ub85d",
+                            L"\uc774\ub984 \uc606\uc5d0 \uc801\ud78c \uac74 \uc57d\uc744 \ub0b4\uc900 \uae30\ub85d\uc774\uc624. \uc57d\uc744 \ub204\uac00 \ubc1b\uc558\ub294\uc9c0, \uc5b4\ub514\uc11c \ube7c\ub3cc\ub838\ub294\uc9c0\uae4c\uc9c0 \uc774 \uc7a5\ubd80 \ud55c \uad8c\uc73c\ub85c \uc54c \uc218\ub294 \uc5c6\uc18c.",
+                            L"\uadf8\ub54c \uc57d\uc744 \ub0b4\ubcf4\ub0b4\uc9c0 \ub9d0\ub77c\uace0 \ud55c \uac83\ub3c4 \uad00\uccad\uc774\uc624. \uc6b0\ub9ac \ucabd \ubb38\uc11c\uae4c\uc9c0 \ucc3d\uace0 \ucd9c\uc785\ubd80\uc640 \ub300\uc870\ud574\uc57c, \ub204\uac00 \ub9c9\uc558\uace0 \ub204\uac00 \uae38\uc744 \ub0b4\uc92c\ub294\uc9c0 \uc54c \uc218 \uc788\uc18c.",
+                            L"\uad00\uccad\uc5d0 \ub9e1\uae30\uba74 \uac00\uc871\ub4e4\ub3c4 \uc870\uc0ac \uacb0\uacfc\ub97c \ub4e4\uc744 \uc218 \uc788\uc18c?",
+                            L"\uc6d0\ubcf8\uacfc \ud604\uc7a5\ubd80\ud130 \uc9c0\ud0a4\uaca0\uc18c. \uc870\uc0ac\ud558\ub294 \ub3d9\uc548 \uac00\uc871\ub4e4\ub3c4 \ud604\uc7a5\uc5d0 \ubabb \ub4e4\uc5b4\uc624\uace0 \uae30\ub85d\uc744 \uc5b8\uc81c \ud480\uc9c0\ub3c4 \uc7a5\ub2f4 \ubabb \ud558\uc624. \uadf8 \uc870\uac74\uc73c\ub85c \uc6d0\ubcf8\uc744 \ub9e1\uae30\uba74 30\ub0e5\uc744 \ub4dc\ub9ac\uaca0\uc18c.",
+                            L"\uc138\ub77c\ud2b8 \u00b7 \uad00\uccad\uc740 \uc6d0\ubcf8\uc744 \ub300\uc870\ud560 \uc218 \uc788\uc9c0\ub9cc \uac00\uc871\uc758 \uc811\uadfc\uacfc \uacf5\uac1c \uc2dc\uc810\uc744 \ud1b5\uc81c\ud55c\ub2e4.",
+                            L"\uc7a5\ubd80\uc640 \ucc3d\uace0 \ucd9c\uc785\ubd80, \uad00\ubb38\uc758 \uae08\uc9c0 \uba85\ub839\uc744 \ub300\uc870\ud560 \uac83. \uc6d0\ubcf8\uc744 \uc811\uc218\ud558\uba74 \uc870\uc0ac \uae30\uac04\uc5d0\ub294 \ud604\uc7a5\uc744 \ud1b5\uc81c\ud55c\ub2e4.",
+                        },
+                        {
+                            3,
+                            L"\uc774\uc548",
+                            L"\uc6d0\ubcf8\uc744 \uc0ac\ub824\ub294 \uc0ac\ub78c",
+                            L"\ubd80\ub450\uc5d0 \uadf8\ub54c \uc57d\uc744 \ub314\ub358 \uc0c1\ud68c \uc0ac\ub78c\uc774 \uc640 \uc788\uc5b4. \uc790\uae30\ub124 \ucc3d\uace0\uc5d0\uc11c \ub098\uac04 \ubb3c\uac74\uc744 \ub204\uac00 \ubc1b\uc544 \uac14\ub294\uc9c0 \uc54c\uace0 \uc2f6\ub300.",
+                            L"\uc6d0\ubcf8\uc744 \uad6c\ud574 \uc8fc\uba74 \uac12\uc744 \uce58\ub974\uaca0\ub2e4\ub294\uad70. \ub3c8\uc774 \uc788\uc73c\uba74 \uc624\ub298 \ub2f9\uc7a5 \uc57d\ub3c4 \uc300\ub3c4 \uc0b4 \uc218 \uc788\uc5b4. \uadf8\ub798\uc11c \ub0b4\uac00 \ub124\uac8c 40\ub0e5\uc744 \ubd80\ub974\ub294 \uac70\uc57c.",
+                            L"\uadf8 \uc0c1\ud68c\uac00 \uc774\ub984\uc744 \uc54c\uba74 \ubb58 \ud560 \uac74\ub370?",
+                            L"\ubc00\ub9b0 \uc57d\uac12\uc744 \ubc1b\uaca0\ub2e4\uace0 \ubcf4\uc99d\uc778 \uc9d1\ubd80\ud130 \ucc3e\uc544\uac08 \uc218\ub3c4 \uc788\uc9c0. \ub0b4\uac8c \uc57d\uc18d\ud55c \uac74 \ub3c8\ubfd0\uc774\uc57c. \ub124\uac00 \uc0ac\ubcf8\uc744 \uac16\uace0 \uc788\uc5b4\ub3c4, \uc6d0\ubcf8\uc744 \uc0b0 \uc0ac\ub78c\uc774 \uadf8 \uc774\ub984\uc73c\ub85c \ud558\ub294 \uc77c\uae4c\uc9c0 \ub9c9\uc9c4 \ubabb\ud574.",
+                            L"\uc774\uc548 \u00b7 40\ub0e5\uc740 \ub2f9\uc7a5 \uc4f8 \uc218 \uc788\uc9c0\ub9cc \uc0c1\ud68c\uac00 \ubcf4\uc99d\uc778\uc744 \uc555\ubc15\ud560 \uc218\ub3c4 \uc788\ub2e4.",
+                            L"\ubd80\ub450 \uc0c1\ud68c\uac00 \uc57d\uc744 \ubc1b\uc544 \uac04 \uc0ac\ub78c\uacfc \ubcf4\uc99d\uc778\uc744 \ucc3e\uace0 \uc788\ub2e4. \uc6d0\ubcf8\uc744 \ud655\ubcf4\ud558\uba74 \ub3c8\uc744 \ubc1b\uc744 \uc218 \uc788\ub2e4.",
+                        },
+        };
+
+        bool CanHearFrom(const Npc* npc)
+        {
+            return npc && npc->IsActive() && npc->health > 0 && npc->affinity >= -20;
+        }
+
         struct TrailStop
         {
             int site;
@@ -288,6 +356,39 @@ namespace Harbor
         return nullptr;
     }
 
+    size_t World::NextLedgerAccount() const
+    {
+        static_assert(std::size(LedgerAccounts) == decltype(ledgerAccountsHeard){}.size());
+        for (size_t i = 0; i < ledgerAccountsHeard.size(); ++i)
+        {
+            if (!ledgerAccountsHeard[i])
+            {
+                return i;
+            }
+        }
+        return ledgerAccountsHeard.size();
+    }
+
+    size_t World::UnheardLedgerAccount(const Npc* npc) const
+    {
+        if (!npc)
+        {
+            const size_t index = NextLedgerAccount();
+            return index < std::size(LedgerAccounts) && !CanHearFrom(Person(LedgerAccounts[index].person))
+                       ? index
+                       : std::size(LedgerAccounts);
+        }
+
+        for (size_t i = 0; i < std::size(LedgerAccounts); ++i)
+        {
+            if (npc->variant == LedgerAccounts[i].person && !ledgerAccountsHeard[i] && CanHearFrom(npc))
+            {
+                return i;
+            }
+        }
+        return std::size(LedgerAccounts);
+    }
+
     void World::ReactToPlayer(const std::wstring& result)
     {
         consequence = result;
@@ -314,6 +415,7 @@ namespace Harbor
                          : !drainInspected                         ? InspectDrain
                          : !recoveredLedger || !recoveredKey       ? RecoverEvidence
                          : !copied                                 ? CopyLedger
+                         : !ledgerAccountsHeard.all()              ? HearLedgerAccounts
                          : recordChoice == RecordChoice::Undecided ? DecideLedger
                          : !gateOpen                               ? OpenSluice
                          : !returned                               ? ReportSluice
@@ -339,6 +441,12 @@ namespace Harbor
             return L"\uac00\uc8fd " + std::to_wstring(level.stats.hides) + L"/" + std::to_wstring(HideOrder) +
                    L" \u00b7 SPACE \uacf5\uaca9 / E \uc90d\uae30";
         }
+        if (questStep == HearLedgerAccounts)
+        {
+            const auto& account = LedgerAccounts[NextLedgerAccount()];
+            return L"\uc99d\uc5b8 " + std::to_wstring(ledgerAccountsHeard.count()) + L"/" +
+                   std::to_wstring(ledgerAccountsHeard.size()) + L" \u00b7 " + account.title;
+        }
         const wchar_t* goals[] = {
             L"[F] \uc7a5\ud130 \uac8c\uc2dc\ud310\uc5d0\uc11c \uac00\uc8fd \uc77c\uac10 \ubc1b\uae30",
             nullptr,
@@ -347,6 +455,7 @@ namespace Harbor
             L"[F] \ubb34\ub108\uc9c4 \ubc30\uc218\ub85c\uc5d0\uc11c \ub3cc \uc544\ub798 \uc0b4\ud53c\uae30",
             L"[F] \ubc30\uc218\ub85c\uc5d0\uc11c \uc7a5\ubd80\uc640 \uc5f4\uc1e0 \ucc59\uae30\uae30",
             L"[F] \uc7a5\ud130 \uac8c\uc2dc\ud310\uc5d0 \uc7a5\ubd80 \uc0ac\ubcf8 \ub0a8\uae30\uae30",
+            nullptr,
             L"\uc7a5\ubd80\ub97c \ub204\uad6c\uc5d0\uac8c \ub9e1\uae38\uc9c0 \uacb0\uc815\ud558\uae30",
             L"[F] \uc61b \uc218\ubb38\uc744 \uc5f4\uc5b4 \ubb3c\uae38 \ub0b4\uae30",
             L"\ubbf8\ub77c\uc5d0\uac8c \ub3cc\uc544\uac00 \uc77c \ub9c8\uce5c \uac83 \uc54c\ub9ac\uae30",
@@ -360,6 +469,10 @@ namespace Harbor
         if (questStep == GatherHides)
         {
             return L"\uc0ac\uc2b4\uc744 \uc4f0\ub7ec\ub728\ub9b0 \ub4a4 E\ub85c \uac00\uc8fd\uc744 \uc8fc\uc6cc\uc57c \uc218\ub7c9\uc774 \uc624\ub978\ub2e4. \ub2e4\ub978 \uacf3\uc5d0\uc11c \uad6c\ud55c \uac00\uc8fd\ub3c4 \uc4f8 \uc218 \uc788\ub2e4.";
+        }
+        if (questStep == HearLedgerAccounts)
+        {
+            return L"\ub3c4\uc724\u00b7\ud558\ub78c\u00b7\uc138\ub77c\ud2b8\u00b7\uc774\uc548\uc5d0\uac8c \ubb3c\uc5b4\ubcf4\uc790. \ub4e4\uc740 \ub0b4\uc6a9\uc740 J \uc77c\uc9c0\uc5d0\uc11c \ub2e4\uc2dc \ubcfc \uc218 \uc788\ub2e4.";
         }
         if (questStep == DecideLedger)
         {
@@ -424,11 +537,16 @@ namespace Harbor
         if (questStep == MeetMira || questStep == ReportSluice)
         {
             const Npc* mira = Person(0);
-            return mira && mira->health > 0 && mira->affinity >= -20 ? mira->Id() : sites[2];
+            return CanHearFrom(mira) ? mira->Id() : sites[2];
         }
         if (questStep == RecoverEvidence)
         {
             return artifactTarget(recoveredLedger ? key : ledger);
+        }
+        if (questStep == HearLedgerAccounts)
+        {
+            const Npc* npc = Person(LedgerAccounts[NextLedgerAccount()].person);
+            return CanHearFrom(npc) ? npc->Id() : sites[2];
         }
         if (questStep == CopyLedger || questStep == DecideLedger)
         {
@@ -478,7 +596,8 @@ namespace Harbor
             L"\uc57d \uc0c1\uc790\ub294 \ubb36\uc5c8\uc9c0\ub9cc \ub0ae\uc740 \uace8\ubaa9\uc73c\ub85c\ub294 \ub4e4\uc77c \uc218 \uc5c6\ub2e4. \uace8\ubaa9\uc744 \uc0b4\ud53c\ub358 \ubbf8\ub77c\uac00 \ub3c4\uc6c0\uc744 \uad6c\ud558\uace0 \uc788\ub2e4.",
             L"\ubbf8\ub77c\uac00 \ubb34\ub108\uc9c4 \ubc30\uc218\ub85c \uc544\ub798\uc5d0 \ubb54\uac00 \uac78\ub838\ub2e4\uace0 \ud588\ub2e4. \ub3cc \uc0ac\uc774\ub97c \uc0b4\ud3b4 \ubb3c\uae38\uc744 \ub9c9\uc740 \ubb3c\uac74\uc744 \ud655\uc778\ud558\uc790.",
             L"\ubbf8\ub77c\ub294 \ubc30\uc218\ub85c\ub97c \ubc1b\uce58\ub294 \uc911\uc774\ub2e4. \ubb3c\uc5d0 \uc7a0\uae30\uae30 \uc804\uc5d0 \uc7a5\ubd80\uc640 \uc218\ubb38 \uc5f4\uc1e0\ub97c \ucc3e\uc544 \uc8fc\uc790.",
-            L"\uc7a5\ubd80\uc5d0\ub294 \uc2e4\uc885\ub41c \uc0ac\ub78c\ub4e4\uc758 \uc774\ub984\uc774 \uc788\ub2e4. \uc6d0\ubcf8\uc744 \ub118\uae30\uae30 \uc804\uc5d0 \uc99d\uac70\ub97c \ub0a8\uaca8 \ub450\uc790.",
+            L"\uc774\ub984, \ubc1b\uc740 \uc57d\uc758 \uc591, \ubcf4\uc99d\uc778\uc774 \uc801\ud600 \uc788\ub2e4. \uc6d0\ubcf8\uc744 \ub118\uae30\uae30 \uc804\uc5d0 \uc0ac\ubcf8\ubd80\ud130 \ub9cc\ub4e4\uc5b4 \ub450\uc790.",
+            L"\uac19\uc740 \uc774\ub984\uc774\ub77c\ub3c4 \uc0ac\ub78c\ub9c8\ub2e4 \uae30\uc5b5\ud558\ub294 \uc77c\uc774 \ub2e4\ub974\ub2e4. \uae08\ube5b \ud45c\uc2dc\ub97c \ub530\ub77c\uac00 \uc0ac\uc5f0\uc744 \ub4e3\uace0 \uc77c\uc9c0\uc5d0 \ub0a8\uae30\uc790.",
             L"\uac00\uc871\ub4e4\uc5d0\uac8c \uc54c\ub9b4\uc9c0, \uad00\uccad\uc758 \uc870\uc0ac\ub97c \ubbff\uc744\uc9c0, \ub3c8\uc744 \ubc1b\uc744\uc9c0 \uc9c1\uc811 \uacb0\uc815\ud574\uc57c \ud55c\ub2e4.",
             L"\uc5f4\uc1e0\ub85c \uc61b \uc218\ubb38\uc744 \uc5f4\uba74 \uc7a0\uae34 \uace8\ubaa9\uc744 \ub2e4\uc2dc \uae38\ub85c \uc4f8 \uc218 \uc788\ub2e4.",
             L"\ubb3c\uae38\uc774 \uc5f4\ub838\ub2e4. \ubbf8\ub77c\uc5d0\uac8c \ub3cc\uc544\uac00 \ubcf4\uc0c1\uc744 \ubc1b\uace0 \ub9c8\uc744\uc758 \ubcc0\ud654\ub97c \ud655\uc778\ud558\uc790."};
@@ -540,8 +659,20 @@ namespace Harbor
         else if (questStep == CopyLedger)
         {
             guide.interactionKey = 'F';
-            guide.ready = distance < 1.8f;
+            guide.ready =
+                distance < 1.8f && level.ClearLine(level.Player().WorldPosition(), target->WorldPosition());
             guide.action = L"[F] \uac8c\uc2dc\ud310\uc5d0\uc11c \uc7a5\ubd80 \uc0ac\ubcf8 \ub9cc\ub4e4\uae30";
+        }
+        else if (questStep == HearLedgerAccounts)
+        {
+            const auto& account = LedgerAccounts[NextLedgerAccount()];
+            guide.interactionKey = person ? 'E' : 'F';
+            guide.ready = distance < (person ? 1.5f : 1.8f) &&
+                          level.ClearLine(level.Player().WorldPosition(), target->WorldPosition());
+            guide.action =
+                Objective() +
+                (person ? L" \u00b7 [E] " + std::wstring(account.name) + L"\uc5d0\uac8c \ub4e3\uae30"
+                        : L" \u00b7 [F] \ub0a8\uaca8\uc9c4 \uba54\ubaa8 \uc77d\uae30");
         }
         else if (questStep == DecideLedger)
         {
@@ -564,7 +695,7 @@ namespace Harbor
 
     void World::ChooseRecord(RecordChoice choice)
     {
-        if (recordChoice != RecordChoice::Undecided)
+        if (recordChoice != RecordChoice::Undecided || !ledgerAccountsHeard.all())
         {
             return;
         }
@@ -614,6 +745,15 @@ namespace Harbor
             ReactToPlayer(
                 L"\uc7a5\ubd80 \ud310\ub9e4 \u2192 40\ub0e5\uc744 \ubc1b\uace0 \uc774\uc548\uc774 \ubd80\ub450\ub85c \uac04\ub2e4. \uc8fc\ubbfc\ub4e4\uc740 \uae30\ub85d\uc744 \ub4e3\uc9c0 \ubabb\ud55c\ub2e4.");
         }
+        if (Npc* haram = Person(4))
+        {
+            haram->line =
+                choice == RecordChoice::Public
+                    ? L"\ub3c4\ud558\ub97c \ubd24\ub2e4\ub294 \uc0ac\ub78c\uc774 \ub3c4\uc724\uc744 \ucc3e\uc544\uc654\ub300. \uc6b0\ub9ac \uc9d1\uc5d4 \uc5b4\uba38\ub2c8\uac00 \uc57d\uc744 \uc5b4\ub514 \uc228\uacbc\ub0d0\ub294 \uc0ac\ub78c\uc774 \uc654\uace0. \uc7a5\ubd80\uc5d0 \uc801\ud78c \uac8c \ub2e4 \uac19\uc740 \ub73b\uc740 \uc544\ub2cc\ub370."
+                : choice == RecordChoice::Authority
+                    ? L"\uc5b4\uba38\ub2c8 \uc774\ub984\uc740 \uc7a5\ud130\uc5d0 \uc548 \ubd99\uc5c8\uc5b4. \ud55c\uc228 \ub3cc\ub838\ub294\ub370, \uad00\uccad\uc5d0\uc11c \ub530\ub85c \ubd80\ub97c\uae4c \ubd10 \uc5b4\uba38\ub2c8\uac00 \uc800\ub141\uc5d0\ub3c4 \ubb38\uc18c\ub9ac\ub97c \ub4e3\uace0 \uc788\uc5b4."
+                    : L"\uc7a5\ud130\uc5d0\uc120 \uc870\uc6a9\ud574. \uadf8\ub7f0\ub370 \ubd80\ub450 \uc0c1\ud68c\uac00 \ubcf4\uc99d\uc778 \uc9d1\uc744 \ucc3e\uae30 \uc2dc\uc791\ud558\uba74, \uc6b0\ub9ac \uc5b4\uba38\ub2c8\ub3c4 \uc57d\uac12\uc744 \ub0b4\ub193\uc73c\ub77c\uace0 \ubd88\ub824 \uac00\uaca0\uc9c0.";
+        }
     }
 
     void World::Initialize()
@@ -638,6 +778,7 @@ namespace Harbor
         EndDialogue();
         EndTrade();
         recordChoice = RecordChoice::Undecided;
+        ledgerAccountsHeard.reset();
         trailClues = 0;
         trailNotice = TrailNotice::None;
         questStep = TakeHideJob;
@@ -1366,8 +1507,11 @@ namespace Harbor
         if (Npc* apprentice = Person(4))
         {
             apprentice->knowledge |= Knowledge::Plans;
-            apprentice->line =
-                L"\ubb3c\uae38\uc774 \uc5f4\ub838\ub124! \uc774\uc81c \uc9d0\uafbc\ub4e4\uc774 \ubb3c\uc5d0 \uc816\uc744 \uac71\uc815 \uc5c6\uc774 \uc774 \uace8\ubaa9\uc73c\ub85c \ub2e4\ub2d0 \uc218 \uc788\uaca0\ub2e4.";
+            if (recordChoice == RecordChoice::Undecided)
+            {
+                apprentice->line =
+                    L"\ubb3c\uae38\uc774 \uc5f4\ub838\ub124! \uc774\uc81c \uc9d0\uafbc\ub4e4\uc774 \ubb3c\uc5d0 \uc816\uc744 \uac71\uc815 \uc5c6\uc774 \uc774 \uace8\ubaa9\uc73c\ub85c \ub2e4\ub2d0 \uc218 \uc788\uaca0\ub2e4.";
+            }
         }
         ReactToPlayer(
             L"\uc218\ubb38 \uac1c\ubc29 \u2192 \uc7a0\uaca8 \uc788\ub358 \uace8\ubaa9\uc73c\ub85c \ub2e4\uc2dc \uc9c0\ub098\ub2e4\ub2d0 \uc218 \uc788\ub2e4.");
@@ -1966,6 +2110,17 @@ namespace Harbor
         {
             CompleteFirstQuest();
         }
+        else if (selected.effect == DialogueEffect::RecordLedgerAccount && questStep == HearLedgerAccounts &&
+                 (person || dialogue.source == sites[2]))
+        {
+            const size_t index = UnheardLedgerAccount(person);
+            if (index < std::size(LedgerAccounts))
+            {
+                ledgerAccountsHeard.set(index);
+                Event(LedgerAccounts[index].journal);
+                UpdateQuest();
+            }
+        }
         else if (selected.effect == DialogueEffect::ShareKnowledge && person)
         {
             Npc& npc = *person;
@@ -2039,6 +2194,32 @@ namespace Harbor
         }
     }
 
+    void World::BeginLedgerAccount(size_t index, const Npc* npc)
+    {
+        const auto& account = LedgerAccounts[index];
+        const DialogueChoice record{L"\ub4e4\uc740 \ub0b4\uc6a9\uc744 \uc77c\uc9c0\uc5d0 \ub0a8\uae34\ub2e4",
+                                    -1,
+                                    DialogueEffect::RecordLedgerAccount};
+        const DialogueChoice later{
+            L"\ub098\uc911\uc5d0 \ub2e4\uc2dc \ud655\uc778\ud55c\ub2e4", -1, DialogueEffect::None};
+        if (!npc)
+        {
+            dialogue.pages.push_back(
+                {std::wstring(account.name) + L"\uc758 \uba54\ubaa8",
+                 account.note,
+                 {{L"\uba54\ubaa8 \ub0b4\uc6a9\uc744 \uc77c\uc9c0\uc5d0 \ub0a8\uae34\ub2e4",
+                   -1,
+                   DialogueEffect::RecordLedgerAccount},
+                  later}});
+            return;
+        }
+
+        dialogue.pages.push_back({npc->name, account.opening, {}});
+        dialogue.pages.push_back(
+            {npc->name, account.context, {{account.question, 2, DialogueEffect::None}, later}});
+        dialogue.pages.push_back({npc->name, account.answer, {record, later}});
+    }
+
     void World::BeginDialogue(Npc* npc)
     {
         Perf::Scope scope(Perf::Cpu::Interaction);
@@ -2053,6 +2234,15 @@ namespace Harbor
         {
             dialogue.pages[page].choices.push_back({text, next, effect});
         };
+        if (questStep == HearLedgerAccounts)
+        {
+            const size_t index = UnheardLedgerAccount(npc);
+            if (index < std::size(LedgerAccounts))
+            {
+                BeginLedgerAccount(index, npc);
+                return;
+            }
+        }
         if (npc && npc->affinity < -20)
         {
             add(name,
@@ -2339,10 +2529,10 @@ namespace Harbor
         UpdateQuest();
         Npc* npc = Nearest();
         // Talking at the marked quest giver must not select a slightly closer bystander.
-        if (questStep == MeetMira || questStep == ReportSluice)
+        if (questStep == MeetMira || questStep == ReportSluice || questStep == HearLedgerAccounts)
         {
-            Npc* questGiver = Person(0);
-            if (questGiver && questGiver->health > 0 && questGiver->affinity >= -20 &&
+            auto* questGiver = dynamic_cast<Npc*>(level.Scene().Find(ObjectiveTarget()));
+            if (CanHearFrom(questGiver) &&
                 Distance(level.Player().WorldPosition(), questGiver->WorldPosition()) < 1.5f &&
                 level.ClearLine(level.Player().WorldPosition(), questGiver->WorldPosition()))
             {
@@ -2392,6 +2582,19 @@ namespace Harbor
             if (questStep <= DeliverHides)
             {
                 BeginHideJob();
+                return;
+            }
+            if (questStep == HearLedgerAccounts)
+            {
+                if (ObjectiveTarget() == sites[2])
+                {
+                    BeginDialogue(nullptr);
+                }
+                else
+                {
+                    Event(
+                        L"\uc7a5\ubd80\uc758 \uc774\ub984\uc744 \uc54c\uc544\ubcfc \uc0ac\ub78c\uc5d0\uac8c \ubb3c\uc5b4\ubcf4\uc790. \ub2e4\uc74c \uc774\uc57c\uae30\ub294 \uae08\ube5b \ud45c\uc2dc\ub97c \ub530\ub77c\uac00\uba74 \ub41c\ub2e4.");
+                }
                 return;
             }
             if (questStep == MeetMira || questStep == ReportSluice)
@@ -2476,16 +2679,19 @@ namespace Harbor
                     : L"\ubb3c \uc544\ub798 \uc788\ub358 \uc61b \ud654\ubb3c\uc774 \ub4dc\ub7ec\ub0ac\ub2e4. \ub204\uad70\uac00 \uba3c\uc800 \ucc59\uae30\uba74 \uc8fc\uc778\uc740 \ub2ec\ub77c\uc9c8 \uac83\uc774\ub2e4.");
             return;
         }
-        if (Distance(hero, Site(2)) < 1.8f)
+        if (Distance(hero, board) < 1.8f && level.ClearLine(hero, board))
         {
-            if (Holder(ledger) == level.Player().Id())
+            if (!copied && Holder(ledger) == level.Player().Id())
             {
                 copied = true;
                 ReactToPlayer(
-                    L"\uc7a5\ubd80 \uc0ac\ubcf8 \uc791\uc131 \u2192 \uc6d0\ubcf8\uc744 \ub118\uaca8\ub3c4 \uc99d\uac70\uac00 \ub0a8\ub294\ub2e4. \uacf5\uac1c\u00b7\uad00\uccad\u00b7\ud310\ub9e4 \uc911 \uacb0\uc815\ud558\uc790.");
+                    L"\uc0ac\ubcf8\uc744 \ub9cc\ub4e4\uc5c8\ub2e4. '\ub3c4\ud558, \uc57d \ub450 \ucca9, \ubcf4\uc99d\uc778 \uc625\ubd84.' \uba3c\uc800 \ub3c4\uc724\uc5d0\uac8c \uc774 \uc774\ub984\uc744 \uc544\ub294\uc9c0 \ubb3c\uc5b4\ubcf4\uc790.");
                 UpdateQuest();
+            }
+            else if (questStep == DecideLedger)
+            {
                 Event(
-                    L"\uc7a5\ubd80\ub97c \ubca0\uaef4 \ub450\uc5c8\ub2e4. \uc6d0\ubcf8\uc744 \ub118\uaca8\ub3c4 R\ub85c \uc0ac\ubcf8\uc744 \uacf5\uac1c\ud560 \uc218 \uc788\ub2e4.");
+                    L"\ub124 \uc0ac\ub78c\uc758 \uc774\uc57c\uae30\ub97c \ub4e4\uc5c8\ub2e4. J\uc5d0\uc11c \ub0b4\uc6a9\uc744 \ub2e4\uc2dc \uc77d\uace0, H\uc5d0\uc11c \uc120\ud0dd\uc5d0 \ub530\ub978 \uacb0\uacfc\ub97c \ube44\uad50\ud560 \uc218 \uc788\ub2e4.");
             }
             else
             {
@@ -2539,6 +2745,11 @@ namespace Harbor
         {
             Event(
                 L"\uc7a5\ud130 \uac8c\uc2dc\ud310\uc5d0\uc11c F\ub85c \uc0ac\ubcf8\uc744 \uba3c\uc800 \ub0a8\uae30\uc790. \uacf5\uac1c\ub420 \uc774\ub984\uacfc \ucc45\uc784\uc744 \ub2e4\uc2dc \ud655\uc778\ud560 \uc2dc\uac04\uc774\ub2e4.");
+        }
+        else if (!ledgerAccountsHeard.all())
+        {
+            Event(
+                L"\uacf5\uac1c\ub97c \uc815\ud558\uae30 \uc804\uc5d0 \uc7a5\ubd80\uc758 \uc774\ub984\uc744 \uc544\ub294 \uc0ac\ub78c\ub4e4\uc744 \ub9cc\ub098\uc790. J\uc5d0\uc11c \ub4e4\uc740 \uc774\uc57c\uae30\ub97c \ubcfc \uc218 \uc788\ub2e4.");
         }
         else
         {
@@ -2624,6 +2835,27 @@ namespace Harbor
                     Status()};
         }
 
+        if (copied && !returned)
+        {
+            std::vector<std::wstring> lines{
+                L"\ubb3c\uae38 \uc544\ub798\uc758 \uc774\ub984\ub4e4 \u00b7 \uc99d\uc5b8 \uc77c\uc9c0",
+                Objective(),
+                ObjectiveHint(),
+                L"\uc7a5\ubd80 \ud55c \uc904 \u00b7 \ub3c4\ud558 / \uc57d \ub450 \ucca9 / \ubcf4\uc99d\uc778 \uc625\ubd84"};
+            for (size_t i = 0; i < std::size(LedgerAccounts); ++i)
+            {
+                if (ledgerAccountsHeard[i])
+                {
+                    lines.push_back(LedgerAccounts[i].journal);
+                }
+            }
+            if (recordChoice != RecordChoice::Undecided)
+            {
+                lines.push_back(Consequence());
+            }
+            return lines;
+        }
+
         std::vector<std::wstring> lines;
         lines.push_back(returned ? L"\uc758\ub8b0: \uc218\ub808\uac00 \uc9c0\ub098\uac04 \uae38"
                                  : L"\uc758\ub8b0: \ubb3c\uae38 \uc544\ub798\uc758 \uc774\ub984\ub4e4");
@@ -2683,6 +2915,7 @@ namespace Harbor
             << ",\"player_actor_id\":" << level.Player().Id() << ",\"quest_step\":" << questStep
             << ",\"record_choice\":" << int(recordChoice)
             << ",\"quest_target_actor_id\":" << ObjectiveTarget()
+            << ",\"ledger_accounts_heard\":" << ledgerAccountsHeard.count()
             << ",\"quest_briefed\":" << (briefed ? "true" : "false")
             << ",\"quest_ledger_recovered\":" << (recoveredLedger ? "true" : "false")
             << ",\"quest_key_recovered\":" << (recoveredKey ? "true" : "false")
