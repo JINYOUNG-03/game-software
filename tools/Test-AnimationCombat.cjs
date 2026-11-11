@@ -61,6 +61,42 @@ assert(world.includes("level.CancelEnemyAttacksTargeting(victim.Id())"));
 assert(!world.includes("Hurt(npc, 5 + beast->kind"));
 assert(world.includes("level.BeginEnemyAttack(*beast, npc.Id())"));
 assert(world.indexOf("level.ConsumeEnemyAttackImpacts()") < world.indexOf("Step(*npc, dt)"));
+const game = read("SimpleGame.cpp");
+const npcBegin = world.match(/bool World::BeginNpcAttack[\s\S]*?(?=void World::CancelNpcAttack)/)[0];
+const npcAttack = world.match(/void World::AdvanceNpcAttack[\s\S]*?(?=bool World::ResolveNpcHit)/)[0];
+const npcHit = world.match(/bool World::ResolveNpcHit[\s\S]*?(?=void World::Witness)/)[0];
+const npcStep = world.match(/void World::Step[\s\S]*?(?=void World::SpreadRumors)/)[0];
+assert(npcBegin.includes("npc.attackTime = 0") && npcBegin.includes("npc.attackForward ="));
+assert(!/Damage(Player|Enemy)|Hurt\(|ResolveNpcHit\(/.test(npcBegin), "A new wind-up cannot deal damage");
+assert(npcStep.indexOf("AdvanceNpcAttack(npc, dt)") < npcStep.indexOf("level.MoveActor("));
+assert(!/Damage(Player|Enemy)|Hurt\(/.test(npcStep), "NPC movement cannot deal touch damage");
+assert(world.includes("npc->attackTime < 0 && npc->thinkTime <= 0"), "AI cannot retarget in mid-swing");
+for (const contract of ["previous < NpcAttackWindup", "previous + dt >= NpcAttackWindup",
+                        "CanEngage(npc, npc.action, *target)", "distance <= NpcAttackRange", "inFront",
+                        "level.ClearLine(from, to)", "ResolveNpcHit(npc, *target)", "npc.raidHits >= 2"])
+{
+    assert(npcAttack.includes(contract), `Missing NPC attack gate: ${contract}`);
+}
+assert(npcHit.includes("level.DamagePlayer(14, npc.Id())"));
+assert(npcHit.indexOf("if (!hit || npc.action != Action::Raid)") < npcHit.indexOf("wallet -= stolen"));
+assert(npcHit.indexOf("wallet -= stolen") < npcHit.indexOf("++npc.raidHits"));
+assert(world.includes("CancelNpcAttack(victim)") && !npcHit.includes("Transfer(ledger"));
+assert(source.match(/bool FirstLevel::DamagePlayer[\s\S]*?invulnerability > 0[\s\S]*?return false;/));
+assert(game.includes("NpcAttackCuesDrawn") && game.includes("npc->attackForward"));
+
+const npcWindup = constant("NpcAttackWindup");
+const npcDuration = constant("NpcAttackDuration");
+for (const dt of [1 / 144, 1 / 60, 1 / 20, .25, 2])
+{
+    let elapsed = 0, attempts = 0;
+    while (elapsed < npcDuration)
+    {
+        if (elapsed < npcWindup && elapsed + dt >= npcWindup)
+            attempts++;
+        elapsed += dt;
+    }
+    assert.equal(attempts, 1);
+}
 const impact = constant("BeastImpactFraction");
 // At both high and low frame rates, crossing the window resolves once; leaving range/cover misses.
 for (const dt of [1 / 144, 1 / 60, 1 / 20, .25, 2])
@@ -110,6 +146,8 @@ console.log(JSON.stringify({
     walk_frames : 12,
     beast_attack_frames : 16,
     one_shot_variable_dt : true,
+    npc_one_shot_variable_dt : true,
+    npc_raid_requires_applied_damage : true,
     dodge_cover_and_facing_gates : true,
     species_clips_checked : 3,
     game_build_performed : false,

@@ -6,6 +6,7 @@
 #include <cmath>
 #include <iomanip>
 #include <iterator>
+#include <limits>
 #include <locale>
 #include <sstream>
 #include <map>
@@ -17,6 +18,11 @@ namespace Harbor
         float Distance(const Level::Position& a, const Level::Position& b)
         {
             return std::hypot(a.x - b.x, a.y - b.y);
+        }
+
+        bool IsCombatAction(Action action)
+        {
+            return action == Action::Hunt || action == Action::Raid || action == Action::Defend;
         }
 
         bool IsMerchant(const Npc& npc)
@@ -1058,7 +1064,6 @@ namespace Harbor
         Perf::Scope scope(Perf::Cpu::NpcThink);
         Perf::Count(Perf::Counter::NpcDecisions);
         Observe(npc);
-        npc.target = InvalidActorId;
         auto set = [&](Action action, const Position& destination, ActorId target = InvalidActorId)
         {
             if (npc.action != action)
@@ -1075,34 +1080,39 @@ namespace Harbor
             npc.destination = destination;
             npc.target = target;
         };
-        if (npc.health < npc.maxHealth * .4f && npc.food > 0)
+        if (npc.action == Action::Raid)
+        {
+            const Actor* target = level.Scene().Find(npc.target);
+            if (target && CanEngage(npc, Action::Raid, *target))
+            {
+                set(Action::Raid, target->WorldPosition(), target->Id());
+            }
+            else
+            {
+                Retreat(npc);
+            }
+        }
+        else if (npc.health < npc.maxHealth * .4f && npc.food > 0)
         {
             set(Action::Rest, npc.home);
         }
+        else if (npc.action == Action::Return && Distance(npc.WorldPosition(), npc.home) > .8f)
+        {
+            set(Action::Return, npc.home);
+        }
         else if (npc.threatTime > 0)
         {
-            Actor* threat = level.Scene().Find(npc.threat);
-            Npc* other = dynamic_cast<Npc*>(threat);
-            bool tooFarFromCamp =
-                npc.job == Job::Raider &&
-                Distance(npc.WorldPosition(), WorldLayout::RaiderCamp()) > WorldLayout::RaiderTerritoryRadius;
-            if (threat && threat->IsVisible() && (!other || other->health > 0) && !tooFarFromCamp &&
-                !(npc.job == Job::Raider && WorldLayout::InVillage(threat->WorldPosition())) &&
-                Distance(npc.WorldPosition(), threat->WorldPosition()) < 8 &&
-                level.ClearLine(npc.WorldPosition(), threat->WorldPosition()))
+            const Actor* threat = level.Scene().Find(npc.threat);
+            const Action response =
+                threat && threat->Kind() == ActorKind::Enemy ? Action::Hunt : Action::Defend;
+            if (threat && CanEngage(npc, response, *threat))
             {
-                set(threat->Kind() == ActorKind::Enemy ? Action::Hunt : Action::Defend,
-                    threat->WorldPosition(),
-                    threat->Id());
+                set(response, threat->WorldPosition(), threat->Id());
             }
             else
             {
                 set(Action::Return, npc.home);
             }
-        }
-        else if (npc.action == Action::Return && Distance(npc.WorldPosition(), npc.home) > .8f)
-        {
-            set(Action::Return, npc.home);
         }
         else if (npc.variant < 5)
         {
@@ -1215,26 +1225,30 @@ namespace Harbor
                     merchant = candidate;
                     merchantDistance = d;
                 }
-                if (npc.job == Job::Raider && RaidAllowed(npc, *candidate) && d < victimDistance &&
+                if (npc.job == Job::Raider && d < victimDistance &&
+                    CanEngage(npc, Action::Raid, *candidate) &&
                     level.ClearLine(npc.WorldPosition(), candidate->WorldPosition()))
                 {
                     victim = candidate;
                     victimDistance = d;
                 }
             }
-            for (Level::Enemy* candidate : beasts)
+            if (npc.job == Job::Hunter)
             {
-                float d = Distance(npc.WorldPosition(), candidate->WorldPosition());
-                if (candidate->health > 0 && d < preyDistance &&
-                    level.ClearLine(npc.WorldPosition(), candidate->WorldPosition()))
+                for (Level::Enemy* candidate : beasts)
                 {
-                    prey = candidate;
-                    preyDistance = d;
+                    float d = Distance(npc.WorldPosition(), candidate->WorldPosition());
+                    if (d < preyDistance && CanEngage(npc, Action::Hunt, *candidate) &&
+                        level.ClearLine(npc.WorldPosition(), candidate->WorldPosition()))
+                    {
+                        prey = candidate;
+                        preyDistance = d;
+                    }
                 }
             }
             bool raidPlayer =
-                RaidAllowed(npc, level.Player()) &&
                 Distance(npc.WorldPosition(), level.Player().WorldPosition()) < victimDistance &&
+                CanEngage(npc, Action::Raid, level.Player()) &&
                 level.ClearLine(npc.WorldPosition(), level.Player().WorldPosition());
             float rest = npc.food > 0 ? npc.healthWeight * (1 - float(npc.health) / npc.maxHealth) * 5 : 0;
             float trade = npc.job != Job::Raider && npc.hides > 0 && merchant ? npc.wealthWeight * 2.5f : 0;
@@ -1248,7 +1262,7 @@ namespace Harbor
                          : victim   ? npc.raidWeight * (1 + (std::min)(victim->coins, 100) / 100.0f)
                                     : 0;
             float study = npc.enlightenmentWeight;
-            float hunt = prey && npc.job == Job::Hunter ? npc.wealthWeight * 1.5f : 0;
+            float hunt = prey ? npc.wealthWeight * 1.5f : 0;
             if (rest > (std::max)({trade, raid, study, hunt}))
             {
                 set(Action::Rest, npc.home);
@@ -1336,24 +1350,193 @@ namespace Harbor
     bool World::RaidAllowed(const Npc& attacker, const Actor& target) const
     {
         const auto* victim = dynamic_cast<const Npc*>(&target);
-        bool allowed =
-            attacker.job == Job::Raider &&
-            (attacker.raidCooldown <= 0 || (attacker.action == Action::Raid && attacker.raidWindow > 0)) &&
-            attacker.health > attacker.maxHealth * .65f &&
-            !WorldLayout::InVillage(attacker.WorldPosition()) &&
-            !WorldLayout::InVillage(target.WorldPosition()) &&
-            Distance(attacker.WorldPosition(), WorldLayout::RaiderCamp()) <=
-                WorldLayout::RaiderTerritoryRadius &&
-            Distance(target.WorldPosition(), WorldLayout::RaiderCamp()) <=
-                WorldLayout::RaiderTerritoryRadius &&
-            (victim ? victim->variant >= 5 && victim->job != Job::Guard && victim->job != Job::Raider &&
-                          victim->health > 0 && victim->coins >= 15
-                    : target.Id() == level.Player().Id() && level.stats.coins >= 15);
+        bool allowed = attacker.job == Job::Raider &&
+                       (attacker.action == Action::Raid ? attacker.raidWindow > 0 && attacker.raidHits < 2
+                                                        : attacker.raidCooldown <= 0) &&
+                       attacker.health > attacker.maxHealth * .65f &&
+                       !WorldLayout::InVillage(attacker.WorldPosition()) &&
+                       !WorldLayout::InVillage(target.WorldPosition()) &&
+                       Distance(attacker.WorldPosition(), WorldLayout::RaiderCamp()) <=
+                           WorldLayout::RaiderTerritoryRadius &&
+                       Distance(target.WorldPosition(), WorldLayout::RaiderCamp()) <=
+                           WorldLayout::RaiderTerritoryRadius &&
+                       (victim ? victim->variant >= 5 && victim->job != Job::Guard &&
+                                     victim->job != Job::Raider && victim->health > 0 && victim->coins >= 15
+                               : target.Id() == level.Player().Id() && level.stats.coins >= 15);
         if (!allowed && attacker.job == Job::Raider)
         {
             Perf::Count(Perf::Counter::RaidAttemptsBlocked);
         }
         return allowed;
+    }
+
+    bool World::CanEngage(const Npc& npc, Action action, const Actor& target) const
+    {
+        const Position from = npc.WorldPosition(), to = target.WorldPosition();
+        if (!target.IsActive() || !target.IsVisible() || target.Id() == npc.Id() ||
+            Distance(from, to) >= (action == Action::Hunt ? 9.0f : 8.0f))
+        {
+            return false;
+        }
+        if (action == Action::Raid)
+        {
+            return RaidAllowed(npc, target);
+        }
+        if (npc.job == Job::Raider &&
+            (WorldLayout::InVillage(to) ||
+             Distance(from, WorldLayout::RaiderCamp()) > WorldLayout::RaiderTerritoryRadius ||
+             Distance(to, WorldLayout::RaiderCamp()) > WorldLayout::RaiderTerritoryRadius))
+        {
+            return false;
+        }
+        if (action == Action::Hunt)
+        {
+            const auto* beast = dynamic_cast<const Level::Enemy*>(&target);
+            return beast && beast->health > 0 &&
+                   (npc.job == Job::Hunter || npc.job == Job::Guard || npc.job == Job::Raider);
+        }
+        const auto* person = dynamic_cast<const Npc*>(&target);
+        return action == Action::Defend && npc.threatTime > 0 && npc.threat == target.Id() &&
+               (person ? person->health > 0 && person->variant >= 5 : target.Id() == level.Player().Id());
+    }
+
+    void World::Retreat(Npc& npc)
+    {
+        npc.action = Action::Return;
+        npc.actionTime = 0;
+        npc.raidWindow = 0;
+        npc.threatTime = 0;
+        npc.target = InvalidActorId;
+        npc.destination = npc.home;
+        npc.path.clear();
+        npc.waypoint = 0;
+        npc.thinkTime = 0;
+    }
+
+    bool World::BeginNpcAttack(Npc& npc, Actor& target)
+    {
+        const Position from = npc.WorldPosition(), to = target.WorldPosition();
+        const float dx = to.x - from.x, dy = to.y - from.y;
+        const float distance = std::hypot(dx, dy);
+        if (distance > CharacterPresentation::NpcAttackStartRange || !level.ClearLine(from, to))
+        {
+            return false;
+        }
+
+        npc.attackForward = distance > .001f ? Position{dx / distance, dy / distance, 0} : Position{1, 0, 0};
+        npc.visualDirection =
+            CharacterPresentation::ScreenDirection((npc.attackForward.x - npc.attackForward.y) * 48,
+                                                   (npc.attackForward.x + npc.attackForward.y) * 24);
+        npc.mirrorModel = npc.attackForward.x < npc.attackForward.y;
+        npc.attackTime = 0;
+        npc.moving = false;
+        npc.path.clear();
+        npc.waypoint = 0;
+        CharacterPresentation::SetIdle(npc, "citizen" + std::to_string(npc.appearance) + "_idle");
+        if (auto* beast = dynamic_cast<Level::Enemy*>(&target))
+        {
+            level.BeginEnemyAttack(*beast, npc.Id());
+        }
+        Perf::Count(Perf::Counter::NpcAttacksStarted);
+        return true;
+    }
+
+    void World::CancelNpcAttack(Npc& npc)
+    {
+        if (npc.attackTime >= 0)
+        {
+            npc.attackTime = -1;
+            Perf::Count(Perf::Counter::NpcAttacksCanceled);
+        }
+    }
+
+    void World::AdvanceNpcAttack(Npc& npc, float dt)
+    {
+        using namespace CharacterPresentation;
+        Perf::Count(Perf::Counter::NpcAttackUpdates);
+        const float previous = npc.attackTime;
+        if (previous < NpcAttackWindup)
+        {
+            Actor* target = level.Scene().Find(npc.target);
+            if (!target || !CanEngage(npc, npc.action, *target))
+            {
+                CancelNpcAttack(npc);
+                Retreat(npc);
+                return;
+            }
+            if (previous + dt >= NpcAttackWindup)
+            {
+                const Position from = npc.WorldPosition(), to = target->WorldPosition();
+                const float dx = to.x - from.x, dy = to.y - from.y;
+                const float distance = std::hypot(dx, dy);
+                const bool inFront =
+                    distance <= .001f ||
+                    (dx * npc.attackForward.x + dy * npc.attackForward.y) / distance >= NpcAttackConeDot;
+                Perf::Count(Perf::Counter::NpcAttackImpacts);
+                const bool hit = distance <= NpcAttackRange && inFront && level.ClearLine(from, to) &&
+                                 ResolveNpcHit(npc, *target);
+                Perf::Count(hit ? Perf::Counter::NpcAttackHits : Perf::Counter::NpcAttackMisses);
+            }
+        }
+
+        npc.attackTime += dt;
+        if (npc.attackTime >= NpcAttackDuration)
+        {
+            npc.attackTime = -1;
+            npc.thinkTime = 0;
+            if (npc.action == Action::Raid && (npc.raidHits >= 2 || npc.raidWindow <= 0))
+            {
+                Retreat(npc);
+            }
+        }
+    }
+
+    bool World::ResolveNpcHit(Npc& npc, Actor& target)
+    {
+        if (auto* beast = dynamic_cast<Level::Enemy*>(&target))
+        {
+            Perf::Scope combat(Perf::Cpu::NpcCombat);
+            Perf::Count(Perf::Counter::NpcCombatHits);
+            if (level.DamageEnemy(*beast, 20 + npc.experience / 50, false, npc.Id()))
+            {
+                npc.hides += 2 + beast->kind;
+                ++npc.food;
+                npc.experience += 20;
+                if (npc.experience % 60 == 0)
+                {
+                    npc.maxHealth += 5;
+                }
+            }
+            else
+            {
+                level.BeginEnemyAttack(*beast, npc.Id());
+            }
+            return true;
+        }
+
+        auto* victim = dynamic_cast<Npc*>(&target);
+        const bool hit =
+            victim ? Hurt(*victim, 13 + npc.experience / 60, npc.Id()) : level.DamagePlayer(14, npc.Id());
+        if (!hit || npc.action != Action::Raid)
+        {
+            return hit;
+        }
+
+        constexpr int capacity = (std::numeric_limits<int>::max)();
+        int& wallet = victim ? victim->coins : level.stats.coins;
+        const bool defeated = victim && victim->health <= 0;
+        const int stolen = (std::min)({wallet, defeated ? wallet : 5, capacity - npc.coins});
+        wallet -= stolen;
+        npc.coins += stolen;
+        if (defeated)
+        {
+            const int hides = (std::min)(victim->hides, capacity - npc.hides);
+            npc.hides += hides;
+            victim->hides -= hides;
+        }
+        ++npc.raidHits;
+        Perf::Count(Perf::Counter::NpcRaidCoins, stolen);
+        return true;
     }
 
     void World::Witness(ActorId attacker, const Position& where, int affinity, int karma)
@@ -1381,7 +1564,7 @@ namespace Harbor
         }
     }
 
-    void World::Hurt(Npc& victim, int damage, ActorId attacker)
+    bool World::Hurt(Npc& victim, int damage, ActorId attacker)
     {
         Perf::Scope scope(Perf::Cpu::NpcCombat);
         const auto* source = dynamic_cast<const Npc*>(level.Scene().Find(attacker));
@@ -1389,11 +1572,11 @@ namespace Harbor
                        (WorldLayout::InVillage(victim.WorldPosition()) && source->action != Action::Defend)))
         {
             Perf::Count(Perf::Counter::RaidAttemptsBlocked);
-            return;
+            return false;
         }
         if (victim.health <= 0 || damage <= 0)
         {
-            return;
+            return false;
         }
         Perf::Count(Perf::Counter::NpcCombatHits);
         const int appliedDamage = (std::min)(victim.health, damage);
@@ -1402,9 +1585,13 @@ namespace Harbor
         victim.threat = attacker;
         victim.threatTime = 15;
         victim.thinkTime = 0;
-        Witness(attacker, victim.WorldPosition(), -8, -3);
+        if (attacker == level.Player().Id() || (source && source->action == Action::Raid))
+        {
+            Witness(attacker, victim.WorldPosition(), -8, -3);
+        }
         if (victim.health == 0)
         {
+            CancelNpcAttack(victim);
             level.CancelEnemyAttacksTargeting(victim.Id());
             if (attacker == level.Player().Id())
             {
@@ -1415,7 +1602,7 @@ namespace Harbor
             victim.action = Action::Dead;
             victim.path.clear();
             victim.moving = false;
-            victim.model = "corpse";
+            CharacterPresentation::SetIdle(victim, "corpse");
             for (ActorId artifact : {ledger, key})
             {
                 if (Holder(artifact) == victim.Id())
@@ -1431,6 +1618,7 @@ namespace Harbor
                 attacker == level.Player().Id() ||
                     Distance(victim.WorldPosition(), level.Player().WorldPosition()) < 12);
         }
+        return true;
     }
 
     void World::Exchange(Npc& seller, Npc& buyer)
@@ -1520,6 +1708,31 @@ namespace Harbor
 
     void World::Step(Npc& npc, float dt)
     {
+        npc.cooldown = (std::max)(0.0f, npc.cooldown - dt);
+        npc.threatTime = (std::max)(0.0f, npc.threatTime - dt);
+        npc.raidCooldown = (std::max)(0.0f, npc.raidCooldown - dt);
+        npc.raidWindow = (std::max)(0.0f, npc.raidWindow - dt);
+
+        if (npc.attackTime >= 0)
+        {
+            Perf::Scope attack(Perf::Cpu::NpcAttack);
+            AdvanceNpcAttack(npc, dt);
+            return;
+        }
+        if (IsCombatAction(npc.action))
+        {
+            Perf::Scope attack(Perf::Cpu::NpcAttack);
+            Actor* target = level.Scene().Find(npc.target);
+            if (!target || !CanEngage(npc, npc.action, *target))
+            {
+                Retreat(npc);
+            }
+            else if (BeginNpcAttack(npc, *target))
+            {
+                return;
+            }
+        }
+
         Position before = npc.WorldPosition();
         float budget = dt * (npc.action == Action::Raid ? 2.0f : npc.courier ? 3.6f : 1.65f);
         for (int step = 0; step < 8 && npc.waypoint < npc.path.size() && budget > 0; ++step)
@@ -1576,110 +1789,11 @@ namespace Harbor
         {
             CharacterPresentation::SetIdle(npc, prefix + "idle");
         }
-        npc.cooldown = (std::max)(0.0f, npc.cooldown - dt);
-        npc.threatTime = (std::max)(0.0f, npc.threatTime - dt);
-        npc.raidCooldown = (std::max)(0.0f, npc.raidCooldown - dt);
-        npc.raidWindow = (std::max)(0.0f, npc.raidWindow - dt);
         if (npc.courier && Distance(after, WorldLayout::VillageMarket(npc.travelVillage)) < 1.2f)
         {
             npc.courierWait = (std::max)(0.0f, npc.courierWait - dt);
         }
-        if (npc.action == Action::Raid && npc.raidWindow <= 0)
-        {
-            npc.action = Action::Return;
-            npc.destination = npc.home;
-            npc.path.clear();
-            npc.thinkTime = 0;
-        }
-        bool arrived = Distance(npc.WorldPosition(), npc.destination) < .8f;
-        if ((npc.action == Action::Raid || npc.action == Action::Defend) && npc.target)
-        {
-            Actor* target = level.Scene().Find(npc.target);
-            bool permitted =
-                target && (npc.action == Action::Raid ? RaidAllowed(npc, *target)
-                                                      : !(npc.job == Job::Raider &&
-                                                          WorldLayout::InVillage(target->WorldPosition())));
-            if (permitted && npc.cooldown <= 0 &&
-                Distance(npc.WorldPosition(), target->WorldPosition()) < 1.1f &&
-                level.ClearLine(npc.WorldPosition(), target->WorldPosition()))
-            {
-                npc.cooldown = 1.3f;
-                Npc* victim = dynamic_cast<Npc*>(target);
-                int stolen = 0;
-                if (victim && victim->health > 0)
-                {
-                    if (npc.action == Action::Raid)
-                    {
-                        stolen = (std::min)(victim->coins, 5);
-                        victim->coins -= stolen;
-                        npc.coins += stolen;
-                    }
-                    Hurt(*victim, 13 + npc.experience / 60, npc.Id());
-                    if (victim->health <= 0 && npc.action == Action::Raid)
-                    {
-                        npc.coins += victim->coins;
-                        stolen += victim->coins;
-                        victim->coins = 0;
-                        npc.hides += victim->hides;
-                        victim->hides = 0;
-                    }
-                }
-                if (victim && victim->health <= 0 && npc.job == Job::Guard && !Holder(ledger) &&
-                    Distance(npc.WorldPosition(), level.Scene().Get(ledger).WorldPosition()) < 1.5f)
-                {
-                    Transfer(ledger, npc.Id());
-                    npc.knowledge |= Knowledge::Ledger;
-                    npc.thinkTime = 0;
-                }
-                else if (target->Id() == level.Player().Id())
-                {
-                    if (npc.action == Action::Raid)
-                    {
-                        stolen = (std::min)(level.stats.coins, 5);
-                        level.stats.coins -= stolen;
-                        npc.coins += stolen;
-                    }
-                    level.DamagePlayer(14, npc.Id());
-                }
-                Perf::Count(Perf::Counter::NpcRaidCoins, stolen);
-                if (npc.action == Action::Raid && ++npc.raidHits >= 2)
-                {
-                    npc.raidWindow = 0;
-                    npc.threatTime = 0;
-                    npc.thinkTime = 0;
-                    npc.action = Action::Return;
-                    npc.destination = npc.home;
-                    npc.path.clear();
-                }
-            }
-        }
-        else if (npc.action == Action::Hunt && npc.target)
-        {
-            auto* beast = dynamic_cast<Level::Enemy*>(level.Scene().Find(npc.target));
-            if (beast && beast->health > 0 && npc.cooldown <= 0 &&
-                Distance(npc.WorldPosition(), beast->WorldPosition()) < 1.2f &&
-                level.ClearLine(npc.WorldPosition(), beast->WorldPosition()))
-            {
-                Perf::Scope combat(Perf::Cpu::NpcCombat);
-                npc.cooldown = 1.0f;
-                Perf::Count(Perf::Counter::NpcCombatHits);
-                if (level.DamageEnemy(*beast, 20 + npc.experience / 50, false, npc.Id()))
-                {
-                    npc.hides += 2 + beast->kind;
-                    ++npc.food;
-                    npc.experience += 20;
-                    if (npc.experience % 60 == 0)
-                    {
-                        npc.maxHealth += 5;
-                    }
-                    npc.thinkTime = 0;
-                }
-                else
-                {
-                    level.BeginEnemyAttack(*beast, npc.Id());
-                }
-            }
-        }
+        const bool arrived = Distance(after, npc.destination) < .8f;
         if (!arrived || npc.health <= 0)
         {
             return;
@@ -1911,17 +2025,8 @@ namespace Harbor
         for (const auto& impact : level.ConsumeEnemyAttackImpacts())
         {
             auto* victim = dynamic_cast<Npc*>(level.Scene().Find(impact.target));
-            if (victim && victim->health > 0)
-            {
-                Hurt(*victim, impact.damage, impact.source);
-                // Beasts are not human raid targets; the next hunt/flee decision remains authoritative.
-                victim->threatTime = 0;
-                Perf::Count(Perf::Counter::EnemyAttackHits);
-            }
-            else
-            {
-                Perf::Count(Perf::Counter::EnemyAttackMisses);
-            }
+            const bool hit = victim && Hurt(*victim, impact.damage, impact.source);
+            Perf::Count(hit ? Perf::Counter::EnemyAttackHits : Perf::Counter::EnemyAttackMisses);
         }
         UpdateQuest();
         minutes += dt; // Daily life continues; story choices remain with the player.
@@ -1935,7 +2040,7 @@ namespace Harbor
             }
             Perf::Count(Perf::Counter::NpcsUpdated);
             npc->thinkTime -= dt;
-            if (npc->thinkTime <= 0)
+            if (npc->attackTime < 0 && npc->thinkTime <= 0)
             {
                 Think(*npc, npcs, beasts);
                 npc->thinkTime = 1.2f + float(npc->variant % 4) * .08f;
@@ -2952,7 +3057,13 @@ namespace Harbor
                 << ",\"alive\":" << (npc->health > 0 ? "true" : "false") << ",\"home_settlement_id\":\""
                 << SettlementId(npc->homeVillage) << "\",\"current_settlement_id\":\""
                 << SettlementId(SettlementAt(p)) << "\",\"job\":\"" << JobKey(npc->job) << "\",\"action\":\""
-                << ActionKey(npc->action) << "\",\"health\":" << npc->health
+                << ActionKey(npc->action) << "\",\"health\":" << npc->health << ",\"combat_phase\":\""
+                << (npc->attackTime >= CharacterPresentation::NpcAttackWindup ? "recovery"
+                    : npc->attackTime >= 0                                    ? "windup"
+                    : IsCombatAction(npc->action)                             ? "pursuit"
+                                                                              : "idle")
+                << "\",\"combat_target_actor_id\":"
+                << (IsCombatAction(npc->action) ? npc->target : InvalidActorId)
                 << ",\"max_health\":" << npc->maxHealth << ",\"coins\":" << npc->coins
                 << ",\"hides\":" << npc->hides << ",\"food\":" << npc->food
                 << ",\"enlightenment\":" << npc->enlightenment << ",\"experience\":" << npc->experience

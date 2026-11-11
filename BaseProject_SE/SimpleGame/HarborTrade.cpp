@@ -18,8 +18,8 @@ namespace Harbor
     {
         const Position hero = level.Player().WorldPosition(), partner = npc.WorldPosition();
         return npc.IsActive() && npc.health > 0 && npc.affinity >= -20 && npc.threatTime <= 0 &&
-               std::hypot(hero.x - partner.x, hero.y - partner.y) < 1.5f && level.ClearLine(hero, partner) &&
-               WorldLayout::ShareMarket(hero, partner);
+               npc.attackTime < 0 && std::hypot(hero.x - partner.x, hero.y - partner.y) < 1.5f &&
+               level.ClearLine(hero, partner) && WorldLayout::ShareMarket(hero, partner);
     }
 
     void World::Trade()

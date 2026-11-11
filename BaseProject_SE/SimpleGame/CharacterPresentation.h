@@ -14,6 +14,11 @@ namespace CharacterPresentation
     constexpr float BeastImpactFraction = .50f;
     constexpr float BeastAttackRange = 1.25f;
     constexpr float BeastAttackStartRange = .95f;
+    constexpr float NpcAttackStartRange = 1.1f;
+    constexpr float NpcAttackRange = 1.25f;
+    constexpr float NpcAttackConeDot = .45f;
+    constexpr float NpcAttackWindup = .42f;
+    constexpr float NpcAttackDuration = 1.2f;
 
     inline float BeastAttackDuration(int kind)
     {

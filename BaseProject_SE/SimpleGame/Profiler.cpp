@@ -74,7 +74,8 @@ namespace Perf
                                   "trade_offers",
                                   "trade_commit",
                                   "window_init",
-                                  "window_events"};
+                                  "window_events",
+                                  "npc_attack"};
         const char* CounterNames[] = {"draw_calls",
                                       "quad_instances",
                                       "glyph_instances",
@@ -169,7 +170,14 @@ namespace Perf
                                       "window_key_events",
                                       "window_mouse_events",
                                       "window_resize_events",
-                                      "window_focus_events"};
+                                      "window_focus_events",
+                                      "npc_attacks_started",
+                                      "npc_attack_updates",
+                                      "npc_attack_impacts",
+                                      "npc_attack_hits",
+                                      "npc_attack_misses",
+                                      "npc_attacks_canceled",
+                                      "npc_attack_cues_drawn"};
         static_assert(sizeof(CpuNames) / sizeof(*CpuNames) == size_t(Cpu::Count), "CPU schema mismatch");
         static_assert(sizeof(CounterNames) / sizeof(*CounterNames) == size_t(Counter::Count),
                       "Counter schema mismatch");

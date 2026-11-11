@@ -1366,15 +1366,9 @@ namespace Level
             {
                 if (target->Id() == Player().Id())
                 {
-                    if (invulnerability <= 0)
-                    {
-                        DamagePlayer(11 + enemy.kind * 3, enemy.Id());
-                        Perf::Count(Perf::Counter::EnemyAttackHits);
-                    }
-                    else
-                    {
-                        Perf::Count(Perf::Counter::EnemyAttackMisses);
-                    }
+                    Perf::Count(DamagePlayer(11 + enemy.kind * 3, enemy.Id())
+                                    ? Perf::Counter::EnemyAttackHits
+                                    : Perf::Counter::EnemyAttackMisses);
                 }
                 else
                 {
@@ -1402,11 +1396,11 @@ namespace Level
         return impacts;
     }
 
-    void FirstLevel::DamagePlayer(int damage, ActorId source)
+    bool FirstLevel::DamagePlayer(int damage, ActorId source)
     {
-        if (invulnerability > 0 || !Player().IsActive())
+        if (invulnerability > 0 || !Player().IsActive() || damage <= 0)
         {
-            return;
+            return false;
         }
         const int appliedDamage = (std::min)(stats.health, (std::max)(1, damage - stats.Defense()));
         stats.health -= appliedDamage;
@@ -1425,6 +1419,7 @@ namespace Level
             Notify(
                 L"\ub9c8\uc744\uc5d0\uc11c \ub208\uc744 \ub5b4\ub2e4. \uc7a0\uae50 \uc228\uc744 \uace0\ub974\uc790.");
         }
+        return true;
     }
 
     void FirstLevel::MoveActor(Actor& actor, float dx, float dy)

@@ -78,6 +78,7 @@ namespace Perf
         TradeCommit,
         WindowInit,
         WindowEvents,
+        NpcAttack,
         Count
     };
     enum class Counter
@@ -177,6 +178,13 @@ namespace Perf
         WindowMouseEvents,
         WindowResizeEvents,
         WindowFocusEvents,
+        NpcAttacksStarted,
+        NpcAttackUpdates,
+        NpcAttackImpacts,
+        NpcAttackHits,
+        NpcAttackMisses,
+        NpcAttacksCanceled,
+        NpcAttackCuesDrawn,
         Count
     };
 

@@ -94,6 +94,8 @@ namespace Harbor
         float cooldown = 0;
         float actionTime = 0;
         float threatTime = 0;
+        float attackTime = -1;
+        Level::Position attackForward;
         float phase = 0;
         float raidCooldown = 0;
         float raidWindow = 0;
@@ -311,7 +313,13 @@ namespace Harbor
         void Observe(Npc& npc);
         void Think(Npc& npc, const std::vector<Npc*>& npcs, const std::vector<Level::Enemy*>& beasts);
         void Step(Npc& npc, float dt);
-        void Hurt(Npc& victim, int damage, ActorId attacker);
+        bool Hurt(Npc& victim, int damage, ActorId attacker);
+        bool CanEngage(const Npc& npc, Action action, const Actor& target) const;
+        void Retreat(Npc& npc);
+        bool BeginNpcAttack(Npc& npc, Actor& target);
+        void AdvanceNpcAttack(Npc& npc, float dt);
+        void CancelNpcAttack(Npc& npc);
+        bool ResolveNpcHit(Npc& npc, Actor& target);
         void Witness(ActorId attacker, const Position& where, int affinity, int karma);
         void Exchange(Npc& seller, Npc& buyer);
         void Event(const std::wstring& text, bool notifyPlayer = true);

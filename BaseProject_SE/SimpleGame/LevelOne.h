@@ -127,7 +127,7 @@ namespace Level
         bool BeginEnemyAttack(Enemy& enemy, ActorId target);
         void CancelEnemyAttacksTargeting(ActorId target);
         std::vector<EnemyAttackImpact> ConsumeEnemyAttackImpacts();
-        void DamagePlayer(int damage, ActorId source = InvalidActorId);
+        bool DamagePlayer(int damage, ActorId source = InvalidActorId);
         void MoveActor(Actor& actor, float dx, float dy);
         std::vector<Position> FindPath(const Position& from, const Position& to) const;
         bool PickUp();

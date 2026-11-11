@@ -481,6 +481,32 @@ namespace
         case ActorEffect::NpcStatus:
             if (const auto* npc = dynamic_cast<const Npc*>(firstLevel.Scene().Find(actor.ParentId())))
             {
+                constexpr float flashDuration = .16f;
+                using namespace CharacterPresentation;
+                if (npc->attackTime >= 0 && npc->attackTime < NpcAttackWindup + flashDuration)
+                {
+                    const bool warning = npc->attackTime < NpcAttackWindup;
+                    const float strength =
+                        warning ? .18f + .20f * npc->attackTime / NpcAttackWindup
+                                : .48f * (1 - (npc->attackTime - NpcAttackWindup) / flashDuration);
+                    const float fx = npc->attackForward.x, fy = npc->attackForward.y;
+                    const float sx = (fx - fy) * TileWidth * .5f * NpcAttackRange;
+                    const float sy = (fx + fy) * TileHeight * .5f * NpcAttackRange;
+                    const float side = std::sqrt(1 - NpcAttackConeDot * NpcAttackConeDot);
+                    renderer->DrawQuad(x,
+                                       y,
+                                       x + sx * NpcAttackConeDot - sy * (TileWidth / TileHeight) * side,
+                                       y + sy * NpcAttackConeDot + sx * (TileHeight / TileWidth) * side,
+                                       x + sx,
+                                       y + sy,
+                                       x + sx * NpcAttackConeDot + sy * (TileWidth / TileHeight) * side,
+                                       y + sy * NpcAttackConeDot - sx * (TileHeight / TileWidth) * side,
+                                       1.0f,
+                                       warning ? .52f : .25f,
+                                       .16f,
+                                       strength);
+                    Perf::Count(Perf::Counter::NpcAttackCuesDrawn);
+                }
                 if (npc->health > 0 &&
                     (npc->health < npc->maxHealth || Distance2D(npc->WorldPosition(), PlayerPosition()) < 2))
                 {
