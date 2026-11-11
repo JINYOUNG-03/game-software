@@ -29,7 +29,10 @@ namespace Harbor
             return (std::max)(minimum, (std::min)(maximum, value));
         }
 
-        constexpr int FirstTrailStep = 6;
+        constexpr int HideOrder = 4;
+        constexpr int HidePayPerPiece = 6;
+        constexpr int OpeningHuntSite = 9;
+        constexpr float OpeningHuntRadius = 15.0f;
 
         struct TrailStop
         {
@@ -291,35 +294,9 @@ namespace Harbor
         logTime = 0;
         for (Npc* npc : level.Scene().Actors<Npc>(ActorKind::Npc))
         {
-            if (npc->homeVillage != 0 || npc->courier)
+            if (npc->variant < 5 && npc->health > 0)
             {
-                continue;
-            }
-            if (npc->variant >= 5 && (Distance(npc->WorldPosition(), level.Player().WorldPosition()) > 6 ||
-                                      !level.ClearLine(npc->WorldPosition(), level.Player().WorldPosition())))
-            {
-                continue;
-            }
-            npc->thinkTime = 0;
-            npc->path.clear();
-            npc->waypoint = 0;
-            if (npc->variant >= 9 && npc->job != Job::Hunter)
-            {
-                npc->line =
-                    recordChoice == RecordChoice::Public
-                        ? (npc->faction == 0
-                               ? L"\uc7a5\ubd80\uac00 \uacf5\uac1c\ub418\uace0 \uc7a5\ud130\uac00 \uc220\ub801\uc5ec. \uc9c4\uc2e4\ub3c4 \uc911\uc694\ud558\uc9c0\ub9cc \ud63c\ub780\uc774 \uac71\uc815\uc774\uc57c."
-                               : L"\ub2f9\uc2e0\uc774 \uaebc\ub0b4 \uc900 \uc774\ub984\uc744 \ub4e4\uc73c\ub7ec \uc7a5\ud130\ub85c \uac00\uace0 \uc788\uc5b4. \uac00\uc871\ub4e4 \uc774\uc57c\uae30\ub97c \ub4e4\uc5b4\uc57c\uc9c0.")
-                    : recordChoice == RecordChoice::Authority
-                        ? L"\uad00\uccad\uc5d0\uc11c \ud604\uc7a5\uc744 \ub9c9\ub294\ub2e4\ub2c8 \uc9d1\uc73c\ub85c \uac00\uc57c\uaca0\uc5b4. \uc6b0\ub9ac\ub3c4 \uadf8 \uae30\ub85d\uc744 \ubcfc \uc218 \uc788\uc744\uae4c?"
-                    : recordChoice == RecordChoice::Sold
-                        ? L"\uc7a5\ubd80\uac00 \ud314\ub838\ub2e4\ub294 \ub9d0\uc740 \ub4e4\uc5c8\uc5b4. \ub3c8\uc774 \uae09\ud55c \uac74 \uc54c\uc9c0\ub9cc, \ub0a8\uc740 \uac00\uc871\ub4e4\uc740 \uc5b4\uca4c\uc9c0?"
-                        : L"\ub2f9\uc2e0\uc774 \uc870\uc0ac\ud55c\ub2e4\ub294 \uc774\uc57c\uae30\ub97c \ub4e3\uace0 \uc7a5\ud130\uc5d0 \ub098\uc654\uc5b4. \uae30\ub85d\uc744 \uc5b4\ub5bb\uac8c \ud560 \uc0dd\uac01\uc774\uc57c?";
-                if (gateOpen)
-                {
-                    npc->line +=
-                        L" \ubb3c\uae38\uc740 \uc5f4\ub838\uc73c\ub2c8 \uc0c8 \uace8\ubaa9\uc73c\ub85c \ubb3c\uac74\uc744 \uc62e\uae30\ub824\uace0.";
-                }
+                npc->thinkTime = 0;
             }
         }
         Perf::Count(Perf::Counter::QuestTransitions);
@@ -329,14 +306,18 @@ namespace Harbor
     void World::UpdateQuest()
     {
         Perf::Scope scope(Perf::Cpu::QuestUpdate);
-        int next = !briefed                                  ? 0
-                   : !recoveredLedger || !recoveredKey       ? 1
-                   : !copied                                 ? 2
-                   : recordChoice == RecordChoice::Undecided ? 3
-                   : !gateOpen                               ? 4
-                   : !returned
-                       ? 5
-                       : FirstTrailStep + int(trailClues) + (trailNotice != TrailNotice::None ? 1 : 0);
+        const int hideStep = level.stats.hides < HideOrder ? GatherHides : DeliverHides;
+        const int trailStep = FirstTrailStep + int(trailClues) + (trailNotice != TrailNotice::None ? 1 : 0);
+        const int next = hideJob == HideJob::Offered               ? TakeHideJob
+                         : hideJob == HideJob::Accepted            ? hideStep
+                         : !briefed                                ? MeetMira
+                         : !drainInspected                         ? InspectDrain
+                         : !recoveredLedger || !recoveredKey       ? RecoverEvidence
+                         : !copied                                 ? CopyLedger
+                         : recordChoice == RecordChoice::Undecided ? DecideLedger
+                         : !gateOpen                               ? OpenSluice
+                         : !returned                               ? ReportSluice
+                                                                   : trailStep;
         if (next != questStep)
         {
             questStep = next;
@@ -353,34 +334,49 @@ namespace Harbor
                        ? TrailStops[trailClues].objective
                        : L"\uc218\ub808\uac00 \uc9c0\ub098\uac04 \uae38 \uc644\ub8cc. \uc0ac\ub0e5\u00b7\uac70\ub798\ub97c \ud558\uba70 \uc790\uc720\ub86d\uac8c \ud0d0\ud5d8\ud558\uc790.";
         }
+        if (questStep == GatherHides)
+        {
+            return L"\uac00\uc8fd " + std::to_wstring(level.stats.hides) + L"/" + std::to_wstring(HideOrder) +
+                   L" \u00b7 SPACE \uacf5\uaca9 / E \uc90d\uae30";
+        }
         const wchar_t* goals[] = {
-            L"1. \ubbf8\ub77c\uc5d0\uac8c \ub9d0\uc744 \uac78\uc5b4 \ub9c8\uc744 \uc0ac\uc815\uc744 \ub4e3\uc790 [E]",
-            L"2. \ubb34\ub108\uc9c4 \ubc30\uc218\ub85c\uc5d0\uc11c \uc7a5\ubd80\uc640 \uc5f4\uc1e0\ub97c \ucc59\uae30\uc790 [F, \uac01\uac01 \ud55c \ubc88]",
-            L"3. \uc7a5\ud130 \uac8c\uc2dc\ud310\uc5d0\uc11c \uc7a5\ubd80 \uc0ac\ubcf8\uc744 \ub0a8\uae30\uc790 [F]",
-            L"4. \uc7a5\ubd80\ub97c \ub204\uad6c\uc5d0\uac8c \ub9e1\uae38\uc9c0 \uacb0\uc815\ud558\uc790",
-            L"5. \uc61b \uc218\ubb38\uc73c\ub85c \uac00\uc11c \ubb3c\uae38\uc744 \uc5f4\uc790 [F]",
-            L"6. \ubbf8\ub77c\uc5d0\uac8c \ub3cc\uc544\uac00 \ub2ec\ub77c\uc9c4 \ub9c8\uc744\uc744 \ud655\uc778\ud558\uc790 [E]"};
+            L"[F] \uc7a5\ud130 \uac8c\uc2dc\ud310\uc5d0\uc11c \uac00\uc8fd \uc77c\uac10 \ubc1b\uae30",
+            nullptr,
+            L"[F] \uc7a5\ud130 \uac8c\uc2dc\ud310\uc5d0 \uac00\uc8fd \ub124 \uc7a5 \ub0a9\ud488\ud558\uae30",
+            L"\ubbf8\ub77c\uc5d0\uac8c\uc11c \ubb3c\uc5d0 \uc7a0\uae34 \uace8\ubaa9 \uc0ac\uc815 \ub4e3\uae30",
+            L"[F] \ubb34\ub108\uc9c4 \ubc30\uc218\ub85c\uc5d0\uc11c \ub3cc \uc544\ub798 \uc0b4\ud53c\uae30",
+            L"[F] \ubc30\uc218\ub85c\uc5d0\uc11c \uc7a5\ubd80\uc640 \uc5f4\uc1e0 \ucc59\uae30\uae30",
+            L"[F] \uc7a5\ud130 \uac8c\uc2dc\ud310\uc5d0 \uc7a5\ubd80 \uc0ac\ubcf8 \ub0a8\uae30\uae30",
+            L"\uc7a5\ubd80\ub97c \ub204\uad6c\uc5d0\uac8c \ub9e1\uae38\uc9c0 \uacb0\uc815\ud558\uae30",
+            L"[F] \uc61b \uc218\ubb38\uc744 \uc5f4\uc5b4 \ubb3c\uae38 \ub0b4\uae30",
+            L"\ubbf8\ub77c\uc5d0\uac8c \ub3cc\uc544\uac00 \uc77c \ub9c8\uce5c \uac83 \uc54c\ub9ac\uae30",
+        };
+        static_assert(std::size(goals) == FirstTrailStep);
         return goals[questStep];
     }
 
     std::wstring World::ObjectiveHint() const
     {
-        if (questStep == 3)
+        if (questStep == GatherHides)
+        {
+            return L"\uc0ac\uc2b4\uc744 \uc4f0\ub7ec\ub728\ub9b0 \ub4a4 E\ub85c \uac00\uc8fd\uc744 \uc8fc\uc6cc\uc57c \uc218\ub7c9\uc774 \uc624\ub978\ub2e4. \ub2e4\ub978 \uacf3\uc5d0\uc11c \uad6c\ud55c \uac00\uc8fd\ub3c4 \uc4f8 \uc218 \uc788\ub2e4.";
+        }
+        if (questStep == DecideLedger)
         {
             return L"\uc7a5\ud130 R: \uacf5\uac1c / \uc138\ub77c\ud2b8 \uacc1 T: \uad00\uccad / \uc774\uc548 \uacc1 T: \ud310\ub9e4";
         }
-        if (questStep == 1)
+        if (questStep == RecoverEvidence)
         {
             return std::wstring(L"\uc7a5\ubd80 ") +
                    (recoveredLedger ? L"\ud655\ubcf4" : L"\ubbf8\ud655\ubcf4") + L" / \uc5f4\uc1e0 " +
                    (recoveredKey ? L"\ud655\ubcf4" : L"\ubbf8\ud655\ubcf4") +
                    L" \u00b7 \uae08\ube5b \ubaa9\ud45c \ud45c\uc2dc\ub97c \ub530\ub77c\uac00\uc790";
         }
-        if (questStep == 4 && !Holder(key))
+        if (questStep == OpenSluice && !Holder(key))
         {
             return L"\uc5f4\uc1e0\uac00 \ub545\uc5d0 \ub5a8\uc5b4\uc838 \uc788\ub2e4. \uae08\ube5b \ud45c\uc2dc\ub97c \ub530\ub77c F\ub85c \ud68c\uc218\ud558\uc790";
         }
-        if (questStep == 4 && Holder(key) != level.Player().Id())
+        if (questStep == OpenSluice && Holder(key) != level.Player().Id())
         {
             return L"\uc5f4\uc1e0\ub97c \ub9e1\uae34 \uc218\ub9ac\uacf5\uc774 \uc218\ubb38\uc73c\ub85c \uac04\ub2e4. \uc9c1\uc811 \uac00\uc11c \ud655\uc778\ud558\uc790";
         }
@@ -408,25 +404,37 @@ namespace Harbor
         {
             return trailNotice == TrailNotice::None ? sites[TrailStops[trailClues].site] : InvalidActorId;
         }
+        if (questStep == TakeHideJob || questStep == DeliverHides)
+        {
+            return sites[2];
+        }
+        if (questStep == GatherHides)
+        {
+            return sites[OpeningHuntSite];
+        }
+        if (questStep == InspectDrain)
+        {
+            return sites[0];
+        }
         auto artifactTarget = [&](ActorId artifact)
         {
             ActorId holder = Holder(artifact);
             return holder ? holder : artifact;
         };
-        if (questStep == 0 || questStep == 5)
+        if (questStep == MeetMira || questStep == ReportSluice)
         {
             const Npc* mira = Person(0);
-            return mira && mira->health > 0 ? mira->Id() : sites[2];
+            return mira && mira->health > 0 && mira->affinity >= -20 ? mira->Id() : sites[2];
         }
-        if (questStep == 1)
+        if (questStep == RecoverEvidence)
         {
             return artifactTarget(recoveredLedger ? key : ledger);
         }
-        if (questStep == 2 || questStep == 3)
+        if (questStep == CopyLedger || questStep == DecideLedger)
         {
             return sites[2];
         }
-        if (questStep == 4)
+        if (questStep == OpenSluice)
         {
             return Holder(key) ? sites[1] : key;
         }
@@ -464,12 +472,17 @@ namespace Harbor
             return guide;
         }
         const wchar_t* reasons[] = {
-            L"\ubc30\uc218\ub85c\uac00 \ubb34\ub108\uc838 \uace8\ubaa9\uc5d0 \ubb3c\uc774 \ucc3c\ub2e4. \uc218\ub9ac\uacf5 \ubbf8\ub77c\uac00 \ub3c4\uc640\uc904 \uc0ac\ub78c\uc744 \ucc3e\uace0 \uc788\ub2e4.",
+            L"\ube44\uac00 \uac20 \ubb34\uc5f0\ud56d\uc5d0 \ub3c4\ucc29\ud588\ub2e4. \uc57d \uc0c1\uc790 \uc6b4\ubc18\uc5d0 \uc4f8 \uac00\uc8fd\uc744 \uad6c\ud55c\ub2e4\ub294 \uc77c\uac10\uc774 \uc7a5\ud130 \uac8c\uc2dc\ud310\uc5d0 \ubd99\uc5b4 \uc788\ub2e4.",
+            L"\uc7a5\ud130 \ubc16 \ud070\uae38\uc744 \ub530\ub77c\uac00\uba74 \uc0ac\uc2b4\uc774 \ub098\uc624\ub294 \uae38\ubaa9\uc774 \uc788\ub2e4. \uc0ac\uc2b4\uc744 \uc7a1\uace0 \ub5a8\uc5b4\uc9c4 \uac00\uc8fd\uc744 \uc8fc\uc6cc \uac00\uc790.",
+            L"\uc57d \uc0c1\uc790\ub97c \ubb36\ub294 \ub370 \uc4f8 \uac00\uc8fd\uc744 \ub2e4 \ubaa8\uc558\ub2e4. \uc7a5\ud130 \uac8c\uc2dc\ud310\uc73c\ub85c \ub3cc\uc544\uac00 \ub0a9\ud488\ud558\uace0 \ud488\uc0af\uc744 \ubc1b\uc790.",
+            L"\uc57d \uc0c1\uc790\ub294 \ubb36\uc5c8\uc9c0\ub9cc \ub0ae\uc740 \uace8\ubaa9\uc73c\ub85c\ub294 \ub4e4\uc77c \uc218 \uc5c6\ub2e4. \uace8\ubaa9\uc744 \uc0b4\ud53c\ub358 \ubbf8\ub77c\uac00 \ub3c4\uc6c0\uc744 \uad6c\ud558\uace0 \uc788\ub2e4.",
+            L"\ubbf8\ub77c\uac00 \ubb34\ub108\uc9c4 \ubc30\uc218\ub85c \uc544\ub798\uc5d0 \ubb54\uac00 \uac78\ub838\ub2e4\uace0 \ud588\ub2e4. \ub3cc \uc0ac\uc774\ub97c \uc0b4\ud3b4 \ubb3c\uae38\uc744 \ub9c9\uc740 \ubb3c\uac74\uc744 \ud655\uc778\ud558\uc790.",
             L"\ubbf8\ub77c\ub294 \ubc30\uc218\ub85c\ub97c \ubc1b\uce58\ub294 \uc911\uc774\ub2e4. \ubb3c\uc5d0 \uc7a0\uae30\uae30 \uc804\uc5d0 \uc7a5\ubd80\uc640 \uc218\ubb38 \uc5f4\uc1e0\ub97c \ucc3e\uc544 \uc8fc\uc790.",
             L"\uc7a5\ubd80\uc5d0\ub294 \uc2e4\uc885\ub41c \uc0ac\ub78c\ub4e4\uc758 \uc774\ub984\uc774 \uc788\ub2e4. \uc6d0\ubcf8\uc744 \ub118\uae30\uae30 \uc804\uc5d0 \uc99d\uac70\ub97c \ub0a8\uaca8 \ub450\uc790.",
             L"\uac00\uc871\ub4e4\uc5d0\uac8c \uc54c\ub9b4\uc9c0, \uad00\uccad\uc758 \uc870\uc0ac\ub97c \ubbff\uc744\uc9c0, \ub3c8\uc744 \ubc1b\uc744\uc9c0 \uc9c1\uc811 \uacb0\uc815\ud574\uc57c \ud55c\ub2e4.",
             L"\uc5f4\uc1e0\ub85c \uc61b \uc218\ubb38\uc744 \uc5f4\uba74 \uc7a0\uae34 \uace8\ubaa9\uc744 \ub2e4\uc2dc \uae38\ub85c \uc4f8 \uc218 \uc788\ub2e4.",
             L"\ubb3c\uae38\uc774 \uc5f4\ub838\ub2e4. \ubbf8\ub77c\uc5d0\uac8c \ub3cc\uc544\uac00 \ubcf4\uc0c1\uc744 \ubc1b\uace0 \ub9c8\uc744\uc758 \ubcc0\ud654\ub97c \ud655\uc778\ud558\uc790."};
+        static_assert(std::size(reasons) == FirstTrailStep);
         guide.reason = reasons[questStep];
         const Actor* target = level.Scene().Find(guide.target);
         if (!target)
@@ -495,19 +508,28 @@ namespace Harbor
                                                          : L"\ubc30\uc218\ub85c\uc758 \uc5f4\uc1e0";
         }
         float distance = Distance(level.Player().WorldPosition(), target->WorldPosition());
-        if (questStep == 0 || questStep == 5)
+        if (questStep <= DeliverHides || questStep == InspectDrain)
+        {
+            guide.action = Objective();
+            const bool hunting = questStep == GatherHides;
+            guide.interactionKey = hunting ? 0 : 'F';
+            guide.ready = hunting ? distance < OpeningHuntRadius
+                                  : distance < 1.8f && level.ClearLine(level.Player().WorldPosition(),
+                                                                       target->WorldPosition());
+        }
+        else if (questStep == MeetMira || questStep == ReportSluice)
         {
             guide.interactionKey = person ? 'E' : 'F';
             guide.ready =
                 distance < (person ? 1.5f : 1.8f) &&
                 (!person || level.ClearLine(level.Player().WorldPosition(), target->WorldPosition()));
-            guide.action = questStep == 0
+            guide.action = questStep == MeetMira
                                ? (person ? L"[E] \ubbf8\ub77c\uc5d0\uac8c \uc0ac\uc815 \ub4e3\uae30"
                                          : L"[F] \uac8c\uc2dc\ud310 \uc758\ub8b0 \uc77d\uae30")
                                : (person ? L"[E] \ubbf8\ub77c\uc5d0\uac8c \uc644\ub8cc \ubcf4\uace0"
                                          : L"[F] \uac8c\uc2dc\ud310\uc5d0 \uc644\ub8cc \ubcf4\uace0");
         }
-        else if (questStep == 1 || (questStep == 4 && !Holder(key)))
+        else if (questStep == RecoverEvidence || (questStep == OpenSluice && !Holder(key)))
         {
             guide.interactionKey = 'F';
             guide.ready =
@@ -515,19 +537,19 @@ namespace Harbor
             guide.action = guide.target == ledger ? L"[F] \uc7a5\ubd80 \ucc59\uae30\uae30"
                                                   : L"[F] \uc5f4\uc1e0 \ucc59\uae30\uae30";
         }
-        else if (questStep == 2)
+        else if (questStep == CopyLedger)
         {
             guide.interactionKey = 'F';
             guide.ready = distance < 1.8f;
             guide.action = L"[F] \uac8c\uc2dc\ud310\uc5d0\uc11c \uc7a5\ubd80 \uc0ac\ubcf8 \ub9cc\ub4e4\uae30";
         }
-        else if (questStep == 3)
+        else if (questStep == DecideLedger)
         {
             guide.ready = distance <= WorldLayout::MarketRadius;
             guide.action =
                 L"R \uacf5\uac1c / \uc138\ub77c\ud2b8 \uacc1 T \uad00\uccad / \uc774\uc548 \uacc1 T \ud310\ub9e4 \u00b7 H\ub85c \uacb0\uacfc \ube44\uad50";
         }
-        else if (questStep == 4)
+        else if (questStep == OpenSluice)
         {
             bool delegated = Holder(key) != level.Player().Id();
             guide.interactionKey = delegated ? 0 : 'F';
@@ -561,7 +583,7 @@ namespace Harbor
                     L"\ub2f9\uc2e0\uc774 \ud37c\ub728\ub9b0 \uae30\ub85d \ub54c\ubb38\uc5d0 \uc7a5\ud130\uac00 \uc220\ub801\uc774\uc624. \uc99d\uc5b8\uc740 \ub4e3\uaca0\uc9c0\ub9cc \uc9c8\uc11c\ub3c4 \uc9c0\ucf1c\uc57c \ud558\uc624.";
             }
             ReactToPlayer(
-                L"\uc7a5\ubd80 \uacf5\uac1c \u2192 \ub3c4\uc724\uacfc \uc8fc\ubbfc\ub4e4\uc774 \uc7a5\ud130\uc5d0 \ubaa8\uc774\uace0, \uc138\ub77c\ud2b8\uac00 \uc8fc\ubcc0\uc744 \uc21c\ucc30\ud55c\ub2e4.");
+                L"\uc7a5\ubd80 \uacf5\uac1c \u2192 \ub3c4\uc724\uc740 \uc7a5\ud130\uc5d0\uc11c \uac00\uc871\ub4e4\uc758 \uc99d\uc5b8\uc744 \uae30\ub2e4\ub9ac\uace0 \uc138\ub77c\ud2b8\ub294 \uc8fc\ubcc0\uc744 \uc21c\ucc30\ud55c\ub2e4.");
         }
         else if (choice == RecordChoice::Authority)
         {
@@ -578,7 +600,7 @@ namespace Harbor
                     L"\uad00\uccad\uc5d0 \ub118\uacbc\uad6c\ub098. \uc870\uc0ac\ub294 \uc870\uc6a9\ud574\uc84c\uc9c0\ub9cc, \uac00\uc871\ub4e4\uc740 \uadf8 \uc774\ub984\uc744 \ubabb \ub4e3\uac8c \ub410\uc5b4.";
             }
             ReactToPlayer(
-                L"\uad00\uccad\uc5d0 \uc7a5\ubd80\ub97c \ub118\uae40 \u2192 \uc138\ub77c\ud2b8\uac00 \ubc30\uc218\ub85c\ub97c \ud1b5\uc81c\ud558\uace0 \uc8fc\ubbfc\ub4e4\uc740 \uc9d1\uc73c\ub85c \ubb3c\ub7ec\ub09c\ub2e4.");
+                L"\uad00\uccad\uc5d0 \uc7a5\ubd80\ub97c \ub118\uae40 \u2192 \uc138\ub77c\ud2b8\uac00 \ubc30\uc218\ub85c \uc785\uad6c\ub97c \uc9c0\ud0a8\ub2e4. \uc8fc\ubbfc\uc740 \uc606\uae38\uc744 \uc4f8 \uc218 \uc788\ub2e4.");
         }
         else
         {
@@ -610,13 +632,15 @@ namespace Harbor
         history.clear();
         gateOpen = published = controlled = repaired = copied = ledgerWet = false;
         flood = 0;
-        briefed = recoveredLedger = recoveredKey = returned = dealSettled = false;
+        hideJob = HideJob::Offered;
+        drainReportedAt = minutes;
+        briefed = drainInspected = recoveredLedger = recoveredKey = returned = dealSettled = false;
         EndDialogue();
         EndTrade();
         recordChoice = RecordChoice::Undecided;
         trailClues = 0;
         trailNotice = TrailNotice::None;
-        questStep = 0;
+        questStep = TakeHideJob;
         consequence.clear();
         random.seed(level.seed ^ 0x48415242u);
 
@@ -638,7 +662,8 @@ namespace Harbor
             {L"\ubd89\uc740\uace8 \uc57c\uc601\uc9c0 \u00b7 \uc704\ud5d8",
              WorldLayout::RaiderCamp(),
              "bandit_sign"},
-            {WorldLayout::VillageName(4), WorldLayout::VillageCenter(4), "notice"}};
+            {WorldLayout::VillageName(4), WorldLayout::VillageCenter(4), "notice"},
+            {L"\ud070\uae38 \uc0ac\ub0e5\ud130", WorldLayout::OpeningHunt(), "notice"}};
         for (int i = 0; i < int(sites.size()); ++i)
         {
             Landmark& node = level.Scene().Create<Landmark>(worldRoot, "HarborSite", ActorKind::Prop);
@@ -655,6 +680,7 @@ namespace Harbor
             Actor& item = level.Scene().Create(worldRoot, i ? "SluiceKey" : "MissingLedger", ActorKind::Prop);
             item.SetWorldPosition(Site(0));
             item.model = i ? "key" : "ledger";
+            item.SetVisible(false);
             item.drawable = true;
             item.shadowWidth = 15;
             if (i)
@@ -859,11 +885,16 @@ namespace Harbor
             status.drawable = true;
         }
         Event(
-            L"\ubb34\uc5f0\ud56d, \uccab\ub0a0 \uc544\uce68. \ubc30\uc218\ub85c\uac00 \ubb34\ub108\uc838 \uc61b \uc7a5\ubd80\uc640 \uc218\ubb38 \uc5f4\uc1e0\uac00 \ub4dc\ub7ec\ub0ac\ub2e4.");
+            L"\ube44 \uac20 \uc544\uce68, \ubb34\uc5f0\ud56d\uc5d0 \ub2ff\uc558\ub2e4. \uc7a5\ud130 \uac8c\uc2dc\ud310\uc5d0 \uac00\uc8fd\uc744 \uad6c\ud55c\ub2e4\ub294 \uc77c\uac10\uc774 \ubd99\uc5b4 \uc788\ub2e4.");
     }
 
     void World::Observe(Npc& npc)
     {
+        if (!drainInspected)
+        {
+            return;
+        }
+
         for (ActorId artifact : {ledger, key})
         {
             const Actor& item = level.Scene().Get(artifact);
@@ -935,7 +966,11 @@ namespace Harbor
         else if (npc.variant < 5)
         {
             // Story destinations are unlocked by player actions, not an elapsed-time schedule.
-            if (!briefed)
+            if (!briefed && npc.variant == 0 && hideJob == HideJob::Delivered)
+            {
+                set(Action::Investigate, Site(0));
+            }
+            else if (!briefed || (gateOpen && (npc.variant == 0 || npc.variant == 4)))
             {
                 set(Action::Rest, npc.home);
             }
@@ -974,8 +1009,7 @@ namespace Harbor
             else
             {
                 bool delegated = Holder(key) == npc.Id() && !gateOpen;
-                set(delegated ? Action::Investigate : Action::Study,
-                    delegated || gateOpen ? Site(1) : npc.home);
+                set(delegated ? Action::Investigate : Action::Study, delegated ? Site(1) : npc.home);
             }
         }
         else if (Holder(key) == npc.Id() && !gateOpen &&
@@ -1007,26 +1041,12 @@ namespace Harbor
                 set(Action::Travel, destination);
             }
         }
-        else if (npc.variant >= 9 && npc.homeVillage == 0 && npc.job != Job::Hunter && briefed &&
-                 (recordChoice != RecordChoice::Public || (npc.knowledge & Knowledge::Published)))
-        {
-            Position gathering =
-                gateOpen ? WorldLayout::Town(27.5f + float(npc.variant % 3), 21.5f + float(npc.variant % 4))
-                : recordChoice == RecordChoice::Public || recordChoice == RecordChoice::Undecided
-                    ? WorldLayout::Town(10.5f + float(npc.variant % 4) * 2, 15.5f + float(npc.variant % 2))
-                    : npc.home;
-            set(npc.job == Job::Guard ? Action::Patrol
-                : gateOpen || recordChoice == RecordChoice::Public || recordChoice == RecordChoice::Undecided
-                    ? Action::Trade
-                    : Action::Rest,
-                Reachable(gathering));
-        }
         else if (IsMerchant(npc))
         {
             Position stall = WorldLayout::VillageMarket(npc.homeVillage);
-            stall.x += float(npc.variant % 3 - 1) * .8f;
-            stall.y += float((npc.variant / 3) % 3 - 1) * .8f;
-            set(Action::Trade, stall);
+            stall.x += float(npc.variant % 5 - 2) * 1.7f;
+            stall.y += float((npc.variant / 5) % 5 - 2) * 1.7f;
+            set(Action::Trade, Reachable(stall));
         }
         else if (npc.job == Job::Guard)
         {
@@ -1130,14 +1150,15 @@ namespace Harbor
             }
             else
             {
-                bool visitingMarket = (int(minutes / 12) + npc.variant) % 2 != 0;
+                const float routine = std::fmod(float(minutes) + float(npc.variant * 7 % 34), 34.0f);
+                const bool visitingMarket = routine < 14.0f;
                 Position meeting = WorldLayout::VillageMarket(npc.homeVillage);
-                meeting.x += float(npc.variant % 3 - 1) * .8f;
-                meeting.y += float((npc.variant / 3) % 3 - 1) * .8f;
+                meeting.x += float(npc.variant % 5 - 2) * 1.5f;
+                meeting.y += float((npc.variant / 5) % 5 - 2) * 1.5f;
                 set(npc.job == Job::Scholar ? Action::Study
                     : visitingMarket        ? Action::Trade
                                             : Action::Rest,
-                    visitingMarket ? meeting : npc.home);
+                    visitingMarket ? Reachable(meeting) : npc.home);
             }
         }
         if (Distance(npc.WorldPosition(), npc.destination) > .5f)
@@ -1346,10 +1367,10 @@ namespace Harbor
         {
             apprentice->knowledge |= Knowledge::Plans;
             apprentice->line =
-                L"\ub2f9\uc2e0\uc774 \ubb3c\uae38\uc744 \uc5f4\uc5c8\uad6c\ub098! \uc0ac\ub78c\ub4e4\uc774 \ub4dc\ub7ec\ub09c \uace8\ubaa9\uc73c\ub85c \ubb3c\uac74\uc744 \uc62e\uae30\uace0 \uc788\uc5b4.";
+                L"\ubb3c\uae38\uc774 \uc5f4\ub838\ub124! \uc774\uc81c \uc9d0\uafbc\ub4e4\uc774 \ubb3c\uc5d0 \uc816\uc744 \uac71\uc815 \uc5c6\uc774 \uc774 \uace8\ubaa9\uc73c\ub85c \ub2e4\ub2d0 \uc218 \uc788\uaca0\ub2e4.";
         }
         ReactToPlayer(
-            L"\uc218\ubb38 \uac1c\ubc29 \u2192 \uc7a0\uae34 \uace8\ubaa9\uc774 \uc2e4\uc81c \uae38\ub85c \ubc14\ub00c\uace0 \uc8fc\ubbfc\uacfc \uc0c1\uc778\uc774 \uadf8\uacf3\uc73c\ub85c \uc774\ub3d9\ud55c\ub2e4.");
+            L"\uc218\ubb38 \uac1c\ubc29 \u2192 \uc7a0\uaca8 \uc788\ub358 \uace8\ubaa9\uc73c\ub85c \ub2e4\uc2dc \uc9c0\ub098\ub2e4\ub2d0 \uc218 \uc788\ub2e4.");
         UpdateQuest();
     }
 
@@ -1600,7 +1621,7 @@ namespace Harbor
                 cordon.SetBlocksMovement(false);
             }
             Event(
-                L"\uc138\ub77c\ud2b8\uac00 \ub118\uaca8\ubc1b\uc740 \uc7a5\ubd80\ub97c \ub4e4\uace0 \ubc30\uc218\ub85c\ub97c \ud1b5\uc81c\ud55c\ub2e4. \uc8fc\ubbfc\ub4e4\uc740 \ubb3c\ub7ec\ub098\uace0 \uc6b0\ud68c\ub85c\ub294 \ub0a8\ub294\ub2e4.");
+                L"\uc138\ub77c\ud2b8\uac00 \ub118\uaca8\ubc1b\uc740 \uc7a5\ubd80\ub97c \ub4e4\uace0 \ubc30\uc218\ub85c \uc785\uad6c\ub97c \uc9c0\ud0a8\ub2e4. \uc7a5\ud130\ub85c \uac00\ub294 \uc606\uae38\uc740 \uc5f4\ub824 \uc788\ub2e4.");
         }
         if (npc.variant == 3 && recordChoice == RecordChoice::Sold && !dealSettled &&
             Distance(npc.WorldPosition(), Site(3)) < 1.2f)
@@ -1779,7 +1800,9 @@ namespace Harbor
         }
         {
             Perf::Scope story(Perf::Cpu::StoryUpdate);
-            flood = gateOpen ? 0 : (std::min)(100, int((minutes - 360) / (repaired ? 9 : 3)));
+            flood = !briefed || gateOpen
+                        ? 0
+                        : (std::min)(100, int((minutes - drainReportedAt) / (repaired ? 9 : 3)));
             gossipTime -= dt;
             if (gossipTime <= 0)
             {
@@ -1884,7 +1907,7 @@ namespace Harbor
 
     void World::CompleteFirstQuest()
     {
-        if (returned || questStep != 5)
+        if (returned || questStep != ReportSluice)
         {
             return;
         }
@@ -1907,17 +1930,36 @@ namespace Harbor
         Npc* person = dynamic_cast<Npc*>(source);
         if (!source || (person && person->health <= 0) ||
             Distance(level.Player().WorldPosition(), source->WorldPosition()) >= (person ? 1.5f : 1.8f) ||
-            (person && !level.ClearLine(level.Player().WorldPosition(), source->WorldPosition())))
+            !level.ClearLine(level.Player().WorldPosition(), source->WorldPosition()))
         {
             EndDialogue();
             return;
         }
         DialogueChoice selected = dialogue.pages[dialogue.page].choices[choice];
-        if (selected.effect == DialogueEffect::AcceptQuest && !briefed)
+        if (selected.effect == DialogueEffect::AcceptHideJob && hideJob == HideJob::Offered &&
+            dialogue.source == sites[2])
+        {
+            hideJob = HideJob::Accepted;
+            Event(
+                L"\uac00\uc8fd \ub124 \uc7a5\uc744 \uad6c\ud558\uae30\ub85c \ud588\ub2e4. \uae08\ube5b \ud45c\uc2dd\uc774 \uac00\ub9ac\ud0a4\ub294 \ud070\uae38 \uc0ac\ub0e5\ud130\ub85c \uac00\uc790.");
+            UpdateQuest();
+        }
+        else if (selected.effect == DialogueEffect::DeliverHideJob && hideJob == HideJob::Accepted &&
+                 dialogue.source == sites[2] && level.stats.hides >= HideOrder)
+        {
+            level.stats.hides -= HideOrder;
+            level.stats.coins += HideOrder * HidePayPerPiece;
+            hideJob = HideJob::Delivered;
+            Event(
+                L"\uac00\uc8fd \ub124 \uc7a5\uc744 \ub118\uae30\uace0 24\ub0e5\uc744 \ubc1b\uc558\ub2e4. \uc57d \uc0c1\uc790\ub97c \ub4e4\uc77c \uae38\uc774 \ub9c9\ud614\ub2e4\ub294\ub370, \ubbf8\ub77c\uc5d0\uac8c \uc0ac\uc815\uc744 \ub4e4\uc5b4\ubcf4\uc790.");
+            UpdateQuest();
+        }
+        else if (selected.effect == DialogueEffect::AcceptQuest && !briefed && hideJob == HideJob::Delivered)
         {
             briefed = true;
+            drainReportedAt = minutes;
             ReactToPlayer(
-                L"\uc7a5\ubd80\uc640 \uc218\ubb38 \uc5f4\uc1e0\ub97c \ucc3e\uc544\uc624\uae30\ub85c \uc57d\uc18d\ud588\ub2e4. \ubbf8\ub77c\ub294 \ubc30\uc218\ub85c\ub97c \ubc1b\uce5c\ub2e4. \uc7a5\ubd80\ub97c \ub204\uad6c\uc5d0\uac8c \ub118\uae38\uc9c0\ub294 \uc544\uc9c1 \uc815\ud558\uc9c0 \uc54a\uc558\ub2e4.");
+                L"\ubbf8\ub77c \ub300\uc2e0 \ubc30\uc218\ub85c\ub97c \uc0b4\ud3b4\ubcf4\uae30\ub85c \ud588\ub2e4. \uae08\ube5b \ud45c\uc2dd\uc774 \uc788\ub294 \uacf3\uc5d0\uc11c F\ub85c \ub3cc \uc544\ub798\ub97c \ud655\uc778\ud558\uc790.");
             UpdateQuest();
         }
         else if (selected.effect == DialogueEffect::CompleteQuest)
@@ -1959,6 +2001,44 @@ namespace Harbor
         }
     }
 
+    void World::BeginHideJob()
+    {
+        EndDialogue();
+        dialogue.source = sites[2];
+        const std::wstring speaker = L"\uc7a5\ud130 \uac8c\uc2dc\ud310";
+        if (hideJob == HideJob::Offered)
+        {
+            dialogue.pages.push_back(
+                {speaker,
+                 L"\uac00\uc8fd \ub124 \uc7a5\uc744 \uad6c\ud569\ub2c8\ub2e4. \ubc24\uc0c8 \ube44\uc5d0 \uc816\uc740 \ub048\uc774 \ub04a\uc5b4\uc838 \uc57d \uc0c1\uc790\ub97c \uc218\ub808\uc5d0 \uc2e4\uc744 \uc218\uac00 \uc5c6\uc2b5\ub2c8\ub2e4. \uac00\uc8fd\uc744 \uac00\uc838\uc624\uc2dc\uba74 \ud488\uc0af 24\ub0e5\uc744 \ub4dc\ub9bd\ub2c8\ub2e4.",
+                 {}});
+            dialogue.pages.push_back(
+                {L"\uac8c\uc2dc\ud310\uc5d0 \ub367\ubd99\uc778 \ucabd\uc9c0",
+                 L"\ud070\uae38\ub85c \ub098\uac00\uba74 \uc0ac\uc2b4\uc774 \ubcf4\uc77c \uac70\uc694. \ubab0\ub824\ub4e4\uba74 \ud55c \uac78\uc74c \ubb3c\ub7ec\uc130\ub2e4\uac00 \ubca0\uc2dc\uc624. \uc4f0\ub7ec\ub728\ub9b0 \ub4a4\uc5d0\ub294 \ub5a8\uc5b4\uc9c4 \uac00\uc8fd\uc744 \ucc59\uaca8 \uc640\uc57c \ud488\uc0af\uc744 \ubc1b\uc744 \uc218 \uc788\uc18c.",
+                 {{L"\uac00\uc8fd \ub124 \uc7a5\uc744 \uad6c\ud574 \uc628\ub2e4",
+                   -1,
+                   DialogueEffect::AcceptHideJob},
+                  {L"\ub2e4\uc74c\uc5d0 \ub2e4\uc2dc \ubcf8\ub2e4", -1, DialogueEffect::None}}});
+        }
+        else if (level.stats.hides >= HideOrder)
+        {
+            dialogue.pages.push_back(
+                {L"\uc7a5\ud130 \uc9d0\uafbc",
+                 L"\uac00\uc8fd \uac00\uc838\uc654\ub124. \ub355\ubd84\uc5d0 \uc9d0\uc740 \ubb36\uaca0\uc5b4. \uadf8\ub7f0\ub370 \uace8\ubaa9 \ubc14\ub2e5\uc774 \uc544\uc9c1 \ubb3c\uc5d0 \uc7a0\uaca8 \uc57d \uc0c1\uc790\ub97c \ub4e4\uc77c \uc218\uac00 \uc5c6\uc5b4. \ubbf8\ub77c\uac00 \uc0b4\ud3b4\ubcf4\ub7ec \uac14\uc73c\ub2c8, \ud488\uc0af \ubc1b\uace0 \uadf8\ucabd\uc5d0\ub3c4 \ud55c\ubc88 \ub4e4\ub7ec \ubd10.",
+                 {{L"\uac00\uc8fd \ub124 \uc7a5\uc744 \uac74\ub124\uace0 24\ub0e5\uc744 \ubc1b\ub294\ub2e4",
+                   -1,
+                   DialogueEffect::DeliverHideJob},
+                  {L"\ub098\uc911\uc5d0 \uac74\ub128\ub2e4", -1, DialogueEffect::None}}});
+        }
+        else
+        {
+            dialogue.pages.push_back(
+                {speaker,
+                 L"\uac00\uc8fd \ub124 \uc7a5\uc774 \ud544\uc694\ud558\ub2e4. \uc0ac\uc2b4\uc744 \uc7a1\uc740 \ub4a4 E\ub85c \uc8fc\uc6cc \uc624\uc790.",
+                 {}});
+        }
+    }
+
     void World::BeginDialogue(Npc* npc)
     {
         Perf::Scope scope(Perf::Cpu::Interaction);
@@ -1980,42 +2060,35 @@ namespace Harbor
             option(0, L"\uc54c\uaca0\uc5b4. \ubb3c\ub7ec\ub0a0\uac8c.", -1, DialogueEffect::None);
             return;
         }
-        if ((!npc || npc->variant == 0) && !briefed)
+        if ((!npc || npc->variant == 0) && questStep == MeetMira)
         {
             add(name,
-                npc ? L"\ubc1c\ubc11 \uc870\uc2ec\ud574. \ubc24\uc0c8 \ube44\uac00 \uc3df\uc544\uc838\uc11c \uad6c\uc2dc\uac00\uc9c0 \ubc30\uc218\ub85c\uac00 \ubb34\ub108\uc84c\uc5b4. \ube44\ub294 \uadf8\ucce4\ub294\ub370 \uc61b \uc218\ubb38\uc774 \uc7a0\uaca8 \uc788\uc5b4\uc11c \ub0ae\uc740 \uace8\ubaa9\uc73c\ub85c \ubb3c\uc774 \ub2e4\uc2dc \ubc00\ub824\ub4e4\uace0 \uc788\uc5b4."
-                    : L"\uad6c\uc2dc\uac00\uc9c0 \ubc30\uc218\ub85c \ubd95\uad34. \uc7a0\uae34 \uace8\ubaa9\uc758 \ubb3c\uae38\uc744 \uc5f4 \uc0ac\ub78c\uc744 \uad6c\ud568. \ud604\uc7a5\uc5d0\uc11c \uc77c\ud558\ub294 \uae30\uc220\uc790 \ubbf8\ub77c\uc5d0\uac8c \ub3c4\uc6c0\uc744 \uc904 \uac83.");
-            add(L"\ub098",
-                L"\uadf8\ub7fc \uc218\ubb38\ubd80\ud130 \uc5f4\uba74 \ub418\uaca0\ub124. \uadf8\ub7f0\ub370 \uc65c \ub2e4\ub4e4 \uc7a5\ubd80 \uc774\uc57c\uae30\ub97c \ud558\uc9c0?");
+                npc ? L"\uc9d0\uafbc\ud55c\ud14c \uac00\uc8fd\uc744 \uac00\uc838\ub2e4\uc900 \uac8c \ub108\uad6c\ub098. \uace0\ub9c8\uc6cc. \ub355\ubd84\uc5d0 \uc57d \uc0c1\uc790\ub294 \ubb36\uc5c8\ub294\ub370, \uace8\ubaa9\uc5d0 \ubb3c\uc774 \ubc1c\ubaa9\uae4c\uc9c0 \ucc28\uc11c \uc548\ucabd \uc9d1\uc73c\ub85c \ub4e4\uc77c \uc218\uac00 \uc5c6\uc5b4."
+                    : L"\uc9d0\uc744 \ubb36\uc744 \uac00\uc8fd\uc740 \ub9c8\ub828\ud588\ub2e4. \ubb3c\uc5d0 \uc7a0\uae34 \uace8\ubaa9\uc758 \ubc30\uc218\ub85c\ub97c \uc0b4\ud544 \uc0ac\ub78c\uc744 \uad6c\ud55c\ub2e4. \ubbf8\ub77c\uac00 \ub9c9\ud78c \uacf3\uc744 \ud45c\uc2dc\ud574 \ub450\uc5c8\ub2e4.");
             add(name,
-                L"\ubb34\ub108\uc9c4 \ubcbd \uc548\uc5d0\uc11c \uc624\ub798\ub41c \ud654\ubb3c \uc0c1\uc790\uac00 \ub4dc\ub7ec\ub0ac\uac70\ub4e0. \uc5f4\ub450 \ud574 \uc804 \uac00\ub77c\uc549\uc740 \ubc00\uc218\uc120\uc758 \uc9d0\uc774\ub798. \uc61b \uc218\ubb38 \uc5f4\uc1e0\uc640 \uc7a5\ubd80\uac00 \uc788\ub2e4\ub294\ub370, \uc0ac\ub77c\uc9c4 \uc0ac\ub78c\ub4e4\uc758 \uc774\ub984\uc774 \uc801\ud600 \uc788\ub300.");
-            add(name,
-                L"\ub09c \uc5ec\uae30\uc11c \uc218\ub85c\ub97c \ubc1b\uccd0\uc57c \ud574. \ub300\uc2e0 \uc7a5\ubd80\uc640 \uc5f4\uc1e0\ub97c \ucc59\uaca8 \uc904\ub798? \uc7a5\ubd80\ub294 \ubb3c\uc744 \ube7c\uae30 \uc804\uc5d0 \uac74\uc838\uc57c \ud574. \uc5f4\uc1e0\ub85c \ubb3c\uae38\uae4c\uc9c0 \uc5f4\uc5b4 \uc8fc\uba74 \ud488\uc0af 20\ub0e5\uc744 \uc904\uac8c.");
-            option(
-                3,
-                L"\ub9e1\uc744\uac8c. \ubc30\uc218\ub85c\uc5d0\uc11c \uc7a5\ubd80\uc640 \uc5f4\uc1e0\ub97c \ucc3e\uc544\uc62c\uac8c.",
-                -1,
-                DialogueEffect::AcceptQuest);
-            option(3,
-                   L"\uc7a5\ubd80\ub294 \ub204\uad6c\uc5d0\uac8c \ub118\uaca8\uc57c \ud558\ub294\ub370?",
-                   4,
+                npc ? L"\ubc24\uc0c8 \ub0b4\ub9b0 \ube44\uc5d0 \ubc30\uc218\ub85c \ubcbd\uc774 \ubb34\ub108\uc84c\uc5b4. \ub3cc \uc0ac\uc774\ub85c \ubb54\uac00 \ubcf4\uc5ec. \uc548\ucabd\uc744 \uc0b4\ud3b4 \uc904\ub798? \ub09c \ubcbd\uc774 \ub354 \ubb34\ub108\uc9c0\uc9c0 \uc54a\uac8c \ubc1b\uccd0 \ub458\uac8c. \ubb3c\uae38\uae4c\uc9c0 \uc5f4\uba74 \ud488\uc0af 20\ub0e5\uc744 \uc904\uac8c."
+                    : L"\ubb34\ub108\uc9c4 \ubc30\uc218\ub85c\uc758 \ub3cc \ud2c8\uc744 \uc0b4\ud544 \uac83. \ubb3c\uae38\uc744 \uc5f4\uace0 \ubcf4\uace0\ud558\uba74 \uc870\ud569\uc5d0\uc11c \ud488\uc0af 20\ub0e5\uc744 \uc9c0\uae09\ud55c\ub2e4.");
+            option(1,
+                   L"\ubc30\uc218\ub85c\ub97c \uc0b4\ud3b4\ubcf4\uace0 \uc62c\uac8c.",
+                   -1,
+                   DialogueEffect::AcceptQuest);
+            option(1,
+                   L"\uba3c\uc800 \ub2e4\ub978 \uc77c\uc744 \ubcf4\uace0 \uc62c\uac8c.",
+                   -1,
                    DialogueEffect::None);
-            option(
-                3,
-                L"\uc544\uc9c1 \uc57d\uc18d\uc740 \ubabb \ud558\uaca0\uc5b4. \ub098\uc911\uc5d0 \uc62c\uac8c.",
-                -1,
-                DialogueEffect::None);
-            add(name,
-                L"\uadf8\uac74 \ub124\uac00 \ub0b4\uc6a9\uc744 \ubcf4\uace0 \uc815\ud574. \uac00\uc871\ub4e4\uc5d0\uac8c \uc54c\ub9ac\uc790\ub294 \uc0ac\ub78c\ub3c4, \uad00\uccad\uc5d0 \ub9e1\uae30\uc790\ub294 \uc0ac\ub78c\ub3c4 \uc788\uc5b4. \uac12\uc744 \uce58\ub974\uaca0\ub2e4\ub294 \uc911\uac1c\uc0c1\ub3c4 \uc788\uace0. \ub204\uad6c\ub97c \ubbff\ub4e0 \uc0ac\ubcf8\uc740 \ub0a8\uaca8 \ub46c.");
-            option(
-                4,
-                L"\uc77c\ub2e8 \ub458 \ub2e4 \ucc3e\uc544\uc62c\uac8c. \ucc98\ubd84\uc740 \uadf8 \ub4a4\uc5d0 \uc815\ud558\uaca0\uc5b4.",
-                -1,
-                DialogueEffect::AcceptQuest);
-            option(4, L"\uc0dd\uac01\ud560 \uc2dc\uac04\uc774 \ud544\uc694\ud574.", -1, DialogueEffect::None);
             return;
         }
-        if ((!npc || npc->variant == 0) && questStep == 5)
+        if (npc && npc->homeVillage == 0 && !drainInspected)
+        {
+            add(name,
+                npc->job == Job::Engineer || npc->job == Job::Apprentice
+                    ? L"\ube44\ub294 \uadf8\ucce4\ub294\ub370 \ub0ae\uc740 \uace8\ubaa9 \ubb3c\uc774 \uc544\uc9c1 \uc548 \ube60\uc84c\uc5b4. \uc816\uc740 \ub3cc\uc740 \ubc1f\uc9c0 \ub9d0\uace0 \ub3cc\uc544\uac00."
+                : IsMerchant(*npc)
+                    ? L"\uc694 \uba70\uce60 \uc57d\uac12\uc774 \uacc4\uc18d \uc624\ub974\ub124. \ud544\uc694\ud55c \uac8c \uc788\uc73c\uba74 T\ub85c \ubb3c\uac74\uc744 \ubd10."
+                    : L"\ube44\uac00 \uadf8\uccd0\uc11c\uc57c \uc7a5\uc774 \uc130\uc5b4. \uc816\uc740 \uc9d0\uc744 \ub2e4\uc2dc \ub098\ub974\ub290\ub77c \ub2e4\ub4e4 \uc815\uc2e0\uc774 \uc5c6\uc9c0.");
+            return;
+        }
+        if ((!npc || npc->variant == 0) && questStep == ReportSluice)
         {
             add(name,
                 npc ? L"\ubb3c \ube60\uc9c0\ub294 \uc18c\ub9ac \ub4e4\ub9ac\uc9c0? \uc544\uae4c\uae4c\uc9c0\ub9cc \ud574\ub3c4 \ubabb \uc9c0\ub098\uac00\ub358 \uace8\ubaa9\uc73c\ub85c \uc0ac\ub78c\ub4e4\uc774 \uc9d0\uc744 \uc62e\uae30\uace0 \uc788\uc5b4. \ub124\uac00 \uc5f4\uc5b4 \uc900 \uae38\uc774\uc57c."
@@ -2266,10 +2339,10 @@ namespace Harbor
         UpdateQuest();
         Npc* npc = Nearest();
         // Talking at the marked quest giver must not select a slightly closer bystander.
-        if (questStep == 0 || questStep == 5)
+        if (questStep == MeetMira || questStep == ReportSluice)
         {
             Npc* questGiver = Person(0);
-            if (questGiver && questGiver->health > 0 &&
+            if (questGiver && questGiver->health > 0 && questGiver->affinity >= -20 &&
                 Distance(level.Player().WorldPosition(), questGiver->WorldPosition()) < 1.5f &&
                 level.ClearLine(level.Player().WorldPosition(), questGiver->WorldPosition()))
             {
@@ -2313,30 +2386,58 @@ namespace Harbor
         }
         UpdateQuest();
         Position hero = level.Player().WorldPosition();
-        if (Distance(hero, Site(2)) < 1.8f && (!briefed || questStep == 5))
+        const Position board = Site(2);
+        if (Distance(hero, board) < 1.8f && level.ClearLine(hero, board))
         {
-            BeginDialogue(nullptr);
+            if (questStep <= DeliverHides)
+            {
+                BeginHideJob();
+                return;
+            }
+            if (questStep == MeetMira || questStep == ReportSluice)
+            {
+                if (ObjectiveTarget() == sites[2])
+                {
+                    BeginDialogue(nullptr);
+                }
+                else
+                {
+                    Event(
+                        L"\uae08\ube5b \ud45c\uc2dd\uc744 \ub530\ub77c \ubbf8\ub77c\uc5d0\uac8c \uac00\uc11c E\ub85c \ub9d0\uc744 \uac78\uc790.");
+                }
+                return;
+            }
+        }
+
+        const Position drain = Site(0);
+        if (questStep == InspectDrain && Distance(hero, drain) < 1.8f && level.ClearLine(hero, drain))
+        {
+            drainInspected = true;
+            level.Scene().Get(ledger).SetVisible(true);
+            level.Scene().Get(key).SetVisible(true);
+            Event(
+                L"\ub3cc\uc744 \ub4e4\ucd94\ub2c8 \ub0a1\uc740 \ud654\ubb3c \uc0c1\uc790\uac00 \ub098\uc654\ub2e4. \ub69c\uaed1\uc5d0 \ubc30 \ubb38\uc591\uc774 \uc0c8\uaca8\uc838 \uc788\ub2e4. \uc548\uc5d0\ub294 \uc774\ub984\uc744 \uc801\uc740 \uc7a5\ubd80\uc640 \uc1e0 \uc5f4\uc1e0\uac00 \uc788\ub2e4.");
+            UpdateQuest();
             return;
         }
         for (ActorId artifact : {ledger, key})
         {
             Actor& item = level.Scene().Get(artifact);
-            if (!Holder(artifact) && Distance(hero, item.WorldPosition()) < 1.5f &&
+            if (drainInspected && !Holder(artifact) && Distance(hero, item.WorldPosition()) < 1.5f &&
                 level.ClearLine(hero, item.WorldPosition()))
             {
                 Transfer(artifact, level.Player().Id());
-                briefed = true;
                 if (artifact == ledger)
                 {
                     recoveredLedger = true;
                     ReactToPlayer(
-                        L"\uc7a5\ubd80 \ud655\ubcf4 \u2192 NPC\ub4e4\uc740 \uc6d0\ubcf8\uc744 \uac00\uc838\uac08 \uc218 \uc5c6\ub2e4. \uc5f4\uc1e0\ub3c4 \ucc59\uae34 \ub4a4 \uc7a5\ud130\uc5d0\uc11c \uc0ac\ubcf8\uc744 \ub0a8\uae30\uc790.");
+                        L"\uc7a5\ubd80\uc5d0 \uc0ac\ub78c\ub4e4\uc758 \uc774\ub984\uc774 \ube7c\uace1\ud558\ub2e4. \uc5f4\uc1e0\ub3c4 \ucc59\uaca8 \uc7a5\ud130\ub85c \ub3cc\uc544\uac00\uc790.");
                 }
                 else
                 {
                     recoveredKey = true;
                     ReactToPlayer(
-                        L"\uc5f4\uc1e0 \ud655\ubcf4 \u2192 \uc218\ubb38 \uac1c\ubc29\uc744 \uc9c1\uc811 \uacb0\uc815\ud558\uac70\ub098 \uc218\ub9ac\uacf5\uc5d0\uac8c \ub9e1\uae38 \uc218 \uc788\ub2e4.");
+                        L"\uc5f4\uc1e0\uc5d0 \uc61b \uc218\ubb38\uacfc \uac19\uc740 \ubb38\uc591\uc774 \uc0c8\uaca8\uc838 \uc788\ub2e4. \uc9c1\uc811 \uc5f4\uac70\ub098 \uc218\ub9ac\uacf5\uc5d0\uac8c \ub9e1\uae38 \uc218 \uc788\ub2e4.");
                 }
                 UpdateQuest();
                 return;
@@ -2344,7 +2445,12 @@ namespace Harbor
         }
         if (Distance(hero, Site(1)) < 1.8f)
         {
-            if (gateOpen)
+            if (!drainInspected)
+            {
+                Event(
+                    L"\ub0a1\uc740 \uc218\ubb38\uc774 \uc7a0\uaca8 \uc788\ub2e4. \ub2f9\uc7a5 \uc5f4 \ubc29\ubc95\uc740 \uc5c6\uc5b4 \ubcf4\uc778\ub2e4.");
+            }
+            else if (gateOpen)
             {
                 Event(
                     L"\uc218\ubb38\uc740 \uc774\ubbf8 \uc5f4\ub824 \uc788\ub2e4. \ubb3c\uc740 \ube60\uc84c\uc9c0\ub9cc \ubd09\uc778\ub41c \uad6c\uc5ed\uc744 \ub450\uace0 \ub2e4\ud23c\uc774 \uc2dc\uc791\ub410\ub2e4.");
@@ -2363,7 +2469,9 @@ namespace Harbor
         if (Distance(hero, Site(0)) < 1.8f)
         {
             Event(
-                controlled
+                !drainInspected
+                    ? L"\ubb34\ub108\uc9c4 \ub3cc \ud2c8\uc73c\ub85c \ubb3c\uc774 \uace0\uc5ec \uc788\ub2e4. \uc7a5\ud130 \uc77c\uc744 \ub9c8\uce58\uace0 \ubbf8\ub77c\uc5d0\uac8c \uc774\uacf3 \uc0ac\uc815\uc744 \ub4e4\uc5b4\ubcf4\uc790."
+                : controlled
                     ? L"\ud56d\ub9cc\uccad\uc774 \uc785\uad6c\ub97c \uc9c0\ud0a8\ub2e4. \uc606\uae38\uc740 \uc5f4\ub824 \uc788\uc9c0\ub9cc \ub208\uc5d0 \ub744\uba74 \uc758\uc2ec\uc744 \uc0b4 \uac83\uc774\ub2e4."
                     : L"\ubb3c \uc544\ub798 \uc788\ub358 \uc61b \ud654\ubb3c\uc774 \ub4dc\ub7ec\ub0ac\ub2e4. \ub204\uad70\uac00 \uba3c\uc800 \ucc59\uae30\uba74 \uc8fc\uc778\uc740 \ub2ec\ub77c\uc9c8 \uac83\uc774\ub2e4.");
             return;
@@ -2412,7 +2520,12 @@ namespace Harbor
 
     void World::Reveal()
     {
-        if (recordChoice != RecordChoice::Undecided)
+        if (!drainInspected)
+        {
+            Event(
+                L"\uc544\uc9c1 \uc7a5\ud130\uc5d0 \uc54c\ub9b4 \uc18c\uc2dd\uc774 \uc5c6\ub2e4. \uae08\ube5b \ud45c\uc2dd\uc758 \uc77c\uac10\ubd80\ud130 \uc0b4\ud3b4\ubcf4\uc790.");
+        }
+        else if (recordChoice != RecordChoice::Undecided)
         {
             Event(
                 L"\uc7a5\ubd80\uc758 \ucc98\ubd84\uc740 \uc774\ubbf8 \uc815\ud588\ub2e4. J\ub97c \uc5f4\uba74 \uadf8 \uacb0\uc815\uacfc \uc9c0\uae08 \ud574\uc57c \ud560 \uc77c\uc744 \ubcfc \uc218 \uc788\ub2e4.");
@@ -2472,6 +2585,14 @@ namespace Harbor
 
     std::wstring World::Status() const
     {
+        if (!drainInspected)
+        {
+            return Clock() + (hideJob == HideJob::Delivered
+                                  ? L"  \ubb34\uc5f0\ud56d \uace8\ubaa9 \uc870\uc0ac"
+                                  : L"  \uac00\uc8fd \ub0a9\ud488 " + std::to_wstring(level.stats.hides) +
+                                        L"/" + std::to_wstring(HideOrder));
+        }
+
         auto owner = [&](ActorId artifact)
         {
             ActorId holder = Holder(artifact);
@@ -2492,6 +2613,17 @@ namespace Harbor
 
     std::vector<std::wstring> World::Journal() const
     {
+        if (!drainInspected)
+        {
+            return {hideJob == HideJob::Delivered
+                        ? L"\uc758\ub8b0 \u00b7 \ubb3c\uc5d0 \uc7a0\uae34 \uace8\ubaa9"
+                        : L"\uc77c\uac10 \u00b7 \uc57d \uc0c1\uc790\ub97c \ubb36\uc744 \uac00\uc8fd",
+                    Objective(),
+                    Guide().reason,
+                    ObjectiveHint(),
+                    Status()};
+        }
+
         std::vector<std::wstring> lines;
         lines.push_back(returned ? L"\uc758\ub8b0: \uc218\ub808\uac00 \uc9c0\ub098\uac04 \uae38"
                                  : L"\uc758\ub8b0: \ubb3c\uae38 \uc544\ub798\uc758 \uc774\ub984\ub4e4");
@@ -2508,7 +2640,7 @@ namespace Harbor
         lines.push_back(
             L"\uacf5\uac1c: \uac00\uc871\ub4e4\uc774 \uc7a5\ud130\uc5d0 \ubaa8\uc778\ub2e4 / \uad00\uccad: \ud604\uc7a5 \ud1b5\uc81c / \ud310\ub9e4: \uc774\uc548\uc774 \ubd80\ub450\ub85c \uac04\ub2e4");
         lines.push_back(
-            L"\uc218\ubb38\uc744 \uc5f4\uba74 \uc7a0\uae34 \uace8\ubaa9\uc774 \uae38\uc774 \ub418\uace0 \uc8fc\ubbfc\ub4e4\uc774 \uadf8\uacf3\uc73c\ub85c \uc774\ub3d9\ud55c\ub2e4");
+            L"\uc218\ubb38\uc744 \uc5f4\uba74 \uc7a0\uae34 \uace8\ubaa9\uc744 \ub2e4\uc2dc \uc9c0\ub098\ub2e4\ub2d0 \uc218 \uc788\ub2e4.");
         lines.push_back(
             L"\uccab \uc758\ub8b0 \ubcf4\uc0c1: \uacbd\ud5d8\uce58 120 + 20\ub0e5 / \uc194\ubc14\ub78c \uac70\uc810 \ubc1c\uacac: \uacbd\ud5d8\uce58 40");
         int shown = 0;

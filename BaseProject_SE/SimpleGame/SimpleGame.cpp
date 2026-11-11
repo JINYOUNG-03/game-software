@@ -844,11 +844,15 @@ namespace
         }
         if (guide.ready)
         {
+            if (guide.step == Harbor::GatherHides)
+            {
+                return L"\uc0ac\ub0e5\ud130\uc5d0 \ub3c4\ucc29\ud588\ub2e4. \ud070\uae38 \uc8fc\ubcc0\uc5d0\uc11c \uc0ac\uc2b4\uc744 \ucc3e\uc544\ubcf4\uc790.";
+            }
             return guide.interactionKey ? L"\ub3c4\ucc29\ud588\ub2e4. " + guide.action : guide.action;
         }
         if (Distance2D(target->WorldPosition(), PlayerPosition()) < 1.8f)
         {
-            if (guide.step == 4 && !guide.interactionKey)
+            if (guide.step == Harbor::OpenSluice && !guide.interactionKey)
             {
                 return guide.action;
             }
@@ -903,10 +907,12 @@ namespace
     void DrawStoryIntro()
     {
         const wchar_t* titles[] = {L"\uc81c1\uc77c \uc0c8\ubcbd \u00b7 \ubb34\uc5f0\ud56d",
-                                   L"\ubc24\uc0c8 \ub0b4\ub9b0 \ube44",
-                                   L"\ubb3c\uae38 \uc544\ub798\uc758 \uc774\ub984\ub4e4"};
+                                   L"\ube44\uac00 \uadf8\uce5c \uc7a5\ud130",
+                                   L"\uac00\uc8fd \ub124 \uc7a5"};
         const wchar_t* stories[] = {
-            L"\uccad\ud608\ubcd1\uc774 \ubc88\uc9c4 \ub4a4, \uad00\ubb38\uc744 \uc9c0\ub098\ub294 \uc57d\uc7ac\uc640 \uace1\ubb3c\uc774 \uc904\uc5c8\ub2e4. \uc57d\uac12\uc740 \uc624\ub974\uace0 \uc77c\uac10\uc740 \ub4dc\ubb3c\uc5b4\uc84c\ub2e4. \uadf8\ub798\ub3c4 \ubb34\uc5f0\ud56d\uc758 \uc0ac\ub78c\ub4e4\uc740 \uc0c8\ubcbd\uc7a5\uc744 \uc5f4\uace0, \uc544\ud508 \uc2dd\uad6c\ub97c \uba39\uc774\uace0, \uc624\ub298 \ud558\ub8e8\ub97c \ubc84\ud2f4\ub2e4.\n\n\ub2f9\uc2e0\ub3c4 \uc2dd\ub7c9\uacfc \uc57d\uac12\uc744 \ubc8c \uc77c\uac70\ub9ac\ub97c \ucc3e\uc544 \uc774 \ud56d\uad6c\uc5d0 \ub4e4\uc5b4\uc130\ub2e4.", L"\ubc24\uc0c8 \ud3ed\ud48d\uc774 \ubab0\uc544\ucce4\ub2e4. \uad6c\uc2dc\uac00\uc9c0 \uc544\ub798\uc758 \ub0a1\uc740 \ubc30\uc218\ub85c\uac00 \ubb34\ub108\uc84c\uace0, \ube57\ubb3c\uc774 \ub0ae\uc740 \uace8\ubaa9\uc5d0 \uace0\uc600\ub2e4. \ube44\uac00 \uadf8\uce5c \ub4a4 \uc77c\ubd80 \ubb3c\uc774 \ube60\uc9c0\uba74\uc11c \ubcbd \uc548\ucabd\uc758 \uc624\ub798\ub41c \ud654\ubb3c \uc0c1\uc790\uac00 \ub4dc\ub7ec\ub0ac\ub2e4.\n\n\uc7a0\uae34 \uc61b \uc218\ubb38\uc744 \uc5f4\uc9c0 \ubabb\ud558\uba74 \ub0a8\uc740 \ubb3c\ub3c4 \ube60\uc9c0\uc9c0 \uc54a\ub294\ub2e4. \uae30\uc220\uc790 \ubbf8\ub77c\ub294 \ubb34\ub108\uc9c4 \uc785\uad6c\ub97c \uc0b4\ud53c\uace0 \uc788\ub2e4.", L"\uc0c1\uc790\ub294 \uc5f4\ub450 \ud574 \uc804 \uce68\ubab0\ud55c \ubc00\uc218\uc120\uc758 \uc9d0\uc774\ub77c\uace0 \ud55c\ub2e4. \uc548\uc5d0\ub294 \uc61b \uc218\ubb38 \uc5f4\uc1e0\uc640, \uc2e4\uc885\ub41c \uc0ac\ub78c\ub4e4\uc758 \uc774\ub984\uc774 \uc801\ud78c \uc7a5\ubd80\uac00 \uc788\ub2e4\ub294 \uc18c\ubb38\uc774 \ub3c8\ub2e4. \uac00\uc871\ub4e4\uc740 \ub2f5\uc744 \uc6d0\ud558\uace0, \uad00\uccad\uc740 \uc9c8\uc11c\ub97c \ub9d0\ud558\uace0, \uc911\uac1c\uc0c1\uc740 \uac12\uc744 \ub9e4\uae34\ub2e4.\n\n\uc544\uc9c1 \ub204\uad6c\uc758 \ub9d0\uc744 \ubbff\uc744\uc9c0\ub294 \uc815\ud558\uc9c0 \uc54a\uc544\ub3c4 \ub41c\ub2e4. \uba3c\uc800 \ubbf8\ub77c\ub97c \ucc3e\uc544 \ubb34\uc2a8 \uc77c\uc774 \uc788\uc5c8\ub294\uc9c0 \ub4e4\uc5b4\ubcf4\uc790."};
+            L"\uccad\ud608\ubcd1\uc774 \ubc88\uc9c4 \ub4a4 \uc57d\uac12\uc740 \uc62c\ub790\uace0 \uc77c\uac10\uc740 \uc904\uc5c8\ub2e4. \ubb34\uc5f0\ud56d\uc5d0 \ub3c4\ucc29\ud55c \ub2f9\uc2e0\ub3c4 \uc57d\uac12\uacfc \ub07c\ub2c8\ub97c \ubc8c \uc77c\uc774 \ud544\uc694\ud558\ub2e4.",
+            L"\ubc24\uc0c8 \ube44\uac00 \uc3df\uc544\uc84c\ub2e4. \uc7a5\ud130 \uc0ac\ub78c\ub4e4\uc740 \uc816\uc740 \ud3ec\ub300\ub97c \ud587\ubcd5\uc5d0 \ub110\uace0, \uc57d \uc0c1\uc790\ub97c \ub9c8\ub978 \uc218\ub808\ub85c \uc62e\uae34\ub2e4. \uc9d0\uafbc \ud558\ub098\uac00 \ub04a\uc5b4\uc9c4 \ub048\uc744 \ub4e4\uace0 \uc7a5\ud130 \uac8c\uc2dc\ud310 \uc55e\uc73c\ub85c \uac04\ub2e4.",
+            L"\uac8c\uc2dc\ud310\uc5d0 \uc0c8 \uc77c\uac10\uc774 \ubd99\uc5c8\ub2e4. \uc57d \uc0c1\uc790\ub97c \ubb36\uc744 \uac00\uc8fd\uc744 \ub124 \uc7a5 \uac00\uc838\uc624\uba74 \ud488\uc0af\uc744 \uc900\ub2e4. \uba3c\uc800 \uac00\uae4c\uc774 \uac00\uc11c \ubb34\uc2a8 \uc77c\uc778\uc9c0 \uc77d\uc5b4 \ubcf4\uc790."};
         renderer->SetMaterial(0);
         renderer->DrawSolidRect(640, 400, 1280, 800, .015f, .025f, .025f, .60f);
         renderer->DrawSolidRect(640, 390, HelpPanelWidth, HelpPanelHeight, .055f, .085f, .075f, 1);
@@ -919,7 +925,7 @@ namespace
             548,
             introPage < 2
                 ? L"ENTER: \ub2e4\uc74c \uc774\uc57c\uae30 \u00b7 H: \ubc14\ub85c \uc2dc\uc791"
-                : L"ENTER: \ubbf8\ub77c\ub97c \ub9cc\ub098\ub7ec \uac00\uae30 \u00b7 H: \ubc14\ub85c \uc2dc\uc791",
+                : L"ENTER: \uc7a5\ud130 \uac8c\uc2dc\ud310\uc73c\ub85c \u00b7 H: \ubc14\ub85c \uc2dc\uc791",
             .86f,
             .9f,
             .75f);
@@ -981,13 +987,14 @@ namespace
         renderer->DrawSolidRect(640, 390, HelpPanelWidth, HelpPanelHeight, .055f, .085f, .075f, 1);
         DrawText(304,
                  244,
-                 guide.step == 0 ? L"\ubb34\uc5f0\ud56d\uc5d0 \ub3c4\ucc29\ud588\ub2e4"
-                                 : L"\uc9c0\uae08 \ubb34\uc5c7\uc744 \ud558\uba74 \ub420\uae4c?",
+                 guide.step == Harbor::TakeHideJob
+                     ? L"\ubb34\uc5f0\ud56d\uc5d0 \ub3c4\ucc29\ud588\ub2e4"
+                     : L"\uc9c0\uae08 \ubb34\uc5c7\uc744 \ud558\uba74 \ub420\uae4c?",
                  1,
                  .83f,
                  .45f);
         DrawWrapped(304, 276, guide.reason, 672, 2);
-        if (guide.step == 0)
+        if (guide.step == Harbor::TakeHideJob)
         {
             DrawWrapped(304,
                         338,
@@ -1014,7 +1021,7 @@ namespace
                 672,
                 2);
         }
-        else if (guide.step == 3)
+        else if (guide.step == Harbor::DecideLedger)
         {
             DrawWrapped(
                 304,

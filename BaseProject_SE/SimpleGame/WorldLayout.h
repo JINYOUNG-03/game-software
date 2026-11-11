@@ -32,6 +32,11 @@ namespace WorldLayout
         return Town(13.5f, 12.5f);
     }
 
+    inline ActorPosition OpeningHunt()
+    {
+        return {106.5f, 76.5f, 0};
+    }
+
     inline ActorPosition HunterCamp()
     {
         return {173.5f, 76.5f, 0};

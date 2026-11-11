@@ -22,7 +22,7 @@ if (-not $talk.Contains('BeginDialogue(npc)')) { throw 'E does not open the conv
 $advance = World-Method 'AdvanceDialogue' 'CompleteFirstQuest'
 if (-not $advance.Contains('!dialogue.pages[dialogue.page].choices.empty()'))
 { throw 'E/Enter can skip past a choice.' }
-$choose = World-Method 'ChooseDialogue' 'BeginDialogue'
+$choose = World-Method 'ChooseDialogue' 'BeginHideJob'
 foreach ($contract in @('choice >= dialogue.pages[dialogue.page].choices.size()',
                        'selected.effect == DialogueEffect::AcceptQuest && !briefed',
                        'selected.effect == DialogueEffect::CompleteQuest',
@@ -32,9 +32,29 @@ foreach ($contract in @('choice >= dialogue.pages[dialogue.page].choices.size()'
     if (-not $choose.Contains($contract)) { throw "Missing choice safety: $contract" }
 }
 $complete = World-Method 'CompleteFirstQuest' 'ChooseDialogue'
-if (-not $complete.Contains('returned || questStep != 5') -or
+if (-not $complete.Contains('returned || questStep != ReportSluice') -or
     [regex]::Matches($world, 'level.stats.GainExperience\(120\)').Count -ne 1)
 { throw 'First quest reward is not guarded/centralized.' }
+$hideJob = World-Method 'BeginHideJob' 'BeginDialogue'
+foreach ($forbidden in @('hideJob =', 'level.stats.hides -=', 'level.stats.coins +='))
+{
+    if ($hideJob.Contains("$forbidden ")) { throw "Reading the hide order changes game state: $forbidden" }
+}
+foreach ($contract in @('selected.effect == DialogueEffect::AcceptHideJob && hideJob == HideJob::Offered',
+                       'selected.effect == DialogueEffect::DeliverHideJob && hideJob == HideJob::Accepted',
+                       'dialogue.source == sites[2] && level.stats.hides >= HideOrder',
+                       'level.stats.hides -= HideOrder', 'level.stats.coins += HideOrder * HidePayPerPiece',
+                       'hideJob = HideJob::Delivered',
+                       'selected.effect == DialogueEffect::AcceptQuest && !briefed && hideJob == HideJob::Delivered'))
+{
+    if (-not $choose.Contains($contract)) { throw "Missing explicit hide order transaction: $contract" }
+}
+$site = World-Method 'InteractSite' 'Reveal'
+if (-not $site.Contains('questStep == InspectDrain') -or
+    -not $site.Contains('drainInspected && !Holder(artifact)') -or
+    $site.Contains('briefed = true') -or
+    -not $world.Contains('item.SetVisible(false)'))
+{ throw 'Evidence must stay hidden and uncollectable until the drainage is investigated.' }
 $build = World-Method 'BeginDialogue' 'Talk'
 foreach ($contract in @('npc->variant == 1', 'npc->variant == 2', 'npc->variant == 3', 'npc->variant == 4',
                        'Job::Hunter', 'Job::Merchant', 'Job::Raider', 'Job::Scholar',
@@ -92,6 +112,7 @@ foreach ($source in @($game, $world))
     event = 'dialogue_static_contracts'; passed = $true; intro_pages = 3
     e_opens_without_quest_commit = $true; explicit_accept_and_reward = $true
     contextual_main_npcs = 5; dialogue_is_actor_panel = $true
+    hide_order_is_explicit = $true; drain_discovery_is_separate = $true
     trail_boards_in_order = 4; trail_notice_choices = 2
     game_build_performed = $false; game_execution_performed = $false
 } | ConvertTo-Json

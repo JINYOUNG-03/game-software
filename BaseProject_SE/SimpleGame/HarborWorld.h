@@ -119,9 +119,24 @@ namespace Harbor
         int site = 0;
     };
 
+    enum QuestStep
+    {
+        TakeHideJob,
+        GatherHides,
+        DeliverHides,
+        MeetMira,
+        InspectDrain,
+        RecoverEvidence,
+        CopyLedger,
+        DecideLedger,
+        OpenSluice,
+        ReportSluice,
+        FirstTrailStep
+    };
+
     struct ObjectiveGuide
     {
-        int step = 0;
+        int step = TakeHideJob;
         ActorId target = InvalidActorId;
         std::wstring destination;
         std::wstring reason;
@@ -133,6 +148,8 @@ namespace Harbor
     enum class DialogueEffect
     {
         None,
+        AcceptHideJob,
+        DeliverHideJob,
         AcceptQuest,
         CompleteQuest,
         ShareKnowledge,
@@ -222,19 +239,27 @@ namespace Harbor
         static const wchar_t* JobLabel(Job job);
         static const wchar_t* ActionLabel(Action action);
 
-        const std::array<ActorId, 9>& LandmarkIds() const
+        const std::array<ActorId, 10>& LandmarkIds() const
         {
             return sites;
         }
 
       private:
         using Position = Level::Position;
+
+        enum class HideJob
+        {
+            Offered,
+            Accepted,
+            Delivered
+        };
+
         Level::FirstLevel& level;
         ActorId worldRoot = InvalidActorId;
         ActorId ledger = InvalidActorId;
         ActorId key = InvalidActorId;
         ActorId barrier = InvalidActorId;
-        std::array<ActorId, 9> sites{};
+        std::array<ActorId, 10> sites{};
 
         struct VillageStatistics
         {
@@ -258,7 +283,10 @@ namespace Harbor
         int flood = 0;
         bool copied = false;
         bool ledgerWet = false;
+        HideJob hideJob = HideJob::Offered;
+        double drainReportedAt = 360;
         bool briefed = false;
+        bool drainInspected = false;
         bool recoveredLedger = false;
         bool recoveredKey = false;
         bool returned = false;
@@ -266,7 +294,7 @@ namespace Harbor
         RecordChoice recordChoice = RecordChoice::Undecided;
         size_t trailClues = 0;
         TrailNotice trailNotice = TrailNotice::None;
-        int questStep = 0;
+        int questStep = TakeHideJob;
         std::wstring consequence;
         DialogueState dialogue;
         TradeSession trade;
@@ -295,6 +323,7 @@ namespace Harbor
         int VillageMood(int village, const std::vector<const Npc*>& npcs) const;
         void UpdateVillageStatistics(float dt, const std::vector<Npc*>& npcs);
         void ChooseRecord(RecordChoice choice);
+        void BeginHideJob();
         void BeginDialogue(Npc* npc);
         void CompleteFirstQuest();
         void BeginTrailDialogue(const Landmark& board);

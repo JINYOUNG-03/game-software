@@ -701,6 +701,34 @@ namespace Level
         }
         std::shuffle(spawnCandidates.begin(), spawnCandidates.end(), random);
         std::vector<Position> beastHomes;
+        const auto spawnBeast = [&](const Position& p, int kind)
+        {
+            Enemy& enemy = scene.Create<Enemy>(enemyRoot, "Beast", ActorKind::Enemy);
+            enemy.SetWorldPosition(p);
+            enemy.home = enemy.LocalPosition();
+            beastHomes.push_back(p);
+            enemy.drawable = true;
+            enemy.shadowWidth = 30;
+            Actor& status = scene.Create(enemy.Id(), "HealthAndHit", ActorKind::Effect);
+            status.drawable = true;
+            status.pass = ScenePass::Effects;
+            status.variant = int(ActorEffect::EnemyStatus);
+            enemy.kind = kind;
+            enemy.health = enemy.maxHealth = 42 + enemy.kind * 18;
+            enemy.phase = float(random() % 100) / 10;
+        };
+
+        // The main road is carved before obstacles, so every world has nearby low-tier prey.
+        const Position hunt = WorldLayout::OpeningHunt();
+        for (float offset : {-13.0f, -8.0f, -3.0f, 3.0f, 8.0f, 13.0f})
+        {
+            const Position home = ToWorld({hunt.x + offset, hunt.y + 1.0f, hunt.z});
+            if (Walkable(home.x, home.y))
+            {
+                spawnBeast(home, 0);
+            }
+        }
+
         for (const auto& p : spawnCandidates)
         {
             bool crowded = false;
@@ -716,19 +744,7 @@ namespace Level
             {
                 continue;
             }
-            Enemy& enemy = scene.Create<Enemy>(enemyRoot, "Beast", ActorKind::Enemy);
-            enemy.SetWorldPosition(p);
-            enemy.home = enemy.LocalPosition();
-            beastHomes.push_back(p);
-            enemy.drawable = true;
-            enemy.shadowWidth = 30;
-            Actor& status = scene.Create(enemy.Id(), "HealthAndHit", ActorKind::Effect);
-            status.drawable = true;
-            status.pass = ScenePass::Effects;
-            status.variant = int(ActorEffect::EnemyStatus);
-            enemy.kind = int(random() % 3);
-            enemy.health = enemy.maxHealth = 42 + enemy.kind * 18;
-            enemy.phase = float(random() % 100) / 10;
+            spawnBeast(p, int(random() % 3));
             if (beastHomes.size() == WorldLayout::MonsterCount)
             {
                 break;
@@ -1051,7 +1067,8 @@ namespace Level
             }
         }
         AddLoot(enemy.WorldPosition(), LootKind::Coins, 3 + enemy.kind * 2);
-        AddLoot(enemy.WorldPosition(), random() % 3 == 0 ? LootKind::Potion : LootKind::Hide, 1);
+        const LootKind material = enemy.kind != 0 && random() % 3 == 0 ? LootKind::Potion : LootKind::Hide;
+        AddLoot(enemy.WorldPosition(), material, 1);
         if (stats.level > previousLevel)
         {
             Notify(

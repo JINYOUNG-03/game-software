@@ -74,6 +74,23 @@ foreach ($contract in @('const int span = worldMap ? MapSize : 64', 'renderer->T
     if (-not $renderSource.Contains($contract)) { throw "Missing readable UI contract: $contract" }
 }
 if (-not $levelSource.Contains('tile.SetVariant(4)')) { throw 'Sluice changes visuals but not shared terrain.' }
+$think = [regex]::Match($npcSource, '(?s)void World::Think\(.*?(?=bool World::RaidAllowed\()').Value
+if ($think.Contains('Position gathering') -or $think.Contains('delegated || gateOpen') -or
+    -not $think.Contains('gateOpen && (npc.variant == 0 || npc.variant == 4)') -or
+    -not $think.Contains('std::fmod(float(minutes) + float(npc.variant * 7 % 34), 34.0f)') -or
+    -not $think.Contains('npc.pathRevision == level.Scene().CollisionRevision()'))
+{ throw 'Residents must keep staggered routines and respond to the new path grid after the sluice opens.' }
+
+$hunt = [regex]::Match($layoutSource, '(?s)OpeningHunt\(\).*?return \{([0-9.]+)f,\s*([0-9.]+)f')
+$solbaram = [regex]::Match($layoutSource, '(?s)HunterCamp\(\).*?return \{([0-9.]+)f,\s*([0-9.]+)f')
+if (-not $hunt.Success -or -not $solbaram.Success -or $hunt.Groups[2].Value -ne $solbaram.Groups[2].Value)
+{ throw 'Opening hunting ground must be on the road to Solbaram.' }
+$huntX = [double]::Parse($hunt.Groups[1].Value, [Globalization.CultureInfo]::InvariantCulture)
+$solbaramX = [double]::Parse($solbaram.Groups[1].Value, [Globalization.CultureInfo]::InvariantCulture)
+if ($huntX - 13 -le $villageEast -or $huntX + 13 -ge $solbaramX - (Read-Constant 'VillageRadius') -or
+    -not $levelSource.Contains('spawnBeast(home, 0)') -or
+    -not $levelSource.Contains('enemy.kind != 0 && random() % 3 == 0 ? LootKind::Potion : LootKind::Hide'))
+{ throw 'Opening deer must spawn outside the villages and reliably drop hides.' }
 
 $nameDistance = [regex]::Match($renderSource, 'NpcNameDistance\s*=\s*([0-9.]+)f').Groups[1].Value
 if ($nameDistance -ne '2.5') { throw 'NPC name visibility distance must be 2.5 tiles.' }
