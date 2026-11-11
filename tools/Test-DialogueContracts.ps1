@@ -47,6 +47,34 @@ foreach ($contract in @('DialogueChoice', 'DialoguePage', 'DialogueState', 'cons
 {
     if (-not $header.Contains($contract)) { throw "Missing dialogue data: $contract" }
 }
+
+$stops = [regex]::Match($world, '(?s)constexpr TrailStop\s+TrailStops\[\]\s*=\s*\{(.*?)\};').Groups[1].Value
+$trailSites = [regex]::Matches($stops, '\{\s*(\d+),').ForEach({ $_.Groups[1].Value }) -join ','
+if ($trailSites -ne '4,5,6,8') { throw 'Trail must visit Solbaram, Gingil, Eunsol and Deulsaem in order.' }
+$trailDialogue = World-Method 'BeginTrailDialogue' 'ApplyTrailChoice'
+foreach ($forbidden in @('GainExperience(', '++trailClues', 'trailNotice = '))
+{
+    if ($trailDialogue.Contains($forbidden)) { throw "Opening the trail board changes progress: $forbidden" }
+}
+$trailCommit = World-Method 'ApplyTrailChoice' 'Talk'
+foreach ($contract in @('!returned || trailNotice != TrailNotice::None || board != sites[TrailStops[trailClues].site]',
+                       'level.ClearLine(hero, position)', 'trailClues < TrailClueCount', '++trailClues',
+                       'effect != DialogueEffect::RecordTrailClue', 'DialogueEffect::PostTrailNames',
+                       'DialogueEffect::PostTrailRoute', 'UpdateQuest()'))
+{
+    if (-not $trailCommit.Contains($contract)) { throw "Missing trail commit guard: $contract" }
+}
+if (-not $choose.Contains('ApplyTrailChoice(dialogue.source, selected.effect)') -or
+    [regex]::Matches($world, 'level.stats.GainExperience\(40\)').Count -ne 1 -or
+    [regex]::Matches($world, 'level.stats.GainExperience\(100\)').Count -ne 1)
+{ throw 'Trail progress and one-time rewards must be committed by explicit dialogue choice.' }
+if (-not (World-Method 'InteractSite' 'Reveal').Contains('landmark.Id() == ObjectiveTarget()') -or
+    -not $world.Contains('trailNotice == TrailNotice::None ? sites[TrailStops[trailClues].site] : InvalidActorId'))
+{ throw 'The marked board and interactive board must use the same route.' }
+if (-not $build.Contains('npc->knowledge & (Knowledge::TrailNames | Knowledge::TrailRoute)') -or
+    -not (World-Method 'SpreadRumors' 'UpdateVillageStatistics').Contains('level.ClearLine(npc->WorldPosition(), board)'))
+{ throw 'Posted rumors must start in sight of the board and drive NPC dialogue through NPC knowledge.' }
+
 foreach ($contract in @('UiPart::Dialogue', 'void DrawStoryIntro()', 'introPage < 2', 'skipIntroPressed',
                        'void DrawDialogue()', 'DrawWrapped(32, 584, page.text, 796, 3)',
                        "key >= '1' && key <= '3'", "key == 'e' || key == 13", 'dialogueClosePressed',
@@ -64,5 +92,6 @@ foreach ($source in @($game, $world))
     event = 'dialogue_static_contracts'; passed = $true; intro_pages = 3
     e_opens_without_quest_commit = $true; explicit_accept_and_reward = $true
     contextual_main_npcs = 5; dialogue_is_actor_panel = $true
+    trail_boards_in_order = 4; trail_notice_choices = 2
     game_build_performed = $false; game_execution_performed = $false
 } | ConvertTo-Json

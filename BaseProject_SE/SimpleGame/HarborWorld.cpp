@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iomanip>
+#include <iterator>
 #include <locale>
 #include <sstream>
 #include <map>
@@ -27,6 +28,65 @@ namespace Harbor
         {
             return (std::max)(minimum, (std::min)(maximum, value));
         }
+
+        constexpr int FirstTrailStep = 6;
+
+        struct TrailStop
+        {
+            int site;
+            const wchar_t* destination;
+            const wchar_t* objective;
+            const wchar_t* reason;
+            const wchar_t* speaker;
+            const wchar_t* text;
+            const wchar_t* choice;
+            const wchar_t* result;
+        };
+
+        constexpr TrailStop TrailStops[] = {
+            {
+                4,
+                L"\uc194\ubc14\ub78c \uac8c\uc2dc\ud310",
+                L"[F] \uc194\ubc14\ub78c\uc5d0\uc11c \uc218\ub808\uafbc\uc758 \ud45c\uc2dd \ud655\uc778\ud558\uae30",
+                L"\ubb34\uc5f0\ud56d\uc5d0\uc11c \uac74\uc9c4 \uc7a5\ubd80 \ub05d\uc5d0 \uc194\ubc14\ub78c \uc218\ub808\uafbc\uc758 \ub3c4\uc7a5\uc774 \uc788\ub2e4. \ud070\uae38\uc744 \ub530\ub77c \uc194\ubc14\ub78c\uc73c\ub85c \uac00 \ubcf4\uc790.",
+                L"\uc194\ubc14\ub78c \uc0ac\ub0e5\uafbc\uc758 \ucabd\uc9c0",
+                L"\uc7a5\ubd80\uc5d0 \ucc0d\ud78c \ub9e4\ub4ed \ub3c4\uc7a5\uc740 \uc774 \ub9c8\uc744 \uc218\ub808\uafbc \ud45c\uc2dd\uc774\uc624. \uc5ed\ubcd1\uc774 \ubc88\uc9c8 \ubb34\ub835 \uc57d \uc9d0\uc744 \uc2e3\uace0 \uae34\uae38 \uc8fc\ub9c9\uc5d0 \ub4e4\ub800\ub2e4\uace0 \ud588\uc18c. \uc8fc\ubaa8\uac00 \uc218\ub808 \uc0af\uc744 \uc801\uc5b4 \ub454 \ucc45\uc774 \uc788\uc744 \uac70\uc694.",
+                L"\ud45c\uc2dd\uc744 \uc801\uace0 \uae34\uae38\ub85c \uac04\ub2e4",
+                L"\uc194\ubc14\ub78c\uc5d0\uc11c \uc218\ub808\uafbc\uc758 \ud45c\uc2dd\uc744 \ud655\uc778\ud588\ub2e4. \uae34\uae38 \uc8fc\ub9c9\uc758 \uae30\ub85d\uc744 \ucc3e\uc544\ubcf4\uc790.",
+            },
+            {
+                5,
+                L"\uae34\uae38 \uac8c\uc2dc\ud310",
+                L"[F] \uae34\uae38\uc5d0\uc11c \uc8fc\ub9c9\uc758 \ud1b5\ud589 \uae30\ub85d \ud655\uc778\ud558\uae30",
+                L"\uc194\ubc14\ub78c \uc218\ub808\uafbc\uc740 \uae34\uae38 \uc8fc\ub9c9\uc5d0 \ub4e4\ub800\ub2e4. \uac8c\uc2dc\ud310\uc5d0\uc11c \uc8fc\ub9c9\uc774 \ub0a8\uae34 \ud1b5\ud589 \uae30\ub85d\uc744 \ucc3e\uc544\ubcf4\uc790.",
+                L"\uae34\uae38 \uc8fc\ub9c9\uc758 \ud1b5\ud589 \uae30\ub85d",
+                L"\uc57d \uc0c1\uc790 \uc5f4\ub450 \uada4. \uc194\ubc14\ub78c \uc218\ub808. \uc624\ub298 \ubc24\uc740 \uad00\ubb38\uc744 \ud53c\ud574 \uc740\uc194 \ucabd\uc73c\ub85c \uac04\ub2e4\uace0 \ud568. \uc0af\uc740 \ub4e4\uc0d8\uc5d0 \ub3cc\uc544\uc624\uba74 \uce58\ub974\uae30\ub85c \ud588\uc74c.",
+                L"\ud1b5\ud589 \uae30\ub85d\uc744 \uc62e\uaca8 \uc801\uace0 \uc740\uc194\ub85c \uac04\ub2e4",
+                L"\uc218\ub808\uac00 \uad00\ubb38\uc744 \ud53c\ud574 \uc740\uc194\ub85c \uac14\ub2e4. \uadf8\ub0a0 \ubc24 \uc218\ub808\ub97c \ubcf8 \uc0ac\ub78c\uc774 \uc788\ub294\uc9c0 \uc54c\uc544\ubcf4\uc790.",
+            },
+            {
+                6,
+                L"\uc740\uc194 \uac8c\uc2dc\ud310",
+                L"[F] \uc740\uc194\uc5d0\uc11c \ubaa9\uaca9\uc790\uc758 \uc99d\uc5b8 \ud655\uc778\ud558\uae30",
+                L"\uae34\uae38\uc744 \ub5a0\ub09c \uc218\ub808\ub294 \uc740\uc194\ub85c \ud5a5\ud588\ub2e4. \uac8c\uc2dc\ud310\uc5d0 \ub0a8\uae34 \ubaa9\uaca9\uc790\uc758 \ucabd\uc9c0\ub97c \ud655\uc778\ud558\uc790.",
+                L"\uc740\uc194 \uc8fc\ubbfc\uc758 \ucabd\uc9c0",
+                L"\uc57d \uc0c1\uc790 \uc704\uc5d0 \uc5f4 \uc624\ub978 \uc0ac\ub78c\ub4e4\uc774 \ub204\uc6cc \uc788\uc5c8\uc18c. \uadf8\ub0a0 \ub3c4\ub9dd\uce5c \uc0ac\ub78c \uc911\uc5d0 \uc544\uc9c1 \ub4e4\uc0d8\uc5d0 \uc0ac\ub294 \uc774\uac00 \uc788\uc18c. \uadf8 \uc0ac\ub78c\ub4e4 \uc774\ub984\ub9cc\uc740 \ud568\ubd80\ub85c \ubd99\uc774\uc9c0 \ub9d0\uc544 \uc8fc\uc2dc\uc624.",
+                L"\uc99d\uc5b8\uc744 \ucc59\uaca8 \ub4e4\uc0d8\uc73c\ub85c \uac04\ub2e4",
+                L"\uc218\ub808\ub294 \uc57d\uacfc \ud658\uc790\ub97c \ud568\uaed8 \uc2e4\uc5b4 \ub0a0\ub790\ub2e4. \ub4e4\uc0d8\uc5d0\uc11c \ubb34\uc5c7\uc744 \uc54c\ub9b4\uc9c0 \uc815\ud558\uc790.",
+            },
+            {
+                8,
+                L"\ub4e4\uc0d8 \uac8c\uc2dc\ud310",
+                L"[F] \ub4e4\uc0d8\uc5d0 \ubd99\uc77c \uc218\uc0c9 \uacf5\uace0 \uacb0\uc815\ud558\uae30",
+                L"\uc2e4\uc885\uc790\uc758 \uac00\uc871\uc740 \uc774\ub984\uc744 \uc54c\uc544\uc57c \ucc3e\uc744 \uc218 \uc788\ub2e4. \uc218\ub808\uc5d0 \ud0d4\ub358 \uc0ac\ub78c \uc911\uc5d0\ub294 \uc9c0\uae08\ub3c4 \uc2e0\ubd84\uc744 \uc228\uae30\uace0 \uc0ac\ub294 \uc774\uac00 \uc788\ub2e4.",
+                L"\ub4e4\uc0d8\uc758 \uc218\uc0c9 \uacf5\uace0",
+                L"\uc7a5\ubd80\uc640 \uc99d\uc5b8\uc744 \ub9de\ucdb0 \ubcf4\ub2c8 \uc218\ub808\uc5d0 \ud0c4 \uc0ac\ub78c\ub4e4\uc758 \uc774\ub984\uc744 \uc801\uc744 \uc218 \uc788\ub2e4. \uc774\ub984\uc744 \uac78\uba74 \uac00\uc871\uc774 \uc54c\uc544\ubcf4\uaca0\uc9c0\ub9cc \uc228\uc740 \uc0ac\ub78c\ub4e4\uc758 \uc2e0\uc6d0\ub3c4 \ub4dc\ub7ec\ub09c\ub2e4. \uae38\ub9cc \ub0a8\uae30\uba74 \ucc3e\ub294 \ub370 \uc2dc\uac04\uc774 \ub354 \uac78\ub9b4 \uac83\uc774\ub2e4.",
+                nullptr,
+                nullptr,
+            },
+        };
+
+        constexpr size_t TrailClueCount = std::size(TrailStops) - 1;
 
         std::string JsonWide(const std::wstring& text)
         {
@@ -274,9 +334,9 @@ namespace Harbor
                    : !copied                                 ? 2
                    : recordChoice == RecordChoice::Undecided ? 3
                    : !gateOpen                               ? 4
-                   : !returned                               ? 5
-                   : !explored                               ? 6
-                                                             : 7;
+                   : !returned
+                       ? 5
+                       : FirstTrailStep + int(trailClues) + (trailNotice != TrailNotice::None ? 1 : 0);
         if (next != questStep)
         {
             questStep = next;
@@ -287,15 +347,19 @@ namespace Harbor
 
     std::wstring World::Objective() const
     {
+        if (questStep >= FirstTrailStep)
+        {
+            return trailNotice == TrailNotice::None
+                       ? TrailStops[trailClues].objective
+                       : L"\uc218\ub808\uac00 \uc9c0\ub098\uac04 \uae38 \uc644\ub8cc. \uc0ac\ub0e5\u00b7\uac70\ub798\ub97c \ud558\uba70 \uc790\uc720\ub86d\uac8c \ud0d0\ud5d8\ud558\uc790.";
+        }
         const wchar_t* goals[] = {
             L"1. \ubbf8\ub77c\uc5d0\uac8c \ub9d0\uc744 \uac78\uc5b4 \ub9c8\uc744 \uc0ac\uc815\uc744 \ub4e3\uc790 [E]",
             L"2. \ubb34\ub108\uc9c4 \ubc30\uc218\ub85c\uc5d0\uc11c \uc7a5\ubd80\uc640 \uc5f4\uc1e0\ub97c \ucc59\uae30\uc790 [F, \uac01\uac01 \ud55c \ubc88]",
             L"3. \uc7a5\ud130 \uac8c\uc2dc\ud310\uc5d0\uc11c \uc7a5\ubd80 \uc0ac\ubcf8\uc744 \ub0a8\uae30\uc790 [F]",
             L"4. \uc7a5\ubd80\ub97c \ub204\uad6c\uc5d0\uac8c \ub9e1\uae38\uc9c0 \uacb0\uc815\ud558\uc790",
             L"5. \uc61b \uc218\ubb38\uc73c\ub85c \uac00\uc11c \ubb3c\uae38\uc744 \uc5f4\uc790 [F]",
-            L"6. \ubbf8\ub77c\uc5d0\uac8c \ub3cc\uc544\uac00 \ub2ec\ub77c\uc9c4 \ub9c8\uc744\uc744 \ud655\uc778\ud558\uc790 [E]",
-            L"7. \ud070\uae38\uc744 \ub530\ub77c \uc194\ubc14\ub78c \uc0ac\ub0e5\uafbc \uac70\uc810\uc744 \ucc3e\uc544\ubcf4\uc790 [F]",
-            L"\uccab \uc758\ub8b0 \uc644\ub8cc. \uc0ac\ub0e5\u00b7\uac70\ub798\u00b7\uc131\uc7a5\ud558\uba70 \uc790\uc720\ub86d\uac8c \ud0d0\ud5d8\ud558\uc790"};
+            L"6. \ubbf8\ub77c\uc5d0\uac8c \ub3cc\uc544\uac00 \ub2ec\ub77c\uc9c4 \ub9c8\uc744\uc744 \ud655\uc778\ud558\uc790 [E]"};
         return goals[questStep];
     }
 
@@ -340,6 +404,10 @@ namespace Harbor
 
     ActorId World::ObjectiveTarget() const
     {
+        if (questStep >= FirstTrailStep)
+        {
+            return trailNotice == TrailNotice::None ? sites[TrailStops[trailClues].site] : InvalidActorId;
+        }
         auto artifactTarget = [&](ActorId artifact)
         {
             ActorId holder = Holder(artifact);
@@ -362,7 +430,7 @@ namespace Harbor
         {
             return Holder(key) ? sites[1] : key;
         }
-        return questStep == 6 ? sites[4] : InvalidActorId;
+        return InvalidActorId;
     }
 
     ObjectiveGuide World::Guide() const
@@ -371,15 +439,37 @@ namespace Harbor
         ObjectiveGuide guide;
         guide.step = questStep;
         guide.target = ObjectiveTarget();
+        if (questStep >= FirstTrailStep)
+        {
+            if (trailNotice != TrailNotice::None)
+            {
+                guide.destination = L"\uc790\uc720 \ud0d0\ud5d8";
+                guide.reason = TrailResult();
+                guide.action =
+                    L"\uc218\ub808\uac00 \uc9c0\ub098\uac04 \uae38 \uc644\ub8cc \u00b7 J \uc758\ub8b0 \uacb0\uacfc";
+                return guide;
+            }
+
+            const TrailStop& stop = TrailStops[trailClues];
+            guide.destination = stop.destination;
+            guide.reason = stop.reason;
+            guide.action = stop.objective;
+            guide.interactionKey = 'F';
+            if (const Actor* board = level.Scene().Find(guide.target))
+            {
+                const Position hero = level.Player().WorldPosition();
+                guide.ready = Distance(hero, board->WorldPosition()) < 1.8f &&
+                              level.ClearLine(hero, board->WorldPosition());
+            }
+            return guide;
+        }
         const wchar_t* reasons[] = {
             L"\ubc30\uc218\ub85c\uac00 \ubb34\ub108\uc838 \uace8\ubaa9\uc5d0 \ubb3c\uc774 \ucc3c\ub2e4. \uc218\ub9ac\uacf5 \ubbf8\ub77c\uac00 \ub3c4\uc640\uc904 \uc0ac\ub78c\uc744 \ucc3e\uace0 \uc788\ub2e4.",
             L"\ubbf8\ub77c\ub294 \ubc30\uc218\ub85c\ub97c \ubc1b\uce58\ub294 \uc911\uc774\ub2e4. \ubb3c\uc5d0 \uc7a0\uae30\uae30 \uc804\uc5d0 \uc7a5\ubd80\uc640 \uc218\ubb38 \uc5f4\uc1e0\ub97c \ucc3e\uc544 \uc8fc\uc790.",
             L"\uc7a5\ubd80\uc5d0\ub294 \uc2e4\uc885\ub41c \uc0ac\ub78c\ub4e4\uc758 \uc774\ub984\uc774 \uc788\ub2e4. \uc6d0\ubcf8\uc744 \ub118\uae30\uae30 \uc804\uc5d0 \uc99d\uac70\ub97c \ub0a8\uaca8 \ub450\uc790.",
             L"\uac00\uc871\ub4e4\uc5d0\uac8c \uc54c\ub9b4\uc9c0, \uad00\uccad\uc758 \uc870\uc0ac\ub97c \ubbff\uc744\uc9c0, \ub3c8\uc744 \ubc1b\uc744\uc9c0 \uc9c1\uc811 \uacb0\uc815\ud574\uc57c \ud55c\ub2e4.",
             L"\uc5f4\uc1e0\ub85c \uc61b \uc218\ubb38\uc744 \uc5f4\uba74 \uc7a0\uae34 \uace8\ubaa9\uc744 \ub2e4\uc2dc \uae38\ub85c \uc4f8 \uc218 \uc788\ub2e4.",
-            L"\ubb3c\uae38\uc774 \uc5f4\ub838\ub2e4. \ubbf8\ub77c\uc5d0\uac8c \ub3cc\uc544\uac00 \ubcf4\uc0c1\uc744 \ubc1b\uace0 \ub9c8\uc744\uc758 \ubcc0\ud654\ub97c \ud655\uc778\ud558\uc790.",
-            L"\ub9c8\uc744 \uc77c\uc740 \ub9c8\ucce4\ub2e4. \uc0ac\ub0e5\uafbc \uac70\uc810\uc744 \ucc3e\uc73c\uba74 \ubc14\uae65\uc138\uc0c1\uc5d0\uc11c \uc0b4\uc544\uac08 \uae38\uc744 \uc54c \uc218 \uc788\ub2e4.",
-            L"\uccab \uc758\ub8b0\ub97c \ub9c8\ucce4\ub2e4. \uc774\uc81c \uc0ac\ub0e5\uacfc \uac70\ub798\ub85c \uc131\uc7a5\ud558\uba70 \uc790\uc720\ub86d\uac8c \ud0d0\ud5d8\ud560 \uc218 \uc788\ub2e4."};
+            L"\ubb3c\uae38\uc774 \uc5f4\ub838\ub2e4. \ubbf8\ub77c\uc5d0\uac8c \ub3cc\uc544\uac00 \ubcf4\uc0c1\uc744 \ubc1b\uace0 \ub9c8\uc744\uc758 \ubcc0\ud654\ub97c \ud655\uc778\ud558\uc790."};
         guide.reason = reasons[questStep];
         const Actor* target = level.Scene().Find(guide.target);
         if (!target)
@@ -446,12 +536,6 @@ namespace Harbor
                 delegated
                     ? L"\uc5f4\uc1e0\ub97c \ub9e1\uae34 \uc218\ub9ac\uacf5\uc774 \uc624\ub294 \uc911\uc774\ub2e4. \uc218\ubb38\uc5d0\uc11c \uae30\ub2e4\ub9ac\uc790."
                     : L"[F] \uc5f4\uc1e0\ub85c \uc61b \uc218\ubb38 \uc5f4\uae30";
-        }
-        else if (questStep == 6)
-        {
-            guide.interactionKey = 'F';
-            guide.ready = distance < 1.8f;
-            guide.action = L"[F] \uc0ac\ub0e5\uafbc \uac70\uc810 \ubc1c\uacac\ud558\uae30";
         }
         return guide;
     }
@@ -526,10 +610,12 @@ namespace Harbor
         history.clear();
         gateOpen = published = controlled = repaired = copied = ledgerWet = false;
         flood = 0;
-        briefed = recoveredLedger = recoveredKey = returned = explored = dealSettled = false;
+        briefed = recoveredLedger = recoveredKey = returned = dealSettled = false;
         EndDialogue();
         EndTrade();
         recordChoice = RecordChoice::Undecided;
+        trailClues = 0;
+        trailNotice = TrailNotice::None;
         questStep = 0;
         consequence.clear();
         random.seed(level.seed ^ 0x48415242u);
@@ -1532,6 +1618,21 @@ namespace Harbor
     void World::SpreadRumors(const std::vector<Npc*>& npcs)
     {
         Perf::Scope scope(Perf::Cpu::RumorUpdate);
+        if (trailNotice != TrailNotice::None)
+        {
+            const Position board = Site(TrailStops[TrailClueCount].site);
+            const Knowledge news =
+                trailNotice == TrailNotice::Names ? Knowledge::TrailNames : Knowledge::TrailRoute;
+            for (Npc* npc : npcs)
+            {
+                if (npc->health > 0 && !(npc->knowledge & news) &&
+                    Distance(npc->WorldPosition(), board) < 6 && level.ClearLine(npc->WorldPosition(), board))
+                {
+                    npc->knowledge |= news;
+                }
+            }
+        }
+
         using Cell = std::pair<int, int>;
         std::map<Cell, std::vector<size_t>> neighbours;
         std::vector<int> known;
@@ -1608,7 +1709,7 @@ namespace Harbor
             conflict += npc->action == Action::Raid || npc->action == Action::Defend ? 1 : 0;
             wounded += npc->health < npc->maxHealth / 2 ? 1 : 0;
             trading += npc->action == Action::Trade ? 1 : 0;
-            news += (npc->knowledge & Knowledge::Published) ? 1 : 0;
+            news += (npc->knowledge & (Knowledge::Published | Knowledge::TrailNames)) ? 1 : 0;
         }
         return conflict                      ? 0
                : wounded                     ? 1
@@ -1791,7 +1892,7 @@ namespace Harbor
         level.stats.GainExperience(120);
         level.stats.coins += 20;
         ReactToPlayer(
-            L"\ubb3c\uae38\uc744 \uc5f0 \uc77c\uc744 \ubcf4\uace0\ud588\ub2e4. \ud488\uc0af 20\ub0e5\uacfc \uacbd\ud5d8\uce58 120\uc744 \ubc1b\uc558\ub2e4. \ub2e4\uc74c\uc740 \uc194\ubc14\ub78c \uc0ac\ub0e5\uafbc \uac70\uc810\uc744 \ucc3e\uc544\ubcf4\uc790.");
+            L"\ubb34\uc5f0\ud56d \uc758\ub8b0 \uc644\ub8cc. \ud488\uc0af 20\ub0e5\uacfc \uacbd\ud5d8\uce58 120\uc744 \ubc1b\uc558\ub2e4. \uc7a5\ubd80\uc758 \uc218\ub808\uafbc \ub3c4\uc7a5\uc744 \ub530\ub77c \uc194\ubc14\ub78c\uc73c\ub85c \uac00 \ubcf4\uc790.");
         UpdateQuest();
     }
 
@@ -1841,6 +1942,12 @@ namespace Harbor
                 npc.name +
                     L"\uc5d0\uac8c \ub0b4\uac00 \ucc3e\uc740 \ubb3c\uac74 \uc774\uc57c\uae30\ub97c \uc804\ud588\ub2e4.",
                 false);
+        }
+        else if (selected.effect == DialogueEffect::RecordTrailClue ||
+                 selected.effect == DialogueEffect::PostTrailNames ||
+                 selected.effect == DialogueEffect::PostTrailRoute)
+        {
+            ApplyTrailChoice(dialogue.source, selected.effect);
         }
         if (selected.next < 0 || size_t(selected.next) >= dialogue.pages.size())
         {
@@ -1917,7 +2024,8 @@ namespace Harbor
                 L"\uc5f4\uc1e0\ub85c \uc218\ubb38\uc744 \uc5f4\uc5c8\uc5b4. \uc7a5\ubd80\ub294\u2026 " +
                     Consequence());
             add(name,
-                L"\uc0ac\ub78c\ub9c8\ub2e4 \ub124 \uacb0\uc815\uc744 \ub2e4\ub974\uac8c \ub9d0\ud558\uaca0\uc9c0. \uadf8\ub798\ub3c4 \uc624\ub298 \uc9d1\uc73c\ub85c \ub3cc\uc544\uac08 \uae38\uc774 \uc0dd\uae34 \uc0ac\ub78c\uc740 \uc788\uc5b4. \uc57d\uc18d\ud55c \ud488\uc0af 20\ub0e5\uc744 \ubc1b\uc544. \ubc14\uae65\uc5d0\uc11c \uc77c\uac10\uc744 \ucc3e\uc73c\ub824\uba74 \uc194\ubc14\ub78c \uc0ac\ub0e5\uafbc \uac70\uc810\uc5d0 \uac00 \ubd10.");
+                npc ? L"\ub124\uac00 \uc5f4\uc5b4 \uc900 \uae38\ub85c \uc0ac\ub78c\ub4e4\uc774 \uc9d1\uc5d0 \ub3cc\uc544\uac00\uace0 \uc788\uc5b4. \uc5ec\uae30 \ud488\uc0af 20\ub0e5\uc774\uc57c. \uc7a5\ubd80 \ub05d\uc758 \ub9e4\ub4ed \ub3c4\uc7a5 \ubd24\uc5b4? \uc194\ubc14\ub78c \uc218\ub808\uafbc\ub4e4\uc774 \uc4f0\ub294 \ud45c\uc2dd\uc774\uc57c. \uc194\ubc14\ub78c \uac8c\uc2dc\ud310\uc5d0 \uac00 \ubcf4\uba74 \ubb54\uac00 \uc54c \uc218 \uc788\uc744 \uac70\uc57c."
+                    : L"\ud488\uc0af 20\ub0e5 \uc9c0\uae09. \uc870\ud569\uc774 \ubcf4\uad00\ud55c \uc7a5\ubd80 \uc0ac\ubcf8\uc758 \ub05d\uc5d0 \uc194\ubc14\ub78c \uc218\ub808\uafbc\uc758 \ub9e4\ub4ed \ub3c4\uc7a5\uc774 \ucc0d\ud600 \uc788\uc74c. \uc218\ub808\uc758 \ud589\ubc29\uc740 \uc194\ubc14\ub78c \uac8c\uc2dc\ud310\uc5d0\uc11c \ud655\uc778\ud560 \uac83.");
             option(
                 2,
                 L"\uc77c\uc744 \ub9c8\ucce4\uc5b4. \uc57d\uc18d\ud55c \ud488\uc0af\uc744 \ubc1b\uc744\uac8c. (20\ub0e5 / \uacbd\ud5d8\uce58 120)",
@@ -1933,6 +2041,13 @@ namespace Harbor
         add(name,
             npc ? npc->line
                 : L"\uc7a5\ud130 \uac8c\uc2dc\ud310\uc758 \uae00\uc740 \ube57\ubb3c\uc5d0 \uc816\uc5b4 \uc788\ub2e4.");
+        if (npc && (npc->knowledge & (Knowledge::TrailNames | Knowledge::TrailRoute)))
+        {
+            dialogue.pages[0].text =
+                (npc->knowledge & Knowledge::TrailNames)
+                    ? L"\ub4e4\uc0d8\uc5d0 \uc774\ub984\uc744 \ubd99\uc600\ub2e4\ub294 \uc598\uae30 \ub4e4\uc5c8\uc5b4. \uc774\uc81c \uac00\uc871\ub4e4\uc774 \ucc3e\uc544\uac08 \uc218 \uc788\uaca0\uc9c0. \uadf8\ub798\ub3c4 \uadf8\ub54c \uc228\uc5b4\ub4e0 \uc774\ub4e4\uc740 \ub2e4\uc2dc \uc9d0\uc744 \uc2f8\uc57c \ud560\uc9c0\ub3c4 \ubab0\ub77c."
+                    : L"\ub4e4\uc0d8\uc5d0\uc11c \uc218\ub808\uac00 \uc9c0\ub098\uac04 \uae38\uc744 \uc801\uc5b4 \ubd99\uc600\ub2e4\uba70? \uadf8\ub54c \uac19\uc774 \uac04 \uc0ac\ub78c\ub4e4\uc740 \ud55c\uc228 \ub3cc\ub838\uaca0\uc9c0. \uac00\uc871\uc744 \ucc3e\ub294 \uc0ac\ub78c\uc740 \ub610 \ubc1c\ud488\uc744 \ud314\uc544\uc57c\uaca0\uc9c0\ub9cc.";
+        }
         std::wstring context;
         std::wstring answer;
         if (npc && npc->variant == 0 && returned)
@@ -2056,6 +2171,90 @@ namespace Harbor
         add(name,
             L"\ub124\uac00 \uc9c1\uc811 \ubd24\ub2e4\ub294 \uac70\uc9c0? \uadf8\uac74 \uae30\uc5b5\ud574 \ub458\uac8c. \ub2e4\ub978 \uc0ac\ub78c\uc5d0\uac8c \uc774\uc57c\uae30\ud558\uae30 \uc804\uc5d4 \ud55c \ubc88 \ub354 \uc0dd\uac01\ud574.");
         option(3, L"\uc5ec\uae30\uae4c\uc9c0 \uc774\uc57c\uae30\ud560\uac8c.", -1, DialogueEffect::None);
+    }
+
+    void World::BeginTrailDialogue(const Landmark& board)
+    {
+        EndDialogue();
+        dialogue.source = board.Id();
+        if (trailNotice != TrailNotice::None)
+        {
+            const wchar_t* notice =
+                trailNotice == TrailNotice::Names
+                    ? L"\uc5f4\ub450 \ud574 \uc804 \uc57d \uc218\ub808\uc5d0 \ud0c4 \uc0ac\ub78c\uc744 \ucc3e\uc2b5\ub2c8\ub2e4. \uc625\ubd84, \ub3cc\uc774, \uc900\uce58. \uc194\ubc14\ub78c\uc5d0\uc11c \uae34\uae38\uacfc \uc740\uc194\uc744 \uac70\uccd0 \ub4e4\uc0d8\uc5d0 \ub2ff\uc558\uc2b5\ub2c8\ub2e4. \uc544\ub294 \uac83\uc774 \uc788\ub2e4\uba74 \ub4e4\uc0d8 \uac8c\uc2dc\ud310\uc5d0 \uae00\uc744 \ub0a8\uaca8 \uc8fc\uc2ed\uc2dc\uc624."
+                    : L"\uc5f4\ub450 \ud574 \uc804 \uc57d \uc218\ub808\uac00 \uc194\ubc14\ub78c\uc5d0\uc11c \uae34\uae38\uacfc \uc740\uc194\uc744 \uac70\uccd0 \ub4e4\uc0d8\uc5d0 \ub2ff\uc558\uc2b5\ub2c8\ub2e4. \uadf8\ub0a0 \ubc24 \uae38\uc744 \uc9c0\ub098\uac70\ub098 \uc218\ub808\ub97c \ubcf8 \ubd84\uc740 \ub4e4\uc0d8 \uac8c\uc2dc\ud310\uc5d0 \uae00\uc744 \ub0a8\uaca8 \uc8fc\uc2ed\uc2dc\uc624.";
+            dialogue.pages.push_back({TrailStops[TrailClueCount].speaker, notice, {}});
+            return;
+        }
+
+        const TrailStop& stop = TrailStops[trailClues];
+        dialogue.pages.push_back({stop.speaker, stop.text, {}});
+        auto& choices = dialogue.pages.back().choices;
+        if (trailClues < TrailClueCount)
+        {
+            choices.push_back({stop.choice, -1, DialogueEffect::RecordTrailClue});
+        }
+        else
+        {
+            choices.push_back(
+                {L"\uac00\uc871\uc774 \uc54c\uc544\ubcfc \uc218 \uc788\uac8c \uc774\ub984\uacfc \uae38\uc744 \ubd99\uc778\ub2e4",
+                 -1,
+                 DialogueEffect::PostTrailNames});
+            choices.push_back(
+                {L"\uc2e0\uc6d0\uc774 \ub4dc\ub7ec\ub098\uc9c0 \uc54a\uac8c \uc9c0\ub098\uac04 \uae38\ub9cc \ubd99\uc778\ub2e4",
+                 -1,
+                 DialogueEffect::PostTrailRoute});
+        }
+        choices.push_back(
+            {L"\uc9c0\uae08\uc740 \uac8c\uc2dc\ud310\uc744 \ub36e\ub294\ub2e4", -1, DialogueEffect::None});
+    }
+
+    const wchar_t* World::TrailResult() const
+    {
+        return trailNotice == TrailNotice::Names
+                   ? L"\ub4e4\uc0d8\uc5d0 \uc774\ub984\uc744 \ubd99\uc600\ub2e4. \uac00\uc871\uc774 \uc54c\uc544\ubcfc \uc218 \uc788\uac8c \ub41c \ub9cc\ud07c, \uc228\uc5b4 \uc9c0\ub0b4\ub358 \uc0ac\ub78c\ub4e4\uc758 \uc774\ub984\ub3c4 \ud37c\uc9c4\ub2e4."
+                   : L"\ub4e4\uc0d8\uc5d0 \uc218\ub808\uac00 \uc9c0\ub098\uac04 \uae38\ub9cc \ubd99\uc600\ub2e4. \uc228\uc5b4 \uc9c0\ub0b4\ub358 \uc774\ub4e4\uc758 \uc2e0\uc6d0\uc740 \uc9c0\ucf30\uc9c0\ub9cc, \uac00\uc871\ub4e4\uc740 \ub354 \uae30\ub2e4\ub824\uc57c \ud55c\ub2e4.";
+    }
+
+    void World::ApplyTrailChoice(ActorId board, DialogueEffect effect)
+    {
+        if (!returned || trailNotice != TrailNotice::None || board != sites[TrailStops[trailClues].site])
+        {
+            return;
+        }
+
+        const Position hero = level.Player().WorldPosition();
+        const Position position = level.Scene().Get(board).WorldPosition();
+        if (!level.ClearLine(hero, position))
+        {
+            return;
+        }
+
+        if (trailClues < TrailClueCount)
+        {
+            if (effect != DialogueEffect::RecordTrailClue)
+            {
+                return;
+            }
+            if (trailClues == 0)
+            {
+                level.stats.GainExperience(40);
+            }
+            Event(TrailStops[trailClues].result);
+            ++trailClues;
+        }
+        else
+        {
+            if (effect != DialogueEffect::PostTrailNames && effect != DialogueEffect::PostTrailRoute)
+            {
+                return;
+            }
+            trailNotice = effect == DialogueEffect::PostTrailNames ? TrailNotice::Names : TrailNotice::Route;
+            level.stats.GainExperience(100);
+            consequence = TrailResult();
+            Event(consequence + L" \u00b7 \uacbd\ud5d8\uce58 100");
+        }
+        UpdateQuest();
     }
 
     void World::Talk()
@@ -2189,18 +2388,16 @@ namespace Harbor
         }
         for (int index = 3; index < int(sites.size()); ++index)
         {
-            if (Distance(hero, Site(index)) < 1.8f)
+            if (Distance(hero, Site(index)) < 1.8f && level.ClearLine(hero, Site(index)))
             {
-                if (index == 4 && returned && !explored)
+                const auto& landmark = static_cast<const Landmark&>(level.Scene().Get(sites[index]));
+                const bool postedNotice =
+                    index == TrailStops[TrailClueCount].site && trailNotice != TrailNotice::None;
+                if ((returned && landmark.Id() == ObjectiveTarget()) || postedNotice)
                 {
-                    explored = true;
-                    level.stats.GainExperience(40);
-                    ReactToPlayer(
-                        L"\uc194\ubc14\ub78c \uac70\uc810 \ubc1c\uacac \u2192 \uacbd\ud5d8\uce58 40. \uc774\uc81c \uc0ac\ub0e5\u00b7\uac70\ub798\ub85c \uc131\uc7a5\ud558\uba70 \ub354 \uba3c \uc0b0\uae38\uc744 \ud0d0\ud5d8\ud558\uc790.");
-                    UpdateQuest();
+                    BeginTrailDialogue(landmark);
                     return;
                 }
-                const auto& landmark = static_cast<const Landmark&>(level.Scene().Get(sites[index]));
                 Event(
                     landmark.label +
                     (index == 7
@@ -2296,11 +2493,18 @@ namespace Harbor
     std::vector<std::wstring> World::Journal() const
     {
         std::vector<std::wstring> lines;
-        lines.push_back(L"\uc758\ub8b0: \ubb3c\uae38 \uc544\ub798\uc758 \uc774\ub984\ub4e4");
+        lines.push_back(returned ? L"\uc758\ub8b0: \uc218\ub808\uac00 \uc9c0\ub098\uac04 \uae38"
+                                 : L"\uc758\ub8b0: \ubb3c\uae38 \uc544\ub798\uc758 \uc774\ub984\ub4e4");
         lines.push_back(Objective());
         lines.push_back(ObjectiveHint());
         lines.push_back(L"\ub0b4 \uc120\ud0dd\uc758 \uacb0\uacfc: " + Consequence());
         lines.push_back(Status());
+        if (returned)
+        {
+            lines.push_back(L"\uc218\uc9d1\ud55c \ub2e8\uc11c " + std::to_wstring(trailClues) + L"/" +
+                            std::to_wstring(TrailClueCount));
+            lines.push_back(Guide().reason);
+        }
         lines.push_back(
             L"\uacf5\uac1c: \uac00\uc871\ub4e4\uc774 \uc7a5\ud130\uc5d0 \ubaa8\uc778\ub2e4 / \uad00\uccad: \ud604\uc7a5 \ud1b5\uc81c / \ud310\ub9e4: \uc774\uc548\uc774 \ubd80\ub450\ub85c \uac04\ub2e4");
         lines.push_back(
@@ -2351,7 +2555,12 @@ namespace Harbor
             << ",\"quest_ledger_recovered\":" << (recoveredLedger ? "true" : "false")
             << ",\"quest_key_recovered\":" << (recoveredKey ? "true" : "false")
             << ",\"quest_returned\":" << (returned ? "true" : "false")
-            << ",\"hunter_camp_discovered\":" << (explored ? "true" : "false")
+            << ",\"hunter_camp_discovered\":" << (trailClues > 0 ? "true" : "false")
+            << ",\"trail_clues\":" << trailClues << ",\"trail_notice\":\""
+            << (trailNotice == TrailNotice::Names   ? "names"
+                : trailNotice == TrailNotice::Route ? "route"
+                                                    : "none")
+            << "\""
             << ",\"player_coins\":" << level.stats.coins << ",\"player_health\":" << level.stats.health
             << ",\"player_hides\":" << level.stats.hides << ",\"player_potions\":" << level.stats.potions
             << ",\"ledger_holder_actor_id\":" << Holder(ledger) << ",\"key_holder_actor_id\":" << Holder(key)

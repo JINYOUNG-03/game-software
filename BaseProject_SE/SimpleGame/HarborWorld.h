@@ -40,7 +40,9 @@ namespace Harbor
         Ledger = 1,
         Key = 2,
         Plans = 4,
-        Published = 8
+        Published = 8,
+        TrailNames = 16,
+        TrailRoute = 32
     };
 
     enum class RecordChoice
@@ -49,6 +51,13 @@ namespace Harbor
         Public,
         Authority,
         Sold
+    };
+
+    enum class TrailNotice
+    {
+        None,
+        Names,
+        Route
     };
 
     struct Npc : public Actor
@@ -126,7 +135,10 @@ namespace Harbor
         None,
         AcceptQuest,
         CompleteQuest,
-        ShareKnowledge
+        ShareKnowledge,
+        RecordTrailClue,
+        PostTrailNames,
+        PostTrailRoute
     };
 
     struct DialogueChoice
@@ -250,9 +262,10 @@ namespace Harbor
         bool recoveredLedger = false;
         bool recoveredKey = false;
         bool returned = false;
-        bool explored = false;
         bool dealSettled = false;
         RecordChoice recordChoice = RecordChoice::Undecided;
+        size_t trailClues = 0;
+        TrailNotice trailNotice = TrailNotice::None;
         int questStep = 0;
         std::wstring consequence;
         DialogueState dialogue;
@@ -284,5 +297,8 @@ namespace Harbor
         void ChooseRecord(RecordChoice choice);
         void BeginDialogue(Npc* npc);
         void CompleteFirstQuest();
+        void BeginTrailDialogue(const Landmark& board);
+        void ApplyTrailChoice(ActorId board, DialogueEffect effect);
+        const wchar_t* TrailResult() const;
     };
 } // namespace Harbor

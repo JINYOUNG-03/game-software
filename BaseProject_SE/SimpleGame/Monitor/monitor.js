@@ -11,6 +11,7 @@ const MonitorData = (() => {
     const kinds = { village: "마을", outpost: "사냥꾼 거점", waystation: "주막", shrine: "산사", raider_camp: "약탈자 야영지" };
     const tendencies = { survival: "생존", wealth: "재산", enlightenment: "깨달음", raiding: "약탈", none: "집계 대상 없음" };
     const factions = ["관청", "조합", "주민", "외지인"];
+    const trailNotices = { none: "공고 전", names: "이름과 경로 공개", route: "경로만 공개" };
     const number = value => Number.isFinite(value) ? value : 0;
     const signed = value => value > 0 ? `+${value}` : `${value}`;
 
@@ -55,7 +56,7 @@ const MonitorData = (() => {
 
     function knowledge(mask) {
         const value = number(mask);
-        return [[1, "장부"], [2, "열쇠"], [4, "수문 계획"], [8, "공개 소식"]]
+        return [[1, "장부"], [2, "열쇠"], [4, "수문 계획"], [8, "공개 소식"], [16, "들샘 이름 공고"], [32, "들샘 경로 공고"]]
             .filter(([bit]) => value & bit).map(([, label]) => label).join(" · ") || "없음";
     }
 
@@ -82,7 +83,7 @@ const MonitorData = (() => {
             .map(([key, value]) => `${moods[key] || key} ${value.toFixed(1)}%`).join(" / ");
     }
 
-    return { jobs, actions, moods, kinds, tendencies, factions, number, signed,
+    return { jobs, actions, moods, kinds, tendencies, factions, trailNotices, number, signed,
         validateSnapshot, selectNpcs, knowledge, goal, delta, settlementName, moodSummary };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = MonitorData;
@@ -249,6 +250,9 @@ if (typeof document !== "undefined") {
         $("objective").textContent = world.objective;
         $("consequence").textContent = `내 선택의 결과 · ${world.consequence}`;
         $("world-status").textContent = `시드 ${world.seed ?? "—"} · ${world.map_size_tiles}×${world.map_size_tiles} 타일 · 플레이어 HP ${world.player_health} / ${world.player_coins}냥 · 수문 ${world.gate_open ? "열림" : "닫힘"} · 현장 ${world.drain_controlled ? "통제" : "개방"} · 세력 신뢰 ${(world.faction_trust || []).map((trust, i) => `${D.factions[i]} ${trust}`).join(" / ")}`;
+        if (world.quest_returned && Number.isInteger(world.trail_clues)) {
+            $("world-status").textContent += ` · 수레 단서 ${world.trail_clues}/3 · ${D.trailNotices[world.trail_notice] ?? "공고 전"}`;
+        }
         renderSettlements(world);
         fillOptions("job", Object.entries(D.jobs));
         fillOptions("action", Object.entries(D.actions));

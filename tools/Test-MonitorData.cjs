@@ -31,6 +31,9 @@ assert.equal(D.selectNpcs(fixture.world.npcs, { query: "없는이름" }).length,
 assert.equal(D.goal(raider), "약탈 (1.8)");
 assert.equal(D.knowledge(5), "장부 · 수문 계획");
 assert.equal(D.knowledge(0), "없음");
+assert.equal(D.knowledge(24), "공개 소식 · 들샘 이름 공고");
+assert.equal(D.knowledge(32), "들샘 경로 공고");
+assert.notEqual(D.trailNotices.names, D.trailNotices.route);
 assert.equal(D.delta(npc, { ...npc, coins: 25 }, "coins"), "+10");
 assert.equal(D.delta(npc, { ...npc, health: 100 }, "health"), "-20");
 assert.equal(D.delta(npc, undefined, "health"), "");
