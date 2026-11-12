@@ -23,6 +23,7 @@
 #include "CharacterPresentation.h"
 #include "InventoryPresentation.h"
 #include "TradePresentation.h"
+#include "GameSave.h"
 
 namespace
 {
@@ -97,6 +98,14 @@ namespace
     float inventoryClickX = 0, inventoryClickY = 0;
     std::wstring inventoryActionNote;
     bool paused = false;
+    enum class CheckpointRequest
+    {
+        None,
+        Save,
+        Load
+    };
+    CheckpointRequest checkpointRequest = CheckpointRequest::None;
+    std::wstring checkpointNotice;
     bool helpVisible = true;
     bool helpPressed = false;
     bool continueHelpPressed = false;
@@ -247,7 +256,6 @@ namespace
     {
         Perf::Scope scope(Perf::Cpu::ScenePrepare);
         SceneGraph& scene = firstLevel.Scene();
-        harbor.Initialize();
         for (ActorKind kind : {ActorKind::Player, ActorKind::Npc, ActorKind::Enemy, ActorKind::Prop})
         {
             for (ActorId id : scene.FindByKind(kind))
@@ -946,6 +954,9 @@ namespace
         DrawWrapped(304, 286, stories[introPage], 672, 9);
         std::wstring page = std::to_wstring(introPage + 1) + L" / 3";
         DrawText(930, 244, page.c_str());
+        DrawWrapped(304, 482, checkpointNotice, 672, 1);
+        DrawText(
+            304, 514, L"F9 \u00b7 \uc800\uc7a5\ud55c \uac8c\uc784 \uc774\uc5b4\ud558\uae30", .86f, .9f, .75f);
         DrawText(
             304,
             548,
@@ -1587,8 +1598,10 @@ namespace
     {
         if (paused)
         {
-            renderer->DrawSolidRect(640, 400, 390, 90, .03f, .05f, .06f, .96f);
-            DrawText(498, 405, L"\uc7a0\uc2dc \uc26c\ub294 \uc911 - ESC\ub85c \ub3cc\uc544\uac00\uae30");
+            renderer->DrawSolidRect(640, 400, 500, 126, .03f, .05f, .06f, .96f);
+            DrawText(409, 373, L"\uc77c\uc2dc\uc815\uc9c0 \u00b7 ESC \ub3cc\uc544\uac00\uae30");
+            DrawText(409, 404, L"F5 \uc800\uc7a5 \u00b7 F9 \uc774\uc5b4\ud558\uae30");
+            DrawWrapped(409, 434, checkpointNotice, 460, 1);
         }
     }
 
@@ -1996,9 +2009,65 @@ namespace
         tradeMovePressed = tradeQuantityPressed = 0;
     }
 
+    void UpdateCheckpoint(CheckpointRequest request)
+    {
+        if (harbor.Conversation().Active() || harbor.Trading().Active() || statsPanel)
+        {
+            return;
+        }
+        const bool saving = request == CheckpointRequest::Save;
+        if (saving && introVisible)
+        {
+            checkpointNotice =
+                L"\uac8c\uc784\uc744 \uc2dc\uc791\ud55c \ub4a4 F5\ub85c \uc800\uc7a5\ud560 \uc218 \uc788\ub2e4.";
+            return;
+        }
+        const auto result = saving ? GameSave::Save(firstLevel, harbor) : GameSave::Load(firstLevel, harbor);
+        switch (result)
+        {
+        case GameSave::Result::Success:
+            if (!saving)
+            {
+                InitializeSceneActors();
+                paused = helpVisible = introVisible = journalPanel = statsPanel = false;
+                inventorySelection = 0;
+                tradeConfirmPending = false;
+                previousTime = std::chrono::steady_clock::now();
+            }
+            checkpointNotice = saving
+                                   ? L"\uac8c\uc784\uc744 \uc800\uc7a5\ud588\ub2e4."
+                                   : L"\uc800\uc7a5\ud55c \uac8c\uc784\uc5d0\uc11c \uc774\uc5b4\ud55c\ub2e4.";
+            break;
+        case GameSave::Result::Missing:
+            checkpointNotice = L"\uc800\uc7a5\ub41c \uac8c\uc784\uc774 \uc5c6\ub2e4.";
+            break;
+        case GameSave::Result::Invalid:
+            checkpointNotice =
+                saving
+                    ? L"\ud604\uc7ac \uc0c1\ud0dc\ub97c \uc800\uc7a5\ud558\uc9c0 \ubabb\ud588\ub2e4."
+                    : L"\uc800\uc7a5 \ud30c\uc77c\uc774 \uc190\uc0c1\ub410\uac70\ub098 \ubc84\uc804\uc774 \ub2e4\ub974\ub2e4.";
+            break;
+        case GameSave::Result::IoError:
+            checkpointNotice =
+                L"\uc800\uc7a5 \ud30c\uc77c\uc5d0 \uc811\uadfc\ud558\uc9c0 \ubabb\ud588\ub2e4.";
+            break;
+        }
+        firstLevel.message = checkpointNotice;
+        firstLevel.messageTime = 5;
+        ClearGameplayInput();
+    }
+
     void Update(float dt)
     {
         Perf::Scope scope(Perf::Cpu::Update);
+        if (checkpointRequest != CheckpointRequest::None)
+        {
+            const auto request = checkpointRequest;
+            checkpointRequest = CheckpointRequest::None;
+            UpdateCheckpoint(request);
+            UpdatePromptActor();
+            return;
+        }
         if (harbor.Trading().Active())
         {
             UpdateTradeInput();
@@ -2483,6 +2552,14 @@ void WindowKey(GLFWwindow*, int key, int, int action, int)
     {
         return;
     }
+    if (key == GLFW_KEY_F5 || key == GLFW_KEY_F9)
+    {
+        if (action == GLFW_PRESS)
+        {
+            checkpointRequest = key == GLFW_KEY_F5 ? CheckpointRequest::Save : CheckpointRequest::Load;
+        }
+        return;
+    }
     const unsigned char command = WindowInput::CommandKey(key);
     if (command)
     {
@@ -2618,6 +2695,7 @@ int main()
         Close();
         return 1;
     }
+    harbor.Initialize();
     InitializeSceneActors();
     UpdatePromptActor();
     worldMonitor.Start();

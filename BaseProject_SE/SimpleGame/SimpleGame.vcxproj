@@ -170,6 +170,7 @@
     <ClInclude Include="CharacterPresentation.h" />
     <ClInclude Include="InventoryPresentation.h" />
     <ClInclude Include="HarborWorld.h" />
+    <ClInclude Include="GameSave.h" />
     <ClInclude Include="Trade.h" />
     <ClInclude Include="TradePresentation.h" />
     <ClInclude Include="WorldMonitor.h" />
@@ -188,6 +189,7 @@
     <ClCompile Include="Profiler.cpp" />
     <ClCompile Include="LevelOne.cpp" />
     <ClCompile Include="HarborWorld.cpp" />
+    <ClCompile Include="GameSave.cpp" />
     <ClCompile Include="HarborTrade.cpp" />
     <ClCompile Include="WorldMonitor.cpp" />
     <ClCompile Include="Actor.cpp" />

@@ -25,6 +25,7 @@ set(game_dir "${CMAKE_CURRENT_SOURCE_DIR}/BaseProject_SE/SimpleGame")
 add_executable(SimpleGame
     ${game_dir}/Actor.cpp ${game_dir}/SceneGraph.cpp
     ${game_dir}/LevelOne.cpp ${game_dir}/HarborWorld.cpp ${game_dir}/HarborTrade.cpp
+    ${game_dir}/GameSave.cpp
     ${game_dir}/Renderer.cpp ${game_dir}/RendererBatch.cpp ${game_dir}/RendererModels.cpp
     ${game_dir}/Profiler.cpp ${game_dir}/WorldMonitor.cpp ${game_dir}/KoreanFont.cpp
     ${game_dir}/SimpleGame.cpp ${game_dir}/stdafx.cpp)

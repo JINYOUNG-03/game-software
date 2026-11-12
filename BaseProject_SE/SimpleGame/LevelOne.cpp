@@ -94,6 +94,11 @@ namespace Level
 
     FirstLevel::FirstLevel()
     {
+        InitializeScene();
+    }
+
+    void FirstLevel::InitializeScene()
+    {
         Actor& world = scene.Create(scene.Root().Id(), "World");
         terrainRoot = scene.Create(world.Id(), "Terrain").Id();
         propRoot = scene.Create(world.Id(), "Scenery").Id();
@@ -198,7 +203,7 @@ namespace Level
         }
     }
 
-    void FirstLevel::AddLoot(const Position& position, LootKind kind, int amount)
+    Loot& FirstLevel::AddLoot(const Position& position, LootKind kind, int amount)
     {
         Loot& loot = scene.Create<Loot>(lootRoot, "Drop", ActorKind::Loot);
         loot.SetWorldPosition(position);
@@ -207,6 +212,7 @@ namespace Level
         loot.drawable = true;
         loot.model = "loot" + std::to_string(int(kind));
         loot.shadowWidth = 20;
+        return loot;
     }
 
     void FirstLevel::UpdateActorModels()

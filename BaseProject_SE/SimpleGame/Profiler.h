@@ -79,6 +79,8 @@ namespace Perf
         WindowInit,
         WindowEvents,
         NpcAttack,
+        SaveGame,
+        LoadGame,
         Count
     };
     enum class Counter
@@ -185,6 +187,8 @@ namespace Perf
         NpcAttackMisses,
         NpcAttacksCanceled,
         NpcAttackCuesDrawn,
+        SaveBytesWritten,
+        SaveBytesRead,
         Count
     };
 

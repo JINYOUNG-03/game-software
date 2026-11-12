@@ -8,6 +8,8 @@
 #include "SceneGraph.h"
 #include "WorldLayout.h"
 
+class GameSave;
+
 namespace Level
 {
     constexpr int MapSize = WorldLayout::MapSize;
@@ -202,6 +204,8 @@ namespace Level
         std::wstring message;
 
       private:
+        friend class ::GameSave;
+
         mutable std::array<Tile, MapSize * MapSize> tiles;
         std::array<int, MapSize * MapSize> navigation;
         std::array<ActorId, WorldLayout::ChunksPerSide * WorldLayout::ChunksPerSide> terrainChunks{};
@@ -235,13 +239,14 @@ namespace Level
         float invulnerability = 0;
 
         bool Open(int x, int y) const;
+        void InitializeScene();
         void Carve(int x, int y);
         void ConnectGround();
         void BuildNavigation(bool localOnly = true);
         void Move(Actor& actor, float dx, float dy);
         void RefreshActorObstacles() const;
         void AddProp(const Position& position, int kind, bool blocksMovement = false);
-        void AddLoot(const Position& position, LootKind kind, int amount);
+        Loot& AddLoot(const Position& position, LootKind kind, int amount);
         void UpdateActorModels();
         void ResolveAttackImpact();
         void UpdateEnemyAttack(Enemy& enemy, float dt);

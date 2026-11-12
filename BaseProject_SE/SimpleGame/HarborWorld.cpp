@@ -1706,6 +1706,15 @@ namespace Harbor
         UpdateQuest();
     }
 
+    void World::PlaceDrainSupport()
+    {
+        Actor& support = level.Scene().Create(worldRoot, "PlayerRequestedDrainRepair", ActorKind::Prop);
+        support.SetWorldPosition({Site(0).x - .6f, Site(0).y, 0});
+        support.model = "prop3";
+        support.drawable = true;
+        support.shadowWidth = 40;
+    }
+
     void World::Step(Npc& npc, float dt)
     {
         npc.cooldown = (std::max)(0.0f, npc.cooldown - dt);
@@ -1859,11 +1868,7 @@ namespace Harbor
         if (npc.variant == 0 && briefed && !repaired && Distance(npc.WorldPosition(), Site(0)) < 1.2f)
         {
             repaired = true;
-            Actor& support = level.Scene().Create(worldRoot, "PlayerRequestedDrainRepair", ActorKind::Prop);
-            support.SetWorldPosition({Site(0).x - .6f, Site(0).y, 0});
-            support.model = "prop3";
-            support.drawable = true;
-            support.shadowWidth = 40;
+            PlaceDrainSupport();
             Event(
                 L"\ubbf8\ub77c\uac00 \ub2f9\uc2e0\uc758 \ubd80\ud0c1\uc73c\ub85c \ubc30\uc218\ub85c\uc5d0 \uc9c0\uc9c0\ub300\ub97c \uc138\uc6e0\ub2e4. \uce68\uc218 \uc18d\ub3c4\uac00 \uc904\uc5c8\ub2e4.");
         }

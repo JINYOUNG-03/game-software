@@ -6,6 +6,29 @@
 
 SceneGraph::SceneGraph()
 {
+    CreateRoot();
+}
+
+void SceneGraph::Reset()
+{
+    for (auto& index : m_ByKind)
+    {
+        index.clear();
+    }
+    for (auto& list : m_FrameLists)
+    {
+        list.clear();
+    }
+    m_TerrainList.clear();
+    m_TerrainFingerprint = 0;
+    m_Actors.clear();
+    // Keep identifiers and the collision revision increasing across a reload.
+    ++m_CollisionRevision;
+    CreateRoot();
+}
+
+void SceneGraph::CreateRoot()
+{
     std::unique_ptr<Actor> root(new Actor());
     root->m_Id = m_NextId++;
     root->m_Name = "Scene";

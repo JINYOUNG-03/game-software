@@ -250,6 +250,8 @@ namespace Harbor
         }
 
       private:
+        friend class ::GameSave;
+
         using Position = Level::Position;
 
         enum class HideJob
@@ -326,6 +328,7 @@ namespace Harbor
         void Log();
         void Disclose(Npc* speaker);
         void OpenGate(Npc* actor);
+        void PlaceDrainSupport();
         Level::Position Reachable(const Position& requested) const;
         bool RaidAllowed(const Npc& attacker, const Actor& target) const;
         Npc* Person(int definitionId) const;

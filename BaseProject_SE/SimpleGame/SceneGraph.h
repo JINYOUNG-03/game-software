@@ -13,6 +13,7 @@ class SceneGraph
 {
   public:
     SceneGraph();
+    void Reset();
     SceneGraph(const SceneGraph&) = delete;
     SceneGraph& operator=(const SceneGraph&) = delete;
 
@@ -119,6 +120,7 @@ class SceneGraph
 
   private:
     friend class Actor;
+    void CreateRoot();
     void InvalidateCollisionSubtree(const Actor& actor);
     void Collect(const Actor& actor, ScenePass pass, std::vector<const Actor*>& result) const;
     void CollectFrame(const Actor& actor, const std::function<bool(const Actor&)>& visible);

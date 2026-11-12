@@ -151,6 +151,8 @@
 | counters.npc_attacks_started / npc_attack_updates / npc_attack_impacts | 예고 시작 / 예고·회복 상태 갱신 / 타격 순간 판정 횟수 |
 | counters.npc_attack_hits / npc_attack_misses / npc_attacks_canceled | 실제 피해 / 거리·방향·차폐·무적으로 실패 / 대상 상실·보호 구역 진입·공격자 사망으로 취소된 횟수 |
 | counters.npc_attack_cues_drawn | 가시 주민의 공격 예고·타격 표시 배치 수. 드로우콜은 기존 draw_calls에서 확인 |
+| cpu_ms.save_game / load_game | F5 저장의 상태 수집·직렬화·파일 교체 / F9의 파일 읽기·검증·월드 재생성·복원 시간(ms). 상위 Update에 포함된다 |
+| counters.save_bytes_written / save_bytes_read | 성공적으로 교체한 저장 슬롯 / 읽어들인 슬롯의 UTF-8 바이트 수 |
 | cpu_ms.chunk_visibility / counters.chunks_visible | 청크 그룹 가시성 판정 시간 / 해당 프레임 활성 가시 그룹 수(지형·환경 한 쌍을 1로 집계) |
 | counters.world_props_added | 초기 생성 중 연결성을 보존하며 배치한 장애물 수 |
 | counters.npc_path_reuse | 동일 목적지·동일 충돌 revision에서 재사용한 주민 경로 수 |
