@@ -40,6 +40,7 @@ namespace
     constexpr float QuestPanelHeight = 88;
     constexpr float HelpPanelWidth = 720;
     constexpr float HelpPanelHeight = 360;
+    constexpr wchar_t SaveShortcutHint[] = L"F5 \uc800\uc7a5 \u00b7 F9 \uc774\uc5b4\ud558\uae30";
     using Vec3 = Level::Position;
 
     using Npc = Harbor::Npc;
@@ -1165,12 +1166,17 @@ namespace
                                  std::to_wstring(stats.hides) + L"   \ucc98\uce58 " +
                                  std::to_wstring(stats.kills);
         DrawWrapped(35, 744, inventory, 950, 1);
+        constexpr float footerMargin = 28;
+        constexpr float footerY = 777;
+        const float saveHintX =
+            ScreenWidth - footerMargin - renderer->TextWidth(SaveShortcutHint, fontDC, fontHandle);
         DrawWrapped(
-            28,
-            777,
+            footerMargin,
+            footerY,
             L"WASD \uc774\ub3d9  E \ub300\ud654\u00b7\uc90d\uae30  F \uc870\uc0ac  H \uc9c0\uae08 \ud560 \uc77c  SPACE \uacf5\uaca9  Q \uc57d  M \uc9c0\ub3c4  J \uc77c\uc9c0  I \uac00\ubc29  ESC",
-            1220,
+            saveHintX - footerMargin - 24,
             1);
+        DrawText(saveHintX, footerY, SaveShortcutHint, .97f, .86f, .59f);
     }
 
     const wchar_t* InventoryName(Inventory::Item item)
@@ -1600,7 +1606,7 @@ namespace
         {
             renderer->DrawSolidRect(640, 400, 500, 126, .03f, .05f, .06f, .96f);
             DrawText(409, 373, L"\uc77c\uc2dc\uc815\uc9c0 \u00b7 ESC \ub3cc\uc544\uac00\uae30");
-            DrawText(409, 404, L"F5 \uc800\uc7a5 \u00b7 F9 \uc774\uc5b4\ud558\uae30");
+            DrawText(409, 404, SaveShortcutHint);
             DrawWrapped(409, 434, checkpointNotice, 460, 1);
         }
     }
