@@ -56,6 +56,24 @@ if (-not $npcSource.Contains('npc.job != Job::Raider && IsMerchant(*candidate)')
 { throw 'Raider village trade exclusion missing.' }
 if (-not $renderSource.Contains('firstLevel.MapRevision()')) { throw 'Minimap depends on visible terrain.' }
 if (-not $levelSource.Contains('std::priority_queue<Visit>')) { throw 'A* navigation contract missing.' }
+$routeUpdate = [regex]::Match($renderSource, '(?s)void UpdateQuestRoute\(.*?(?=void RenderMiniMap\()').Value
+$routeMap = [regex]::Match($renderSource, '(?s)void RenderMiniMap\(.*?(?=float DrawWrapped\()').Value
+$routeHint = [regex]::Match($renderSource, '(?s)std::wstring TravelHint\(.*?(?=void DrawQuestTracker\()').Value
+foreach ($contract in @('route.target != goal->Id() || route.revision != revision', 'frameGuide.ready',
+                       'SameRouteTile(destination, route.destination)', 'FollowQuestRoute(player)',
+                       'route.refreshIn > 0', 'firstLevel.FindPath(player, destination, Level::PathPurpose::Quest)'))
+{
+    if (-not $routeUpdate.Contains($contract)) { throw "Missing route refresh/reuse condition: $contract" }
+}
+if (-not $routeHint.Contains('questRoute.points[questRoute.waypoint]') -or
+    -not $routeMap.Contains('QuestRouteDots') -or
+    $routeMap.IndexOf('DrawMiniMapLayer(') -ge $routeMap.IndexOf('if (questRoute.visible)') -or
+    $routeMap.Contains('FindPath(') -or
+    -not $renderSource.Contains('UpdateQuestRoute((std::min)(dt, .05f))'))
+{ throw 'The next direction and live route dots must use the updated path outside the terrain cache.' }
+if (-not $levelSource.Contains('Perf::Counter::QuestRouteCells : Perf::Counter::NpcPathCells') -or
+    -not $levelSource.Contains('if (!Open(x, y))'))
+{ throw 'Quest and NPC searches must use shared collision with separate profiling counters.' }
 
 if ($npcSource.Contains('const int departures[]')) { throw 'Story still progresses by an automatic departure clock.' }
 $npcStep = [regex]::Match($npcSource, '(?s)void World::Step\(.*?(?=void World::Update\()').Value
@@ -168,6 +186,7 @@ if ($probes -eq 0) { throw 'No visible chunk coverage samples.' }
     npc_appearance_count = $appearanceCount; raid_territory_separated = $true
     visible_chunk_probes = $probes; player_driven_story_contracts = $true; readable_ui_contracts = $true
     first_time_guidance_contracts = $true; npc_name_distance_tiles = [double]$nameDistance
+    quest_route_reuse_and_invalidation = $true; quest_route_on_minimap = $true
     compact_ui_contracts = $true; ui_font_height_pixels = 15; result_panel_left_pixels = 20
     quest_panel_pixels = @(740, 88); help_panel_pixels = @(720, 360)
     game_build_performed = $false; game_execution_performed = $false

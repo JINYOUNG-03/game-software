@@ -18,6 +18,12 @@ namespace Level
 
     using Position = ActorPosition;
 
+    enum class PathPurpose
+    {
+        Npc,
+        Quest
+    };
+
     enum class Terrain
     {
         Grass,
@@ -131,7 +137,9 @@ namespace Level
         std::vector<EnemyAttackImpact> ConsumeEnemyAttackImpacts();
         bool DamagePlayer(int damage, ActorId source = InvalidActorId);
         void MoveActor(Actor& actor, float dx, float dy);
-        std::vector<Position> FindPath(const Position& from, const Position& to) const;
+        std::vector<Position> FindPath(const Position& from,
+                                       const Position& to,
+                                       PathPurpose purpose = PathPurpose::Npc) const;
         bool PickUp();
         void UsePotion();
         void Allocate(int attribute);

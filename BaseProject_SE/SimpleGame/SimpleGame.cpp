@@ -74,6 +74,21 @@ namespace
     Level::FirstLevel firstLevel;
     Harbor::World harbor(firstLevel);
     Vec3 renderCamera;
+    Harbor::ObjectiveGuide frameGuide;
+
+    struct QuestRoute
+    {
+        ActorId target = InvalidActorId;
+        std::uint64_t revision = 0;
+        Vec3 start;
+        Vec3 destination;
+        std::vector<Vec3> points;
+        size_t waypoint = 0;
+        float refreshIn = 0;
+        bool visible = false;
+    };
+
+    QuestRoute questRoute;
 
     Vec3 PlayerPosition()
     {
@@ -703,6 +718,91 @@ namespace
         harbor.Talk();
     }
 
+    bool SameRouteTile(const Vec3& first, const Vec3& second)
+    {
+        return std::floor(first.x) == std::floor(second.x) && std::floor(first.y) == std::floor(second.y);
+    }
+
+    bool FollowQuestRoute(const Vec3& player)
+    {
+        auto& route = questRoute;
+        if (route.waypoint + 1 < route.points.size() &&
+            Distance2D(player, route.points[route.waypoint]) < .30f)
+        {
+            ++route.waypoint;
+        }
+        if (SameRouteTile(player, route.points[route.waypoint]) ||
+            (route.waypoint > 0 && SameRouteTile(player, route.points[route.waypoint - 1])))
+        {
+            return true;
+        }
+
+        const size_t end = (std::min)(route.points.size(), route.waypoint + 8);
+        for (size_t i = route.waypoint + 1; i < end; ++i)
+        {
+            if (SameRouteTile(player, route.points[i]))
+            {
+                route.waypoint = i;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void UpdateQuestRoute(float dt)
+    {
+        frameGuide = harbor.Guide();
+        auto& route = questRoute;
+        route.visible = false;
+        route.refreshIn = (std::max)(0.0f, route.refreshIn - dt);
+        const Actor* goal = firstLevel.Scene().Find(frameGuide.target);
+        if (!goal || frameGuide.ready || introVisible)
+        {
+            route.target = InvalidActorId;
+            route.points.clear();
+            return;
+        }
+
+        const Vec3 player = PlayerPosition(), destination = goal->WorldPosition();
+        const auto revision = firstLevel.MapRevision();
+        const bool changed = route.target != goal->Id() || route.revision != revision;
+        if (!changed && SameRouteTile(destination, route.destination))
+        {
+            if (!route.points.empty() && FollowQuestRoute(player))
+            {
+                route.visible = true;
+                Perf::Count(Perf::Counter::QuestRouteReused);
+                return;
+            }
+            if (route.points.empty() && SameRouteTile(player, route.start))
+            {
+                return;
+            }
+        }
+        if (!changed && route.refreshIn > 0)
+        {
+            return;
+        }
+
+        route.target = goal->Id();
+        route.revision = revision;
+        route.start = player;
+        route.destination = destination;
+        route.refreshIn = .40f;
+        route.waypoint = 0;
+        Perf::Count(Perf::Counter::QuestRouteSearches);
+        route.points = firstLevel.FindPath(player, destination, Level::PathPurpose::Quest);
+        route.visible = !route.points.empty();
+        if (route.visible)
+        {
+            FollowQuestRoute(player);
+        }
+        else
+        {
+            Perf::Count(Perf::Counter::QuestRouteFailures);
+        }
+    }
+
     void RenderMiniMap()
     {
         Perf::Scope scope(Perf::Cpu::MiniMap);
@@ -765,6 +865,31 @@ namespace
                                            }
                                        }
                                    });
+        if (questRoute.visible)
+        {
+            const auto& points = questRoute.points;
+            const size_t stride = worldMap ? 4 : 1;
+            const float size = worldMap ? 2.6f : 3.0f;
+            const float radius = size * .5f;
+            for (size_t i = questRoute.waypoint; i < points.size(); ++i)
+            {
+                const auto& p = points[i];
+                const bool corner = i > 0 && i + 1 < points.size() && points[i - 1].x != points[i + 1].x &&
+                                    points[i - 1].y != points[i + 1].y;
+                if (i % stride != 0 && i != questRoute.waypoint && !corner)
+                {
+                    continue;
+                }
+                const float x = left + (p.x - originX) * scale;
+                const float y = top + (p.y - originY) * scale;
+                if (x >= left + radius && x <= left + extent - radius && y >= top + radius &&
+                    y <= top + extent - radius)
+                {
+                    renderer->DrawEllipse(x, y, size, size, .14f, .90f, 1, 1);
+                    Perf::Count(Perf::Counter::QuestRouteDots);
+                }
+            }
+        }
         auto marker = [&](const Vec3& p, float r, float g, float b, float size, bool edge)
         {
             float x = left + (p.x - originX) * scale;
@@ -806,7 +931,7 @@ namespace
                 marker(enemy->WorldPosition(), .9f, .28f, .15f, 3, false);
             }
         }
-        if (const Actor* goal = firstLevel.Scene().Find(harbor.ObjectiveTarget()))
+        if (const Actor* goal = firstLevel.Scene().Find(frameGuide.target))
         {
             marker(goal->WorldPosition(), 1, .85f, .15f, 8 + std::sin(elapsed * 4), true);
         }
@@ -818,8 +943,9 @@ namespace
         DrawText(1040, 290, L"\uae08\ube5b \ubaa9\ud45c / \ud770\uc0c9 \ub098", .97f, .9f, .7f);
         DrawText(1040,
                  313,
-                 worldMap ? L"\ubd89\uc740 \uac70\uc810: \uc57d\ud0c8\uc790"
-                          : L"\uc804\uccb4 \uc6d4\ub4dc \uc911 \uc77c\ubd80",
+                 questRoute.visible ? L"\ud558\ub298\uc0c9 \uc810 \u00b7 \uac78\uc5b4\uac08 \uae38"
+                 : worldMap         ? L"\ubd89\uc740 \uac70\uc810: \uc57d\ud0c8\uc790"
+                                    : L"\uc804\uccb4 \uc6d4\ub4dc \uc911 \uc77c\ubd80",
                  .83f,
                  .87f,
                  .71f);
@@ -885,22 +1011,24 @@ namespace
             }
             return guide.interactionKey ? L"\ub3c4\ucc29\ud588\ub2e4. " + guide.action : guide.action;
         }
-        if (Distance2D(target->WorldPosition(), PlayerPosition()) < 1.8f)
+        const Vec3 player = PlayerPosition(), destination = target->WorldPosition();
+        const bool waitingForRepair = guide.step == Harbor::OpenSluice && !guide.interactionKey;
+        if ((SameRouteTile(player, destination) || waitingForRepair) &&
+            Distance2D(destination, player) < 1.8f && firstLevel.ClearLine(player, destination))
         {
-            if (guide.step == Harbor::OpenSluice && !guide.interactionKey)
+            if (waitingForRepair)
             {
                 return guide.action;
             }
-            return firstLevel.ClearLine(PlayerPosition(), target->WorldPosition())
-                       ? L"\uc870\uae08\ub9cc \ub354 \uac00\uae4c\uc774 \uac00\uc790. " + guide.action
-                       : L"\ub2f4\uc774\ub098 \uac74\ubb3c \ubc18\ub300\ud3b8\uc5d0 \uc788\ub2e4. \uae38\uc744 \ub530\ub77c \ub3cc\uc544\uac00\uc790.";
+            return L"\uc870\uae08\ub9cc \ub354 \uac00\uae4c\uc774 \uac00\uc790. " + guide.action;
         }
-        float dx = ((target->WorldPosition().x - target->WorldPosition().y) -
-                    (PlayerPosition().x - PlayerPosition().y)) *
-                   TileWidth * .5f;
-        float dy = ((target->WorldPosition().x + target->WorldPosition().y) -
-                    (PlayerPosition().x + PlayerPosition().y)) *
-                   TileHeight * .5f;
+        if (!questRoute.visible)
+        {
+            return L"M\uc73c\ub85c \uc9c0\ub3c4\ub97c \ubcf4\uace0 \ud070\uae38 \ucabd\uc73c\ub85c \uc6c0\uc9c1\uc5ec \ubcf4\uc790.";
+        }
+        const Vec3& next = questRoute.points[questRoute.waypoint];
+        const float dx = ((next.x - player.x) - (next.y - player.y)) * TileWidth * .5f;
+        const float dy = ((next.x - player.x) + (next.y - player.y)) * TileHeight * .5f;
         std::wstring direction;
         if (std::abs(dx) > std::abs(dy) * 2)
         {
@@ -916,14 +1044,16 @@ namespace
                 dy < 0 ? (dx < 0 ? L"W+A \uc67c\ucabd \uc704" : L"W+D \uc624\ub978\ucabd \uc704")
                        : (dx < 0 ? L"S+A \uc67c\ucabd \uc544\ub798" : L"S+D \uc624\ub978\ucabd \uc544\ub798");
         }
-        return guide.destination + L" \u00b7 \ud654\uba74 " + direction + L" \ubc29\ud5a5 \u00b7 \uc57d " +
-               std::to_wstring(int(std::ceil(Distance2D(target->WorldPosition(), PlayerPosition())))) +
-               L"\ud0c0\uc77c (\ub9c9\ud788\uba74 \uae38\uc744 \ub530\ub77c \ub3cc\uc544\uac00\uc790)";
+        const float remaining =
+            Distance2D(player, next) + float(questRoute.points.size() - 1 - questRoute.waypoint);
+        return L"\ub2e4\uc74c \ubc29\ud5a5 " + direction + L" \u00b7 \ub0a8\uc740 \uae38 \uc57d " +
+               std::to_wstring(int(std::ceil(remaining))) +
+               L"\ud0c0\uc77c \u00b7 \uc9c0\ub3c4 \ud558\ub298\uc0c9 \uc810";
     }
 
     void DrawQuestTracker()
     {
-        const auto guide = harbor.Guide();
+        const auto& guide = frameGuide;
         renderer->SetMaterial(0);
         renderer->DrawSolidRect(390, 166, QuestPanelWidth, QuestPanelHeight, .035f, .055f, .06f, .94f);
         DrawText(32, 142, L"\uc9c0\uae08 \ud560 \uc77c \u00b7 H \uc790\uc138\ud788", 1, .83f, .4f);
@@ -1019,7 +1149,7 @@ namespace
             DrawStoryIntro();
             return;
         }
-        const auto guide = harbor.Guide();
+        const auto& guide = frameGuide;
         renderer->SetMaterial(0);
         renderer->DrawSolidRect(640, 400, 1280, 800, .015f, .025f, .025f, .60f);
         renderer->DrawSolidRect(640, 390, HelpPanelWidth, HelpPanelHeight, .055f, .085f, .075f, 1);
@@ -1703,7 +1833,7 @@ namespace
                     {
                         return;
                     }
-                    const auto guide = harbor.Guide();
+                    const auto& guide = frameGuide;
                     float x, y;
                     bool offscreen;
                     QuestMarkerPosition(actor, x, y, offscreen);
@@ -1765,7 +1895,7 @@ namespace
                     const auto* npc = dynamic_cast<const Npc*>(firstLevel.Scene().Find(actor.ParentId()));
                     if (!npc || npc->health <= 0 || npc->Id() != focusedNpcId ||
                         Distance2D(npc->WorldPosition(), PlayerPosition()) >= NpcNameDistance ||
-                        npc->Id() == harbor.ObjectiveTarget())
+                        npc->Id() == frameGuide.target)
                     {
                         return;
                     }
@@ -2255,6 +2385,7 @@ void RenderScene()
                    : 0;
     previousTime = now;
     Update((std::min)(dt, .05f));
+    UpdateQuestRoute((std::min)(dt, .05f));
     const Vec3 player = PlayerPosition();
     Vec3 camera = player;
     if (!WorldPaused())

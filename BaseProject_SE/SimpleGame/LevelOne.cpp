@@ -1433,9 +1433,13 @@ namespace Level
         Move(actor, dx, dy);
     }
 
-    std::vector<Position> FirstLevel::FindPath(const Position& from, const Position& to) const
+    std::vector<Position> FirstLevel::FindPath(const Position& from,
+                                               const Position& to,
+                                               PathPurpose purpose) const
     {
-        Perf::Scope scope(Perf::Cpu::NpcNavigation);
+        const bool quest = purpose == PathPurpose::Quest;
+        Perf::Scope scope(quest ? Perf::Cpu::QuestRouteSearch : Perf::Cpu::NpcNavigation);
+        const auto visited = quest ? Perf::Counter::QuestRouteCells : Perf::Counter::NpcPathCells;
         Position a = ToGrid(from), b = ToGrid(to);
         int sx = int(std::floor(a.x)), sy = int(std::floor(a.y));
         int tx = int(std::floor(b.x)), ty = int(std::floor(b.y));
@@ -1457,11 +1461,11 @@ namespace Level
 
         struct Visit
         {
-            int cell, cost, estimate;
+            int cell, cost, estimate, tie;
 
             bool operator<(const Visit& other) const
             {
-                return estimate > other.estimate;
+                return estimate == other.estimate ? tie > other.tie : estimate > other.estimate;
             }
         };
 
@@ -1474,7 +1478,7 @@ namespace Level
         pathCost[start] = 0;
         pathParent[start] = start;
         pathStamp[start] = pathSearch;
-        pending.push({start, 0, estimate(start)});
+        pending.push({start, 0, estimate(start), 0});
         bool found = false;
         while (!pending.empty())
         {
@@ -1485,7 +1489,7 @@ namespace Level
             {
                 continue;
             }
-            Perf::Count(Perf::Counter::NpcPathCells);
+            Perf::Count(visited);
             if (cell == goal)
             {
                 found = true;
@@ -1505,7 +1509,8 @@ namespace Level
                     pathStamp[next] = pathSearch;
                     pathCost[next] = cost;
                     pathParent[next] = cell;
-                    pending.push({next, cost, cost + estimate(next)});
+                    const int remaining = estimate(next);
+                    pending.push({next, cost, cost + remaining, quest ? remaining : 0});
                 }
             }
         }
@@ -1520,6 +1525,11 @@ namespace Level
         }
         std::reverse(path.begin(), path.end());
         Position center = ToWorld({sx + .5f, sy + .5f, 0});
+        if (quest)
+        {
+            path.insert(path.begin(), center);
+            return path;
+        }
         if (Distance(from, center) > .12f)
         {
             path.insert(path.begin(), center);

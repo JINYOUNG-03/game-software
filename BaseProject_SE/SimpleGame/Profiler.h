@@ -81,6 +81,7 @@ namespace Perf
         NpcAttack,
         SaveGame,
         LoadGame,
+        QuestRouteSearch,
         Count
     };
     enum class Counter
@@ -189,6 +190,11 @@ namespace Perf
         NpcAttackCuesDrawn,
         SaveBytesWritten,
         SaveBytesRead,
+        QuestRouteSearches,
+        QuestRouteCells,
+        QuestRouteReused,
+        QuestRouteFailures,
+        QuestRouteDots,
         Count
     };
 
