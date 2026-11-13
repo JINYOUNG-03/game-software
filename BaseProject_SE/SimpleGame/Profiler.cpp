@@ -78,7 +78,8 @@ namespace Perf
                                   "npc_attack",
                                   "save_game",
                                   "load_game",
-                                  "quest_route_search"};
+                                  "quest_route_search",
+                                  "hunt_hint"};
         const char* CounterNames[] = {"draw_calls",
                                       "quad_instances",
                                       "glyph_instances",
@@ -187,7 +188,9 @@ namespace Perf
                                       "quest_route_cells",
                                       "quest_route_reused",
                                       "quest_route_failures",
-                                      "quest_route_dots"};
+                                      "quest_route_dots",
+                                      "hunt_hint_candidates",
+                                      "hunt_hint_markers"};
         static_assert(sizeof(CpuNames) / sizeof(*CpuNames) == size_t(Cpu::Count), "CPU schema mismatch");
         static_assert(sizeof(CounterNames) / sizeof(*CounterNames) == size_t(Counter::Count),
                       "Counter schema mismatch");

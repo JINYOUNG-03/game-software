@@ -75,6 +75,8 @@ namespace
     Harbor::World harbor(firstLevel);
     Vec3 renderCamera;
     Harbor::ObjectiveGuide frameGuide;
+    ActorId huntHintTarget = InvalidActorId;
+    bool huntHintIsHide = false;
 
     struct QuestRoute
     {
@@ -667,6 +669,15 @@ namespace
                                                         actor.nextModel,
                                                         actor.poseBlend);
                                 }
+                                if (pass == ScenePass::World && actor.Id() == huntHintTarget)
+                                {
+                                    renderer->SetMaterial(0);
+                                    const float markerY =
+                                        huntHintIsHide ? y - 22 : y - actor.visualHeight - 23;
+                                    renderer->DrawSolidDiamond(x, markerY, 12, 16, .07f, .22f, .16f, 1);
+                                    renderer->DrawSolidDiamond(x, markerY, 8, 11, .57f, 1, .72f, 1);
+                                    Perf::Count(Perf::Counter::HuntHintMarkers);
+                                }
                                 if (actor.Kind() == ActorKind::Effect)
                                 {
                                     DrawEffectActor(actor, x, y);
@@ -754,9 +765,54 @@ namespace
         return false;
     }
 
+    void UpdateHuntHint()
+    {
+        huntHintTarget = InvalidActorId;
+        huntHintIsHide = false;
+        if (frameGuide.step != Harbor::GatherHides || !frameGuide.ready || introVisible)
+        {
+            return;
+        }
+
+        Perf::Scope scope(Perf::Cpu::HuntHint);
+        const Vec3 player = PlayerPosition();
+        float nearest = 9.0f;
+        const auto consider = [&](const Actor& actor)
+        {
+            Perf::Count(Perf::Counter::HuntHintCandidates);
+            const Vec3 position = actor.WorldPosition();
+            const float distance = Distance2D(player, position);
+            if (distance < nearest && actor.IsVisible() && firstLevel.ClearLine(player, position))
+            {
+                nearest = distance;
+                huntHintTarget = actor.Id();
+            }
+        };
+        for (const auto* drop : firstLevel.Drops())
+        {
+            if (drop->kind == Level::LootKind::Hide)
+            {
+                consider(*drop);
+            }
+        }
+        if (huntHintTarget)
+        {
+            huntHintIsHide = true;
+            return;
+        }
+        for (const auto* enemy : firstLevel.Enemies())
+        {
+            if (enemy->health > 0 && enemy->kind == 0)
+            {
+                consider(*enemy);
+            }
+        }
+    }
+
     void UpdateQuestRoute(float dt)
     {
         frameGuide = harbor.Guide();
+        UpdateHuntHint();
         auto& route = questRoute;
         route.visible = false;
         route.refreshIn = (std::max)(0.0f, route.refreshIn - dt);
@@ -940,6 +996,11 @@ namespace
         {
             marker(goal->WorldPosition(), 1, .85f, .15f, 8 + std::sin(elapsed * 4), true);
         }
+        if (const Actor* hunt = firstLevel.Scene().Find(huntHintTarget))
+        {
+            marker(hunt->WorldPosition(), .57f, 1, .72f, 5, false);
+            Perf::Count(Perf::Counter::HuntHintMarkers);
+        }
         marker(PlayerPosition(), 1, 1, 1, 6, true);
         std::wstring title = worldMap ? L"\uc804\uccb4 \uc9c0\ub3c4 " + std::to_wstring(MapSize) + L"x" +
                                             std::to_wstring(MapSize) + L" [M]"
@@ -948,9 +1009,11 @@ namespace
         DrawText(1040, 290, L"\uae08\ube5b \ubaa9\ud45c / \ud770\uc0c9 \ub098", .97f, .9f, .7f);
         DrawText(1040,
                  313,
-                 questRoute.visible ? L"\ud558\ub298\uc0c9 \uc810 \u00b7 \uac78\uc5b4\uac08 \uae38"
-                 : worldMap         ? L"\ubd89\uc740 \uac70\uc810: \uc57d\ud0c8\uc790"
-                                    : L"\uc804\uccb4 \uc6d4\ub4dc \uc911 \uc77c\ubd80",
+                 huntHintTarget
+                     ? L"\uc5f0\ub450\uc0c9 \ud45c\uc2dd \u00b7 \uc0ac\uc2b4 \ub610\ub294 \uac00\uc8fd"
+                 : questRoute.visible ? L"\ud558\ub298\uc0c9 \uc810 \u00b7 \uac78\uc5b4\uac08 \uae38"
+                 : worldMap           ? L"\ubd89\uc740 \uac70\uc810: \uc57d\ud0c8\uc790"
+                                      : L"\uc804\uccb4 \uc6d4\ub4dc \uc911 \uc77c\ubd80",
                  .83f,
                  .87f,
                  .71f);
@@ -1012,7 +1075,13 @@ namespace
         {
             if (guide.step == Harbor::GatherHides)
             {
-                return L"\uc0ac\ub0e5\ud130\uc5d0 \ub3c4\ucc29\ud588\ub2e4. \ud070\uae38 \uc8fc\ubcc0\uc5d0\uc11c \uc0ac\uc2b4\uc744 \ucc3e\uc544\ubcf4\uc790.";
+                if (huntHintTarget)
+                {
+                    return huntHintIsHide
+                               ? L"\uc5f0\ub450\uc0c9 \ud45c\uc2dd\uc740 \ub5a8\uc5b4\uc9c4 \uac00\uc8fd \u00b7 \uac00\uae4c\uc774\uc11c E\ub85c \uc90d\uae30"
+                               : L"\uc5f0\ub450\uc0c9 \ud45c\uc2dd\uc740 \uc0ac\uc2b4 \u00b7 \uac00\uae4c\uc774\uc11c SPACE\ub85c \uacf5\uaca9";
+                }
+                return L"\ud070\uae38\uc744 \ub530\ub77c \uc194\ubc14\ub78c \ucabd\uc73c\ub85c \uac78\uc73c\uba70 \uc0ac\uc2b4\uc744 \ucc3e\uc544\ubcf4\uc790.";
             }
             return guide.interactionKey ? L"\ub3c4\ucc29\ud588\ub2e4. " + guide.action : guide.action;
         }

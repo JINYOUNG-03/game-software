@@ -82,6 +82,7 @@ namespace Perf
         SaveGame,
         LoadGame,
         QuestRouteSearch,
+        HuntHint,
         Count
     };
     enum class Counter
@@ -195,6 +196,8 @@ namespace Perf
         QuestRouteReused,
         QuestRouteFailures,
         QuestRouteDots,
+        HuntHintCandidates,
+        HuntHintMarkers,
         Count
     };
 

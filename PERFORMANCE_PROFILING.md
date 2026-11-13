@@ -156,6 +156,7 @@
 | cpu_ms.quest_route_search / counters.quest_route_cells | 목표까지의 A* 탐색 CPU 시간(ms)과 탐색한 칸 수. 주민의 npc_navigation 계측과 구분 |
 | counters.quest_route_searches / quest_route_reused / quest_route_failures | 새 경로 탐색 / 기존 경로를 재사용한 프레임 / 경로를 찾지 못한 횟수 |
 | counters.quest_route_dots | 지도 범위 안에 그린 경로 점 수. 지형 지도 캐시와 별개로 배치에 추가된다 |
+| cpu_ms.hunt_hint / counters.hunt_hint_candidates / hunt_hint_markers | 초반 사냥 표식 선택 CPU 시간(ms) / 검사한 사슴·가죽 수 / 월드와 지도에 제출한 표식 수 |
 | cpu_ms.chunk_visibility / counters.chunks_visible | 청크 그룹 가시성 판정 시간 / 해당 프레임 활성 가시 그룹 수(지형·환경 한 쌍을 1로 집계) |
 | counters.world_props_added | 초기 생성 중 연결성을 보존하며 배치한 장애물 수 |
 | counters.npc_path_reuse | 동일 목적지·동일 충돌 revision에서 재사용한 주민 경로 수 |
