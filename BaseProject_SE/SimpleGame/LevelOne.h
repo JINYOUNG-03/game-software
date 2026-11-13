@@ -14,6 +14,10 @@ namespace Level
 {
     constexpr int MapSize = WorldLayout::MapSize;
     constexpr float MoveSpeed = 300.0f;
+    constexpr float DodgeDuration = .18f;
+    constexpr float DodgeProtection = .12f;
+    constexpr float DodgeCooldown = .85f;
+    constexpr float DodgeSpeedScale = 2.5f;
     constexpr int MaximumLevel = 30;
 
     using Position = ActorPosition;
@@ -126,6 +130,23 @@ namespace Level
         void Generate(std::uint32_t seed);
         void Update(float dt);
         void MovePlayer(float screenX, float screenY, float dt);
+        bool BeginDodge(float screenX, float screenY);
+
+        bool Dodging() const
+        {
+            return dodgeRemaining > 0;
+        }
+
+        bool CanDodge() const
+        {
+            return Player().IsActive() && dodgeCooldown <= 0 && attackAnimation <= 0;
+        }
+
+        float DodgeReadiness() const
+        {
+            return 1 - dodgeCooldown / DodgeCooldown;
+        }
+
         bool Attack();
         bool ConsumeAttackImpact();
         bool DamageEnemy(Enemy& enemy, int damage, bool playerCredit, ActorId source = InvalidActorId);
@@ -245,6 +266,10 @@ namespace Level
         bool attackImpactReady = false;
         float navigationTime = 0;
         float invulnerability = 0;
+        float dodgeRemaining = 0;
+        float dodgeCooldown = 0;
+        float dodgeX = 0;
+        float dodgeY = 0;
 
         bool Open(int x, int y) const;
         void InitializeScene();

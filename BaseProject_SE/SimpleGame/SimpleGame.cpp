@@ -101,6 +101,7 @@ namespace
     bool tradePressed = false;
     bool sitePressed = false;
     bool revealPressed = false;
+    bool dodgePressed = false;
     bool journalPanel = false;
     bool worldMap = false;
     int attributePressed = 0;
@@ -455,6 +456,10 @@ namespace
             renderer->DrawSolidRect(x, y, 75, 95, .47f, .52f, .50f, .19f);
             break;
         case ActorEffect::PlayerHurt:
+            if (firstLevel.Dodging())
+            {
+                renderer->DrawEllipse(x, y + 2, 38, 14, .42f, .83f, .94f, .32f);
+            }
             if (firstLevel.hurtFlash > 0)
             {
                 renderer->DrawEllipse(x, y - 25, 40, 60, 1, .14f, .09f, .35f);
@@ -1296,6 +1301,17 @@ namespace
                                  std::to_wstring(stats.hides) + L"   \ucc98\uce58 " +
                                  std::to_wstring(stats.kills);
         DrawWrapped(35, 744, inventory, 950, 1);
+        const float dodgeReady = firstLevel.DodgeReadiness();
+        DrawText(1015,
+                 744,
+                 firstLevel.CanDodge() ? L"SHIFT \ud68c\ud53c \uac00\ub2a5"
+                                       : L"\ud68c\ud53c \uc900\ube44 \uc911");
+        renderer->DrawSolidRect(1192, 737, 96, 5, .16f, .18f, .17f, 1);
+        if (dodgeReady > 0)
+        {
+            const float width = 96 * dodgeReady;
+            renderer->DrawSolidRect(1144 + width * .5f, 737, width, 5, .42f, .83f, .94f, 1);
+        }
         constexpr float footerMargin = 28;
         constexpr float footerY = 777;
         const float saveHintX =
@@ -1303,7 +1319,7 @@ namespace
         DrawWrapped(
             footerMargin,
             footerY,
-            L"WASD \uc774\ub3d9  E \ub300\ud654\u00b7\uc90d\uae30  F \uc870\uc0ac  H \uc9c0\uae08 \ud560 \uc77c  SPACE \uacf5\uaca9  Q \uc57d  M \uc9c0\ub3c4  J \uc77c\uc9c0  I \uac00\ubc29  ESC",
+            L"WASD \uc774\ub3d9  SPACE \uacf5\uaca9  SHIFT \ud68c\ud53c  E \ub300\ud654\u00b7\uc90d\uae30  F \uc870\uc0ac  Q \uc57d  H \ub3c4\uc6c0\ub9d0  M \uc9c0\ub3c4  J \uc77c\uc9c0  I \uac00\ubc29  ESC",
             saveHintX - footerMargin - 24,
             1);
         DrawText(saveHintX, footerY, SaveShortcutHint, .97f, .86f, .59f);
@@ -2003,6 +2019,7 @@ namespace
     {
         const bool tradeHeld = keys['t'], escapeHeld = keys[27];
         interactionPressed = potionPressed = tradePressed = sitePressed = revealPressed = false;
+        dodgePressed = false;
         attributePressed = 0;
         inventoryTogglePressed = inventoryClosePressed = inventoryUsePressed = inventoryClickPressed = false;
         inventoryMovePressed = 0;
@@ -2196,6 +2213,8 @@ namespace
     void Update(float dt)
     {
         Perf::Scope scope(Perf::Cpu::Update);
+        const bool tryDodge = dodgePressed;
+        dodgePressed = false;
         if (checkpointRequest != CheckpointRequest::None)
         {
             const auto request = checkpointRequest;
@@ -2283,6 +2302,10 @@ namespace
         elapsed += dt;
         float sx = (keys['d'] ? 1.0f : 0) - (keys['a'] ? 1.0f : 0);
         float sy = (keys['s'] ? 1.0f : 0) - (keys['w'] ? 1.0f : 0);
+        if (tryDodge && !journalPanel)
+        {
+            firstLevel.BeginDodge(sx, sy);
+        }
         firstLevel.MovePlayer(sx, sy, dt);
         firstLevel.Update(dt);
         if (firstLevel.ConsumeAttackImpact())
@@ -2694,6 +2717,14 @@ void WindowKey(GLFWwindow*, int key, int, int action, int)
     Perf::Count(Perf::Counter::WindowKeyEvents);
     if (action == GLFW_REPEAT)
     {
+        return;
+    }
+    if (key == GLFW_KEY_LEFT_SHIFT || key == GLFW_KEY_RIGHT_SHIFT)
+    {
+        if (action == GLFW_PRESS && !WorldPaused() && !journalPanel)
+        {
+            dodgePressed = true;
+        }
         return;
     }
     if (key == GLFW_KEY_F5 || key == GLFW_KEY_F9)

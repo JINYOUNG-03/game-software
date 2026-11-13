@@ -474,6 +474,7 @@ namespace Level
         attackAnimation = 0;
         attackImpactPending = attackImpactReady = false;
         attackCooldown = 0;
+        dodgeRemaining = dodgeCooldown = 0;
         enemyAttackImpacts.clear();
         invulnerability = 2;
         navigationTime = 0;
@@ -983,15 +984,36 @@ namespace Level
         actor.SetWorldPosition(position);
     }
 
+    bool FirstLevel::BeginDodge(float sx, float sy)
+    {
+        if (!CanDodge())
+        {
+            return false;
+        }
+
+        const float length = std::hypot(sx, sy);
+        dodgeX = length > 0 ? sx / length : facingX;
+        dodgeY = length > 0 ? sy / length : facingY;
+        dodgeRemaining = DodgeDuration;
+        dodgeCooldown = DodgeCooldown;
+        return true;
+    }
+
     void FirstLevel::MovePlayer(float sx, float sy, float dt)
     {
         Perf::Scope scope(Perf::Cpu::Movement);
-        float length = std::hypot(sx, sy);
         moving = false;
         if (!Player().IsActive())
         {
             return;
         }
+        const bool dodging = Dodging();
+        if (dodging)
+        {
+            sx = dodgeX;
+            sy = dodgeY;
+        }
+        const float length = std::hypot(sx, sy);
         if (length <= 0)
         {
             return;
@@ -1009,14 +1031,16 @@ namespace Level
         Position before = Player().WorldPosition();
         // Travel still follows WASD while the current swing keeps its original direction.
         float moveX = sx / length, moveY = sy / length;
-        float dx = (moveX / 96 + moveY / 48) * MoveSpeed * dt;
-        float dy = (moveY / 48 - moveX / 96) * MoveSpeed * dt;
+        const float moveTime = dodging ? (std::min)(dt, dodgeRemaining) : dt;
+        const float speed = MoveSpeed * (dodging ? DodgeSpeedScale : 1.0f);
+        float dx = (moveX / 96 + moveY / 48) * speed * moveTime;
+        float dy = (moveY / 48 - moveX / 96) * speed * moveTime;
         Move(Player(), dx, dy);
         moving = Distance(before, Player().WorldPosition()) > .0001f;
         if (moving)
         {
-            walkPhase += dt * 10;
-            if (attackAnimation <= 0)
+            walkPhase += moveTime * (dodging ? 24.0f : 10.0f);
+            if (!dodging && attackAnimation <= 0)
             {
                 const Position after = Player().WorldPosition();
                 const float actualX = ((after.x - before.x) - (after.y - before.y)) * HalfTileWidth;
@@ -1140,7 +1164,7 @@ namespace Level
     bool FirstLevel::Attack()
     {
         Perf::Scope scope(Perf::Cpu::Combat);
-        if (!Player().IsActive() || attackCooldown > 0)
+        if (!Player().IsActive() || attackCooldown > 0 || Dodging())
         {
             return false;
         }
@@ -1408,6 +1432,10 @@ namespace Level
         {
             return false;
         }
+        if (dodgeRemaining > DodgeDuration - DodgeProtection)
+        {
+            return false;
+        }
         const int appliedDamage = (std::min)(stats.health, (std::max)(1, damage - stats.Defense()));
         stats.health -= appliedDamage;
         ReportHit(Player(), appliedDamage, source);
@@ -1417,6 +1445,7 @@ namespace Level
         {
             CancelEnemyAttacksTargeting(Player().Id());
             attackAnimation = 0;
+            dodgeRemaining = dodgeCooldown = 0;
             attackImpactPending = attackImpactReady = false;
             Player().SetWorldPosition(ToWorld(Camp));
             stats.health = stats.MaxHealth();
@@ -1622,6 +1651,8 @@ namespace Level
     {
         Perf::Scope scope(Perf::Cpu::WorldUpdate);
         UpdateHitFeedback(dt);
+        dodgeRemaining = (std::max)(0.0f, dodgeRemaining - dt);
+        dodgeCooldown = (std::max)(0.0f, dodgeCooldown - dt);
         attackCooldown = (std::max)(0.0f, attackCooldown - dt);
         attackAnimation = (std::max)(0.0f, attackAnimation - dt);
         if (attackImpactPending && attackAnimation <= CharacterPresentation::AttackDuration -

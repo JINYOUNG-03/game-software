@@ -84,6 +84,34 @@ assert(world.includes("CancelNpcAttack(victim)") && !npcHit.includes("Transfer(l
 assert(source.match(/bool FirstLevel::DamagePlayer[\s\S]*?invulnerability > 0[\s\S]*?return false;/));
 assert(game.includes("NpcAttackCuesDrawn") && game.includes("npc->attackForward"));
 
+const levelHeader = read("LevelOne.h");
+const dodgeValue = name => Number(levelHeader.match(new RegExp(name + " = ([.\\d]+)f;"))[1]);
+const dodgeDuration = dodgeValue("DodgeDuration");
+const dodgeProtection = dodgeValue("DodgeProtection");
+const dodgeCooldown = dodgeValue("DodgeCooldown");
+assert(dodgeProtection > 0 && dodgeProtection < dodgeDuration && dodgeDuration < dodgeCooldown);
+const dodgeStart = source.match(/bool FirstLevel::BeginDodge[\s\S]*?(?=void FirstLevel::MovePlayer)/)[0];
+const dodgeMove = source.match(/void FirstLevel::MovePlayer[\s\S]*?(?=bool FirstLevel::ClearLine)/)[0];
+const damagePlayer = source.match(/bool FirstLevel::DamagePlayer[\s\S]*?(?=void FirstLevel::MoveActor)/)[0];
+assert(dodgeStart.includes("!CanDodge()") && dodgeStart.includes("dodgeCooldown = DodgeCooldown"));
+assert(dodgeMove.includes("(std::min)(dt, dodgeRemaining)") && dodgeMove.includes("Move(Player(), dx, dy)"));
+assert(damagePlayer.indexOf("dodgeRemaining > DodgeDuration - DodgeProtection") <
+       damagePlayer.indexOf("stats.health -= appliedDamage"));
+assert(source.includes("attackCooldown > 0 || Dodging()"));
+assert(game.includes("GLFW_KEY_LEFT_SHIFT || key == GLFW_KEY_RIGHT_SHIFT"));
+assert(game.indexOf("firstLevel.BeginDodge(sx, sy)") < game.indexOf("firstLevel.MovePlayer(sx, sy, dt)"));
+for (const dt of [1 / 144, 1 / 60, .05])
+{
+    let remaining = dodgeDuration;
+    let moveTime = 0;
+    while (remaining > 0)
+    {
+        moveTime += Math.min(dt, remaining);
+        remaining = Math.max(0, remaining - dt);
+    }
+    assert(Math.abs(moveTime - dodgeDuration) < 1e-8);
+}
+
 const npcWindup = constant("NpcAttackWindup");
 const npcDuration = constant("NpcAttackDuration");
 for (const dt of [1 / 144, 1 / 60, 1 / 20, .25, 2])
