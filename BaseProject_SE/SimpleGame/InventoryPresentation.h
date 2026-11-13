@@ -12,6 +12,34 @@ namespace Inventory
     constexpr float GridY = 215;
     constexpr float SlotSize = 80;
     constexpr float SlotStride = 90;
+    constexpr float AttributeLeft = 188;
+    constexpr float AttributeTop = 607;
+    constexpr float AttributeWidth = 224;
+    constexpr float AttributeHeight = 22;
+    constexpr float AttributeStride = 25;
+    constexpr int AttributeCount = 3;
+
+    inline float AttributeRowTop(int attribute)
+    {
+        return AttributeTop + (attribute - 1) * AttributeStride;
+    }
+
+    inline int HitAttribute(float x, float y)
+    {
+        if (x < AttributeLeft || x >= AttributeLeft + AttributeWidth)
+        {
+            return 0;
+        }
+        for (int attribute = 1; attribute <= AttributeCount; ++attribute)
+        {
+            const float top = AttributeRowTop(attribute);
+            if (y >= top && y < top + AttributeHeight)
+            {
+                return attribute;
+            }
+        }
+        return 0;
+    }
 
     enum class Item
     {

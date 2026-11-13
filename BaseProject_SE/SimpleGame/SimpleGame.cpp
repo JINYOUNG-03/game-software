@@ -1345,7 +1345,9 @@ namespace
         {
             renderer->DrawSolidRect(560 + xpWidth * .5f, 84, xpWidth, 7, .45f, .66f, .47f, 1);
         }
-        std::wstring points = L"I / TAB \uac00\ubc29 \u00b7 \uc810\uc218 " + std::to_wstring(stats.points);
+        const std::wstring points = stats.points > 0 ? L"TAB \ub2a5\ub825 \ubc30\ubd84 \u00b7 " +
+                                                           std::to_wstring(stats.points) + L"\uc810"
+                                                     : L"I / TAB \uac00\ubc29";
         DrawText(780, 65, points.c_str(), .97f, .8f, .49f);
 
         if (!journalPanel && !harbor.Conversation().Active())
@@ -1535,6 +1537,17 @@ namespace
         }
         renderer->DrawSolidRect(795, 639, 610, 90, .035f, .057f, .065f, 1);
         renderer->DrawSolidRect(1040, 674, 118, 27, .25f, .34f, .29f, 1);
+        for (int attribute = 1; attribute <= Inventory::AttributeCount; ++attribute)
+        {
+            renderer->DrawSolidRect(Inventory::AttributeLeft + Inventory::AttributeWidth * .5f,
+                                    Inventory::AttributeRowTop(attribute) + Inventory::AttributeHeight * .5f,
+                                    Inventory::AttributeWidth,
+                                    Inventory::AttributeHeight,
+                                    .12f,
+                                    stats.points > 0 ? .24f : .15f,
+                                    .17f,
+                                    1);
+        }
 
         // Text follows all icons so the atlas/font texture does not change for every slot.
         DrawText(166, 158, L"\uc18c\uc9c0\ud488\uacfc \ub0b4 \ubab8 \uc0c1\ud0dc", .98f, .83f, .52f);
@@ -1561,12 +1574,17 @@ namespace
                  .95f,
                  .80f,
                  .46f);
-        DrawText(188, 620, L"1 \ud798   2 \uccb4\ub825   3 \ub9f7\uc9d1");
-        DrawWrapped(188,
-                    647,
-                    L"\uc810\uc218\ub97c \uc368\uc11c \ub2a5\ub825\uc744 \uc62c\ub824 \ubcf4\uc138\uc694.",
-                    220,
-                    2);
+        for (int attribute = 1; attribute <= Inventory::AttributeCount; ++attribute)
+        {
+            const std::wstring label =
+                std::to_wstring(attribute) + L"  " + Level::DescribeAttributeBonus(attribute);
+            DrawText(Inventory::AttributeLeft + 8,
+                     Inventory::AttributeRowTop(attribute) + 16,
+                     label.c_str(),
+                     .87f,
+                     stats.points > 0 ? .95f : .72f,
+                     .69f);
+        }
         DrawText(
             490,
             194,
@@ -2125,6 +2143,11 @@ namespace
             if (slot >= 0)
             {
                 inventorySelection = slot;
+            }
+            const int clickedAttribute = Inventory::HitAttribute(clickX, clickY);
+            if (!attributePressed && clickedAttribute)
+            {
+                attributePressed = clickedAttribute;
             }
             if (clickX >= 1070 && clickX <= 1120 && clickY >= 135 && clickY <= 170)
             {

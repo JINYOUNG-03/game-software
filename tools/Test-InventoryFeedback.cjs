@@ -38,6 +38,15 @@ for (let slot = 0; slot < 24; slot++)
 }
 assert.equal(hit(x0 - 1, y0), -1);
 assert.equal(hit(x0, y0 + rows * stride), -1);
+const attributeLeft = number("AttributeLeft"), attributeTop = number("AttributeTop");
+const attributeWidth = number("AttributeWidth"), attributeHeight = number("AttributeHeight");
+const attributeStride = number("AttributeStride");
+assert(attributeLeft + attributeWidth < x0 && attributeHeight < attributeStride);
+assert(attributeTop + 2 * attributeStride + attributeHeight < 685);
+assert(game.includes("Inventory::HitAttribute(clickX, clickY)"));
+assert(game.includes("!attributePressed && clickedAttribute"));
+assert(game.includes("Level::DescribeAttributeBonus(attribute)"));
+assert(level.includes("Notify(DescribeAttributeBonus(attribute)"));
 const move = (selected, delta) => {
     let row = Math.floor(selected / columns), column = selected % columns;
     if (Math.abs(delta) === columns)

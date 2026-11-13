@@ -43,6 +43,10 @@ namespace Level
 
     struct Stats
     {
+        static constexpr int StrengthBonus = 3;
+        static constexpr int VitalityBonus = 15;
+        static constexpr int ResilienceBonus = 2;
+
         int level = 1;
         int experience = 0;
         int totalExperience = 0;
@@ -63,6 +67,8 @@ namespace Level
         void GainExperience(int amount);
         bool Allocate(int attribute);
     };
+
+    std::wstring DescribeAttributeBonus(int attribute);
 
     struct Enemy : public Actor
     {

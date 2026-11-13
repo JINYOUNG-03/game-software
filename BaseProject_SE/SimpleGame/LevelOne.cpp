@@ -34,17 +34,17 @@ namespace Level
 
     int Stats::MaxHealth() const
     {
-        return 100 + (level - 1) * 20 + vitality * 15;
+        return 100 + (level - 1) * 20 + vitality * VitalityBonus;
     }
 
     int Stats::Attack() const
     {
-        return 18 + (level - 1) * 4 + strength * 3;
+        return 18 + (level - 1) * 4 + strength * StrengthBonus;
     }
 
     int Stats::Defense() const
     {
-        return 2 + (level - 1) + resilience * 2;
+        return 2 + (level - 1) + resilience * ResilienceBonus;
     }
 
     void Stats::GainExperience(int amount)
@@ -83,7 +83,7 @@ namespace Level
         if (attribute == 2)
         {
             ++vitality;
-            health += 15;
+            health += VitalityBonus;
         }
         if (attribute == 3)
         {
@@ -1102,9 +1102,8 @@ namespace Level
         if (stats.level > previousLevel)
         {
             Notify(
-                L"\ubab8\uc774 \ud55c\uacb0 \uac00\ubcbc\uc6cc\uc84c\ub2e4! \ub808\ubca8 " +
-                std::to_wstring(stats.level) +
-                L" \u00b7 \ub2a5\ub825\uce58\uac00 \uc62c\ub790\ub2e4. 1 / 2 / 3\uc73c\ub85c \ucd94\uac00 \ub2a5\ub825\uce58\ub97c \uace0\ub974\uc790.");
+                L"\ub808\ubca8 " + std::to_wstring(stats.level) +
+                L" \ub2ec\uc131 \u00b7 TAB\uc5d0\uc11c \ub2a5\ub825\uce58 \ubc30\ubd84 \u00b7 E\ub85c \uc804\ub9ac\ud488 \uc90d\uae30");
         }
         else
         {
@@ -1662,12 +1661,27 @@ namespace Level
             L"\uc4f4 \uc57d\uc744 \uc0bc\ucf30\ub2e4. \uc774\uc81c \uc880 \ubc84\ud2f8 \ub9cc\ud558\ub2e4.");
     }
 
+    std::wstring DescribeAttributeBonus(int attribute)
+    {
+        switch (attribute)
+        {
+        case 1:
+            return L"\uacf5\uaca9\ub825 +" + std::to_wstring(Stats::StrengthBonus);
+        case 2:
+            return L"\ucd5c\ub300 \uccb4\ub825 +" + std::to_wstring(Stats::VitalityBonus);
+        case 3:
+            return L"\ubc29\uc5b4\ub825 +" + std::to_wstring(Stats::ResilienceBonus);
+        default:
+            return {};
+        }
+    }
+
     void FirstLevel::Allocate(int attribute)
     {
         if (stats.Allocate(attribute))
         {
-            Notify(
-                L"\ub2a5\ub825\uce58\ub97c \uc62c\ub838\ub2e4. TAB\uc744 \ub20c\ub7ec \uc218\uce58\ub97c \ud655\uc778\ud574 \ubcf4\uc790.");
+            Notify(DescribeAttributeBonus(attribute) + L" \u00b7 \ub0a8\uc740 \uc810\uc218 " +
+                   std::to_wstring(stats.points));
         }
         else
         {
