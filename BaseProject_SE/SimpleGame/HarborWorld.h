@@ -221,10 +221,11 @@ namespace Harbor
             return trade;
         }
 
-        void InteractSite();
+        void InteractSite(ActorId target);
         void Reveal();
         Npc* Nearest(float radius = 1.5f);
-        Actor* NearbySite(float radius = 1.8f);
+        ActorId NearbySite() const;
+        std::wstring InspectionLabel(ActorId target) const;
         std::wstring Clock() const;
         std::wstring Status() const;
         std::wstring AreaName() const;
@@ -310,6 +311,7 @@ namespace Harbor
         TradeSession trade;
 
         bool CanTradeWith(const Npc& npc) const;
+        bool CanInspect(ActorId target) const;
 
         Level::Position Site(int index) const;
         ActorId Holder(ActorId artifact) const;

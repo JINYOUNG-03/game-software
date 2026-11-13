@@ -51,10 +51,16 @@ foreach ($contract in @('selected.effect == DialogueEffect::AcceptHideJob && hid
 }
 $site = World-Method 'InteractSite' 'Reveal'
 if (-not $site.Contains('questStep == InspectDrain') -or
-    -not $site.Contains('drainInspected && !Holder(artifact)') -or
+    -not $site.Contains('if (!CanInspect(target))') -or
+    -not $world.Contains('artifact ? (!drainInspected || Holder(id))') -or
     $site.Contains('briefed = true') -or
     -not $world.Contains('item.SetVisible(false)'))
 { throw 'Evidence must stay hidden and uncollectable until the drainage is investigated.' }
+if (-not $game.Contains('siteInputTarget = nearbySiteTarget') -or
+    -not $game.Contains('harbor.InteractSite(siteInputTarget)') -or
+    -not $game.Contains('harbor.InspectionLabel(nearbySiteTarget)') -or
+    $site.Contains('Distance(hero,'))
+{ throw 'F must inspect the indicated target without silently picking a different site.' }
 $build = World-Method 'BeginDialogue' 'Talk'
 foreach ($contract in @('npc->variant == 1', 'npc->variant == 2', 'npc->variant == 3', 'npc->variant == 4',
                        'Job::Hunter', 'Job::Merchant', 'Job::Raider', 'Job::Scholar',

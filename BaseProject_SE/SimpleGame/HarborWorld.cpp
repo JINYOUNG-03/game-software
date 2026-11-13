@@ -690,7 +690,7 @@ namespace Harbor
         {
             bool delegated = Holder(key) != level.Player().Id();
             guide.interactionKey = delegated ? 0 : 'F';
-            guide.ready = !delegated && distance < 1.8f;
+            guide.ready = !delegated && CanInspect(guide.target);
             guide.action =
                 delegated
                     ? L"\uc5f4\uc1e0\ub97c \ub9e1\uae34 \uc218\ub9ac\uacf5\uc774 \uc624\ub294 \uc911\uc774\ub2e4. \uc218\ubb38\uc5d0\uc11c \uae30\ub2e4\ub9ac\uc790."
@@ -2119,27 +2119,55 @@ namespace Harbor
         return result;
     }
 
-    Actor* World::NearbySite(float radius)
+    bool World::CanInspect(ActorId id) const
     {
-        Position hero = level.Player().WorldPosition();
+        const Actor* actor = level.Scene().Find(id);
+        const bool artifact = id == ledger || id == key;
+        if (!actor || !actor->IsActive() || !actor->IsVisible() ||
+            (artifact ? (!drainInspected || Holder(id)) : !dynamic_cast<const Landmark*>(actor)))
+        {
+            return false;
+        }
+        const Position hero = level.Player().WorldPosition(), position = actor->WorldPosition();
+        return Distance(hero, position) < (artifact ? 1.5f : 1.8f) && level.ClearLine(hero, position);
+    }
+
+    ActorId World::NearbySite() const
+    {
+        const ActorId goal = ObjectiveTarget();
+        if (CanInspect(goal))
+        {
+            return goal;
+        }
         for (ActorId artifact : {ledger, key})
         {
-            Actor& item = level.Scene().Get(artifact);
-            if (item.IsVisible() && !Holder(artifact) && Distance(hero, item.WorldPosition()) < 1.5f &&
-                level.ClearLine(hero, item.WorldPosition()))
+            if (CanInspect(artifact))
             {
-                return &item;
+                return artifact;
             }
         }
-        for (ActorId id : sites)
+        for (ActorId site : sites)
         {
-            Actor& site = level.Scene().Get(id);
-            if (Distance(hero, site.WorldPosition()) < radius && level.ClearLine(hero, site.WorldPosition()))
+            if (CanInspect(site))
             {
-                return &site;
+                return site;
             }
         }
-        return nullptr;
+        return InvalidActorId;
+    }
+
+    std::wstring World::InspectionLabel(ActorId target) const
+    {
+        if (target == ledger)
+        {
+            return L"[F] \uc7a5\ubd80 \ucc59\uae30\uae30";
+        }
+        if (target == key)
+        {
+            return L"[F] \uc5f4\uc1e0 \ucc59\uae30\uae30";
+        }
+        const auto* site = dynamic_cast<const Landmark*>(level.Scene().Find(target));
+        return site ? L"[F] " + site->label : std::wstring{};
     }
 
     void World::EndDialogue()
@@ -2697,16 +2725,20 @@ namespace Harbor
         level.messageTime = 8;
     }
 
-    void World::InteractSite()
+    void World::InteractSite(ActorId target)
     {
         if (dialogue.Active())
         {
             return;
         }
         UpdateQuest();
-        Position hero = level.Player().WorldPosition();
-        const Position board = Site(2);
-        if (Distance(hero, board) < 1.8f && level.ClearLine(hero, board))
+        if (!CanInspect(target))
+        {
+            Event(
+                L"F\ub294 \uc870\uc0ac\ud560 \ub300\uc0c1 \uac00\uae4c\uc774\uc5d0\uc11c \ub204\ub974\uc790.");
+            return;
+        }
+        if (target == sites[2])
         {
             if (questStep <= DeliverHides)
             {
@@ -2741,8 +2773,7 @@ namespace Harbor
             }
         }
 
-        const Position drain = Site(0);
-        if (questStep == InspectDrain && Distance(hero, drain) < 1.8f && level.ClearLine(hero, drain))
+        if (questStep == InspectDrain && target == sites[0])
         {
             drainInspected = true;
             level.Scene().Get(ledger).SetVisible(true);
@@ -2752,30 +2783,25 @@ namespace Harbor
             UpdateQuest();
             return;
         }
-        for (ActorId artifact : {ledger, key})
+        if (target == ledger || target == key)
         {
-            Actor& item = level.Scene().Get(artifact);
-            if (drainInspected && !Holder(artifact) && Distance(hero, item.WorldPosition()) < 1.5f &&
-                level.ClearLine(hero, item.WorldPosition()))
+            Transfer(target, level.Player().Id());
+            if (target == ledger)
             {
-                Transfer(artifact, level.Player().Id());
-                if (artifact == ledger)
-                {
-                    recoveredLedger = true;
-                    ReactToPlayer(
-                        L"\uc7a5\ubd80\uc5d0 \uc0ac\ub78c\ub4e4\uc758 \uc774\ub984\uc774 \ube7c\uace1\ud558\ub2e4. \uc5f4\uc1e0\ub3c4 \ucc59\uaca8 \uc7a5\ud130\ub85c \ub3cc\uc544\uac00\uc790.");
-                }
-                else
-                {
-                    recoveredKey = true;
-                    ReactToPlayer(
-                        L"\uc5f4\uc1e0\uc5d0 \uc61b \uc218\ubb38\uacfc \uac19\uc740 \ubb38\uc591\uc774 \uc0c8\uaca8\uc838 \uc788\ub2e4. \uc9c1\uc811 \uc5f4\uac70\ub098 \uc218\ub9ac\uacf5\uc5d0\uac8c \ub9e1\uae38 \uc218 \uc788\ub2e4.");
-                }
-                UpdateQuest();
-                return;
+                recoveredLedger = true;
+                ReactToPlayer(
+                    L"\uc7a5\ubd80\uc5d0 \uc0ac\ub78c\ub4e4\uc758 \uc774\ub984\uc774 \ube7c\uace1\ud558\ub2e4. \uc5f4\uc1e0\ub3c4 \ucc59\uaca8 \uc7a5\ud130\ub85c \ub3cc\uc544\uac00\uc790.");
             }
+            else
+            {
+                recoveredKey = true;
+                ReactToPlayer(
+                    L"\uc5f4\uc1e0\uc5d0 \uc61b \uc218\ubb38\uacfc \uac19\uc740 \ubb38\uc591\uc774 \uc0c8\uaca8\uc838 \uc788\ub2e4. \uc9c1\uc811 \uc5f4\uac70\ub098 \uc218\ub9ac\uacf5\uc5d0\uac8c \ub9e1\uae38 \uc218 \uc788\ub2e4.");
+            }
+            UpdateQuest();
+            return;
         }
-        if (Distance(hero, Site(1)) < 1.8f)
+        if (target == sites[1])
         {
             if (!drainInspected)
             {
@@ -2798,7 +2824,7 @@ namespace Harbor
             }
             return;
         }
-        if (Distance(hero, Site(0)) < 1.8f)
+        if (target == sites[0])
         {
             Event(
                 !drainInspected
@@ -2808,7 +2834,7 @@ namespace Harbor
                     : L"\ubb3c \uc544\ub798 \uc788\ub358 \uc61b \ud654\ubb3c\uc774 \ub4dc\ub7ec\ub0ac\ub2e4. \ub204\uad70\uac00 \uba3c\uc800 \ucc59\uae30\uba74 \uc8fc\uc778\uc740 \ub2ec\ub77c\uc9c8 \uac83\uc774\ub2e4.");
             return;
         }
-        if (Distance(hero, board) < 1.8f && level.ClearLine(hero, board))
+        if (target == sites[2])
         {
             if (!copied && Holder(ledger) == level.Player().Id())
             {
@@ -2829,28 +2855,19 @@ namespace Harbor
             }
             return;
         }
-        for (int index = 3; index < int(sites.size()); ++index)
+        const auto& landmark = static_cast<const Landmark&>(level.Scene().Get(target));
+        const bool postedNotice =
+            landmark.site == TrailStops[TrailClueCount].site && trailNotice != TrailNotice::None;
+        if ((returned && landmark.Id() == ObjectiveTarget()) || postedNotice)
         {
-            if (Distance(hero, Site(index)) < 1.8f && level.ClearLine(hero, Site(index)))
-            {
-                const auto& landmark = static_cast<const Landmark&>(level.Scene().Get(sites[index]));
-                const bool postedNotice =
-                    index == TrailStops[TrailClueCount].site && trailNotice != TrailNotice::None;
-                if ((returned && landmark.Id() == ObjectiveTarget()) || postedNotice)
-                {
-                    BeginTrailDialogue(landmark);
-                    return;
-                }
-                Event(
-                    landmark.label +
-                    (index == 7
-                         ? L"\u00b7 \ubcf5\uba74\uc744 \uc4f4 \uc57d\ud0c8\uc790\ub4e4\uc758 \uac70\uc810\uc774\ub2e4. \ub9c8\uc744\uacfc\ub294 \uba40\ub9ac \ub5a8\uc5b4\uc838 \uc788\ub2e4."
-                         : L"\u00b7 \uc774 \uae38\uc744 \ub530\ub77c \ub2e4\uc74c \uac70\uc810\uc73c\ub85c \uac08 \uc218 \uc788\ub2e4."));
-                return;
-            }
+            BeginTrailDialogue(landmark);
+            return;
         }
         Event(
-            L"F\ub294 \uac8c\uc2dc\ud310\u00b7\ubc30\uc218\ub85c\u00b7\uc218\ubb38\u00b7\uc678\uacfd \uac70\uc810 \uac00\uae4c\uc774\uc5d0\uc11c \uc0ac\uc6a9\ud55c\ub2e4.");
+            landmark.label +
+            (landmark.site == 7
+                 ? L"\u00b7 \ubcf5\uba74\uc744 \uc4f4 \uc57d\ud0c8\uc790\ub4e4\uc758 \uac70\uc810\uc774\ub2e4. \ub9c8\uc744\uacfc\ub294 \uba40\ub9ac \ub5a8\uc5b4\uc838 \uc788\ub2e4."
+                 : L"\u00b7 \uc774 \uae38\uc744 \ub530\ub77c \ub2e4\uc74c \uac70\uc810\uc73c\ub85c \uac08 \uc218 \uc788\ub2e4."));
     }
 
     void World::Reveal()

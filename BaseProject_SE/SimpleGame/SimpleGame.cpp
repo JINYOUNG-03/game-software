@@ -103,6 +103,8 @@ namespace
     bool potionPressed = false;
     bool tradePressed = false;
     bool sitePressed = false;
+    ActorId nearbySiteTarget = InvalidActorId;
+    ActorId siteInputTarget = InvalidActorId;
     bool revealPressed = false;
     bool dodgePressed = false;
     bool journalPanel = false;
@@ -399,13 +401,7 @@ namespace
                 target = npc->Id();
             }
         }
-        if (!target)
-        {
-            if (const Actor* site = harbor.NearbySite())
-            {
-                target = site->Id();
-            }
-        }
+        nearbySiteTarget = harbor.NearbySite();
         prompt->SetVisible(target != InvalidActorId && !paused && !helpVisible &&
                            !harbor.Conversation().Active());
         if (target)
@@ -1355,6 +1351,11 @@ namespace
         {
             renderer->DrawSolidRect(390, 583, 740, 54, .035f, .055f, .06f, .93f);
             DrawWrapped(35, 573, harbor.AreaName(), 710, 1);
+            if (nearbySiteTarget && !paused && !helpVisible && !statsPanel && !harbor.Trading().Active())
+            {
+                renderer->DrawSolidRect(990, 583, 420, 38, .035f, .055f, .06f, .93f);
+                DrawWrapped(792, 589, harbor.InspectionLabel(nearbySiteTarget), 396, 1);
+            }
             if (Npc* npc = harbor.Nearest(2.2f))
             {
                 std::wstring info = npc->name + L" \u00b7 " + Harbor::World::ActionLabel(npc->action) +
@@ -2058,10 +2059,8 @@ namespace
                         return;
                     }
                     const Npc* npc = dynamic_cast<const Npc*>(owner);
-                    const wchar_t* promptText =
-                        owner->Kind() == ActorKind::Prop ? L"F \uc870\uc0ac\u00b7\ud68d\ub4dd"
-                        : npc && npc->health <= 0        ? L"E \uc720\ud488 \ucc59\uae30\uae30"
-                                                         : L"E \ub9d0 \uac78\uae30";
+                    const wchar_t* promptText = npc && npc->health <= 0 ? L"E \uc720\ud488 \ucc59\uae30\uae30"
+                                                                        : L"E \ub9d0 \uac78\uae30";
                     DrawText(x - 76, y + 6, promptText, 1, .84f, .43f);
                     return;
                 }
@@ -2444,7 +2443,7 @@ namespace
         }
         if (sitePressed)
         {
-            harbor.InteractSite();
+            harbor.InteractSite(siteInputTarget);
             sitePressed = false;
             if (harbor.Conversation().Active())
             {
@@ -2695,6 +2694,7 @@ void KeyDown(unsigned char key)
         }
         if (key == 'f')
         {
+            siteInputTarget = nearbySiteTarget;
             sitePressed = true;
         }
         if (key == 'r')
