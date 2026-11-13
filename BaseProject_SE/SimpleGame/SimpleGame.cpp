@@ -2032,12 +2032,17 @@ namespace
                         return;
                     }
                     renderer->DrawSolidRect(x, y, 170, 30, .04f, .06f, .07f, .96f);
+                    if (const auto* drop = dynamic_cast<const Level::Loot*>(owner))
+                    {
+                        DrawWrapped(
+                            x - 76, y + 6, L"[E] " + Level::DescribeLoot(drop->kind, drop->amount), 152, 1);
+                        return;
+                    }
                     const Npc* npc = dynamic_cast<const Npc*>(owner);
                     const wchar_t* promptText =
-                        owner->Kind() == ActorKind::Loot   ? L"E \uc804\ub9ac\ud488 \uc90d\uae30"
-                        : owner->Kind() == ActorKind::Prop ? L"F \uc870\uc0ac\u00b7\ud68d\ub4dd"
-                        : npc && npc->health <= 0          ? L"E \uc720\ud488 \ucc59\uae30\uae30"
-                                                           : L"E \ub9d0 \uac78\uae30";
+                        owner->Kind() == ActorKind::Prop ? L"F \uc870\uc0ac\u00b7\ud68d\ub4dd"
+                        : npc && npc->health <= 0        ? L"E \uc720\ud488 \ucc59\uae30\uae30"
+                                                         : L"E \ub9d0 \uac78\uae30";
                     DrawText(x - 76, y + 6, promptText, 1, .84f, .43f);
                     return;
                 }

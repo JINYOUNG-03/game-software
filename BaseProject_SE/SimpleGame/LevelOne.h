@@ -116,6 +116,8 @@ namespace Level
         Hide
     };
 
+    std::wstring DescribeLoot(LootKind kind, int amount);
+
     struct Loot : public Actor
     {
         LootKind kind = LootKind::Coins;

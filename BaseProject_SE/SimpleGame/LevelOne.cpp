@@ -1567,10 +1567,28 @@ namespace Level
         return path;
     }
 
+    std::wstring DescribeLoot(LootKind kind, int amount)
+    {
+        const std::wstring quantity = std::to_wstring(amount);
+        switch (kind)
+        {
+        case LootKind::Coins:
+            return L"\uc5fd\uc804 " + quantity + L"\ub0e5";
+        case LootKind::Potion:
+            return L"\ud68c\ubcf5\uc57d " + quantity + L"\ubcd1";
+        case LootKind::Hide:
+            return L"\uac00\uc8fd " + quantity + L"\uc7a5";
+        }
+        return {};
+    }
+
     bool FirstLevel::PickUp()
     {
         Perf::Scope scope(Perf::Cpu::Loot);
-        bool collected = false;
+        int coins = 0;
+        int hides = 0;
+        int potions = 0;
+        const Position player = Player().WorldPosition();
         for (ActorId id : scene.FindByKind(ActorKind::Loot))
         {
             Loot* loot = dynamic_cast<Loot*>(scene.Find(id));
@@ -1579,32 +1597,49 @@ namespace Level
                 continue;
             }
             Position location = loot->WorldPosition();
-            if (Distance(Player().WorldPosition(), location) > 1.3f ||
-                !ClearLine(Player().WorldPosition(), location))
+            if (Distance(player, location) > 1.3f || !ClearLine(player, location))
             {
                 continue;
             }
             if (loot->kind == LootKind::Coins)
             {
-                stats.coins += loot->amount;
+                coins += loot->amount;
             }
             if (loot->kind == LootKind::Hide)
             {
-                stats.hides += loot->amount;
+                hides += loot->amount;
             }
             if (loot->kind == LootKind::Potion)
             {
-                stats.potions += loot->amount;
+                potions += loot->amount;
             }
             scene.Destroy(loot->Id());
-            collected = true;
         }
-        if (collected)
+        if (coins == 0 && hides == 0 && potions == 0)
         {
-            Notify(
-                L"\uc804\ub9ac\ud488\uc744 \ucc59\uacbc\ub2e4. \ud68c\ubcf5\uc57d\uc740 Q\ub85c \ub9c8\uc2e4 \uc218 \uc788\ub2e4.");
+            return false;
         }
-        return collected;
+
+        stats.coins += coins;
+        stats.hides += hides;
+        stats.potions += potions;
+        std::wstring summary;
+        const auto append = [&](LootKind kind, int amount)
+        {
+            if (amount > 0)
+            {
+                if (!summary.empty())
+                {
+                    summary += L" \u00b7 ";
+                }
+                summary += DescribeLoot(kind, amount);
+            }
+        };
+        append(LootKind::Hide, hides);
+        append(LootKind::Coins, coins);
+        append(LootKind::Potion, potions);
+        Notify(L"\ud68d\ub4dd \u00b7 " + summary);
+        return true;
     }
 
     void FirstLevel::UsePotion()
