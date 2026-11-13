@@ -1194,7 +1194,7 @@ namespace
             DrawWrapped(
                 304,
                 338,
-                L"\uacf5\uac1c [\uc7a5\ud130 R] \u00b7 \ub3c4\ud558\ub97c \ubcf8 \uc0ac\ub78c\uc744 \ucc3e\uc744 \uc218 \uc788\ub2e4. \ubcf4\uc99d\uc778 \uc625\ubd84\ub3c4 \uc57d\uc744 \ube7c\ub3cc\ub838\ub2e4\ub294 \uc758\uc2ec\uc744 \ubc1b\uc744 \uc218 \uc788\ub2e4.",
+                L"\uacf5\uac1c [\uc7a5\ud130 R \u2192 1] \u00b7 \ub3c4\ud558\ub97c \ubcf8 \uc0ac\ub78c\uc744 \ucc3e\uc744 \uc218 \uc788\ub2e4. \uc625\ubd84\uc740 \uc57d\uc744 \ube7c\ub3cc\ub838\ub2e4\ub294 \uc758\uc2ec\uc744 \ubc1b\uc744 \uc218 \uc788\ub2e4.",
                 672,
                 2);
             DrawWrapped(
@@ -2337,6 +2337,13 @@ namespace
         {
             harbor.Reveal();
             revealPressed = false;
+            if (harbor.Conversation().Active())
+            {
+                journalPanel = statsPanel = false;
+                ClearGameplayInput();
+                UpdatePromptActor();
+                return;
+            }
         }
         if (potionPressed)
         {

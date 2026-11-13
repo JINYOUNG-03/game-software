@@ -85,6 +85,15 @@ if (-not $site.Contains('questStep == HearLedgerAccounts') -or
 if (-not (World-Method 'Reveal' 'Log').Contains('else if (!ledgerAccountsHeard.all())') -or
     -not (World-Method 'ChooseRecord' 'Initialize').Contains('|| !ledgerAccountsHeard.all()'))
 { throw 'Public disclosure and record disposition require all four accounts.' }
+$reveal = World-Method 'Reveal' 'Log'
+if ($reveal.Contains('ChooseRecord(RecordChoice::Public)') -or
+    -not $reveal.Contains('DialogueEffect::PublishLedger') -or
+    -not $reveal.Contains('DialogueEffect::None') -or
+    -not $choose.Contains('selected.effect == DialogueEffect::PublishLedger') -or
+    -not $choose.Contains('dialogue.source == sites[2] && copied && ledgerAccountsHeard.all()') -or
+    -not $choose.Contains('WorldLayout::MarketAt(level.Player().WorldPosition()) == 0') -or
+    -not $choose.Contains('ChooseRecord(RecordChoice::Public)'))
+{ throw 'R must preview disclosure and commit only after a valid numbered choice.' }
 
 $stops = [regex]::Match($world, '(?s)constexpr TrailStop\s+TrailStops\[\]\s*=\s*\{(.*?)\};').Groups[1].Value
 $trailSites = [regex]::Matches($stops, '\{\s*(\d+),').ForEach({ $_.Groups[1].Value }) -join ','
@@ -132,6 +141,7 @@ foreach ($source in @($game, $world))
     contextual_main_npcs = 5; dialogue_is_actor_panel = $true
     hide_order_is_explicit = $true; drain_discovery_is_separate = $true
     ledger_accounts = 4; ledger_disposition_requires_accounts = $true
+    ledger_disclosure_requires_confirmation = $true
     trail_boards_in_order = 4; trail_notice_choices = 2
     game_build_performed = $false; game_execution_performed = $false
 } | ConvertTo-Json

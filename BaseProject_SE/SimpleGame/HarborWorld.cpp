@@ -482,7 +482,7 @@ namespace Harbor
         }
         if (questStep == DecideLedger)
         {
-            return L"\uc7a5\ud130 R: \uacf5\uac1c / \uc138\ub77c\ud2b8 \uacc1 T: \uad00\uccad / \uc774\uc548 \uacc1 T: \ud310\ub9e4";
+            return L"\uc7a5\ud130 R: \uacf5\uac1c \ud655\uc778 / \uc138\ub77c\ud2b8 \uacc1 T: \uad00\uccad / \uc774\uc548 \uacc1 T: \ud310\ub9e4";
         }
         if (questStep == RecoverEvidence)
         {
@@ -684,7 +684,7 @@ namespace Harbor
         {
             guide.ready = distance <= WorldLayout::MarketRadius;
             guide.action =
-                L"R \uacf5\uac1c / \uc138\ub77c\ud2b8 \uacc1 T \uad00\uccad / \uc774\uc548 \uacc1 T \ud310\ub9e4 \u00b7 H\ub85c \uacb0\uacfc \ube44\uad50";
+                L"R \uacf5\uac1c \ud655\uc778 / \uc138\ub77c\ud2b8 \uacc1 T \uad00\uccad / \uc774\uc548 \uacc1 T \ud310\ub9e4 \u00b7 H\ub85c \uacb0\uacfc \ube44\uad50";
         }
         else if (questStep == OpenSluice)
         {
@@ -2180,6 +2180,20 @@ namespace Harbor
         {
             return;
         }
+        const DialogueChoice selected = dialogue.pages[dialogue.page].choices[choice];
+        if (selected.effect == DialogueEffect::PublishLedger)
+        {
+            const bool canPublish = dialogue.source == sites[2] && copied && ledgerAccountsHeard.all() &&
+                                    WorldLayout::MarketAt(level.Player().WorldPosition()) == 0;
+            EndDialogue();
+            if (canPublish)
+            {
+                ChooseRecord(RecordChoice::Public);
+                UpdateQuest();
+            }
+            return;
+        }
+
         Actor* source = level.Scene().Find(dialogue.source);
         Npc* person = dynamic_cast<Npc*>(source);
         if (!source || (person && person->health <= 0) ||
@@ -2189,7 +2203,6 @@ namespace Harbor
             EndDialogue();
             return;
         }
-        DialogueChoice selected = dialogue.pages[dialogue.page].choices[choice];
         if (selected.effect == DialogueEffect::AcceptHideJob && hideJob == HideJob::Offered &&
             dialogue.source == sites[2])
         {
@@ -2836,6 +2849,10 @@ namespace Harbor
 
     void World::Reveal()
     {
+        if (dialogue.Active() || trade.Active())
+        {
+            return;
+        }
         if (!drainInspected)
         {
             Event(
@@ -2846,7 +2863,7 @@ namespace Harbor
             Event(
                 L"\uc7a5\ubd80\uc758 \ucc98\ubd84\uc740 \uc774\ubbf8 \uc815\ud588\ub2e4. J\ub97c \uc5f4\uba74 \uadf8 \uacb0\uc815\uacfc \uc9c0\uae08 \ud574\uc57c \ud560 \uc77c\uc744 \ubcfc \uc218 \uc788\ub2e4.");
         }
-        else if (Distance(level.Player().WorldPosition(), Site(2)) > WorldLayout::MarketRadius)
+        else if (WorldLayout::MarketAt(level.Player().WorldPosition()) != 0)
         {
             Event(
                 L"\uc7a5\ubd80\ub97c \uacf5\uac1c\ud558\ub824\uba74 \uc0ac\ub78c\ub4e4\uc774 \ubaa8\uc778 \uc7a5\ud130\ub85c \ub3cc\uc544\uac00\uc790.");
@@ -2863,8 +2880,17 @@ namespace Harbor
         }
         else
         {
-            ChooseRecord(RecordChoice::Public);
-            UpdateQuest();
+            dialogue.source = sites[2];
+            dialogue.pages = {
+                {L"\uc7a5\ubd80 \uacf5\uac1c \ud655\uc778",
+                 L"\uc0ac\ubcf8\uc5d0\ub294 \ub3c4\ud558\uac00 \uc57d \ub450 \ucca9\uc744 \ubc1b\uc544 \uac14\uace0 \uc625\ubd84\uc774 \ubcf4\uc99d\uc744 \uc130\ub2e4\uace0 \uc801\ud600 \uc788\ub2e4. \uc774\ub984\uc774 \uc54c\ub824\uc9c0\uba74 \ub3c4\uc724\uc740 \ub3d9\uc0dd\uc758 \ud589\ubc29\uc744 \ubb3c\uc744 \uc218 \uc788\uace0, \uc625\ubd84\uc740 \uc57d\uc744 \uc228\uacbc\ub2e4\ub294 \uc758\uc2ec\uc744 \ubc1b\uc744 \uc218 \uc788\ub2e4.",
+                 {{L"\uc7a5\ud130 \uc0ac\ub78c\ub4e4\uc5d0\uac8c \uc7a5\ubd80 \uc0ac\ubcf8\uc744 \uacf5\uac1c\ud55c\ub2e4",
+                   -1,
+                   DialogueEffect::PublishLedger},
+                  {L"\uc0ac\ubcf8\uc744 \ub36e\uace0 \uacb0\uc815\uc744 \ubbf8\ub8ec\ub2e4",
+                   -1,
+                   DialogueEffect::None}}}};
+            dialogue.page = 0;
         }
     }
 

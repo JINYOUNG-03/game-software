@@ -157,6 +157,7 @@ namespace Harbor
         AcceptQuest,
         CompleteQuest,
         RecordLedgerAccount,
+        PublishLedger,
         ShareKnowledge,
         RecordTrailClue,
         PostTrailNames,
