@@ -90,6 +90,11 @@ assert(game.includes("paused || helpVisible || statsPanel || harbor.Conversation
 const update = game.slice(game.indexOf("void Update(float dt)"),
                           game.indexOf("} // namespace", game.indexOf("void Update(float dt)")));
 assert(update.indexOf("UpdateInventoryInput()") < update.indexOf("firstLevel.MovePlayer"));
+const prompt = game.match(/void UpdatePromptActor\(\)[\s\S]*?(?=void DrawEffectActor)/)[0];
+assert(prompt.indexOf("harbor.NearbyQuestSpeaker()") < prompt.indexOf("firstLevel.CanPickUp(*drop)"));
+assert(game.includes("interactionTarget = prompt && prompt->IsVisible() ? prompt->ParentId()"));
+assert(game.includes("firstLevel.PickUp(interactionTarget)") && game.includes("harbor.Talk(interactionTarget)"));
+assert(level.includes("if (!selected || !CanPickUp(*selected))"));
 assert(world.includes("return Holder(ledger) == level.Player().Id()"));
 assert(world.includes("return Holder(key) == level.Player().Id()"));
 assert(read("HarborWorld.h").includes("return copied;"));

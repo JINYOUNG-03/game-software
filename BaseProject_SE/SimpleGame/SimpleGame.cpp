@@ -99,6 +99,7 @@ namespace
 
     bool keys[256] = {};
     bool interactionPressed = false;
+    ActorId interactionTarget = InvalidActorId;
     bool potionPressed = false;
     bool tradePressed = false;
     bool sitePressed = false;
@@ -376,27 +377,26 @@ namespace
             prompt->drawOrder = 10;
         }
         ActorId target = InvalidActorId;
-        float distance = 1.4f;
-        for (const auto* drop : firstLevel.Drops())
+        if (const Npc* questGiver = harbor.NearbyQuestSpeaker())
         {
-            if (drop->IsVisible() && Distance2D(PlayerPosition(), drop->WorldPosition()) < 1.3f &&
-                firstLevel.ClearLine(PlayerPosition(), drop->WorldPosition()))
+            target = questGiver->Id();
+        }
+        if (!target)
+        {
+            for (const auto* drop : firstLevel.Drops())
             {
-                target = drop->Id();
-                break;
+                if (firstLevel.CanPickUp(*drop))
+                {
+                    target = drop->Id();
+                    break;
+                }
             }
         }
         if (!target)
         {
-            for (const Npc* npc : scene.Actors<Npc>(ActorKind::Npc))
+            if (const Npc* npc = harbor.Nearest())
             {
-                float d = Distance2D(PlayerPosition(), npc->WorldPosition());
-                if (npc->IsVisible() && d < distance &&
-                    firstLevel.ClearLine(PlayerPosition(), npc->WorldPosition()))
-                {
-                    distance = d;
-                    target = npc->Id();
-                }
+                target = npc->Id();
             }
         }
         if (!target)
@@ -721,17 +721,18 @@ namespace
         {
             return;
         }
-        const auto guide = harbor.Guide();
-        if (guide.ready && guide.interactionKey == 'E')
+        const Actor* target = firstLevel.Scene().Find(interactionTarget);
+        if (target && target->Kind() == ActorKind::Loot)
         {
-            harbor.Talk();
+            if (!firstLevel.PickUp(interactionTarget))
+            {
+                firstLevel.message =
+                    L"\uc804\ub9ac\ud488\uc5d0 \ub2e4\uc2dc \uac00\uae4c\uc774 \uac00\uc790.";
+                firstLevel.messageTime = 5;
+            }
             return;
         }
-        if (firstLevel.PickUp())
-        {
-            return;
-        }
-        harbor.Talk();
+        harbor.Talk(interactionTarget);
     }
 
     bool SameRouteTile(const Vec3& first, const Vec3& second)
@@ -2684,6 +2685,8 @@ void KeyDown(unsigned char key)
     {
         if (key == 'e')
         {
+            const Actor* prompt = firstLevel.Scene().Find(promptId);
+            interactionTarget = prompt && prompt->IsVisible() ? prompt->ParentId() : InvalidActorId;
             interactionPressed = true;
         }
         if (key == 't')

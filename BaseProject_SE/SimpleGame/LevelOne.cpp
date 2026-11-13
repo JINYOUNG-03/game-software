@@ -1581,22 +1581,29 @@ namespace Level
         return {};
     }
 
-    bool FirstLevel::PickUp()
+    bool FirstLevel::CanPickUp(const Loot& loot) const
+    {
+        const Position player = Player().WorldPosition(), location = loot.WorldPosition();
+        return loot.IsActive() && loot.IsVisible() && Distance(player, location) <= 1.3f &&
+               ClearLine(player, location);
+    }
+
+    bool FirstLevel::PickUp(ActorId target)
     {
         Perf::Scope scope(Perf::Cpu::Loot);
+        const auto* selected = dynamic_cast<const Loot*>(scene.Find(target));
+        if (!selected || !CanPickUp(*selected))
+        {
+            return false;
+        }
+
         int coins = 0;
         int hides = 0;
         int potions = 0;
-        const Position player = Player().WorldPosition();
         for (ActorId id : scene.FindByKind(ActorKind::Loot))
         {
             Loot* loot = dynamic_cast<Loot*>(scene.Find(id));
-            if (!loot)
-            {
-                continue;
-            }
-            Position location = loot->WorldPosition();
-            if (Distance(player, location) > 1.3f || !ClearLine(player, location))
+            if (!loot || !CanPickUp(*loot))
             {
                 continue;
             }

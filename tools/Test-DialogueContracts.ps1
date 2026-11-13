@@ -77,10 +77,11 @@ if (-not $accountDialogue.Contains('{account.question, 2, DialogueEffect::None}'
     -not $choose.Contains('selected.effect == DialogueEffect::RecordLedgerAccount && questStep == HearLedgerAccounts') -or
     [regex]::Matches($world, 'ledgerAccountsHeard\.set\(index\)').Count -ne 1)
 { throw 'Hearing or leaving a dialogue cannot record an account before an explicit choice.' }
+$questSpeaker = [regex]::Match($world, '(?s)Npc\* World::NearbyQuestSpeaker\(\).*?(?=void World::Talk\()').Value
 if (-not $site.Contains('questStep == HearLedgerAccounts') -or
     -not $world.Contains('!CanHearFrom(Person(LedgerAccounts[index].person))') -or
     -not $world.Contains('lines.push_back(LedgerAccounts[i].journal)') -or
-    -not $talk.Contains('level.Scene().Find(ObjectiveTarget())'))
+    -not $questSpeaker.Contains('level.Scene().Find(ObjectiveTarget())'))
 { throw 'An unavailable speaker needs a board fallback and the journal must retain recorded accounts.' }
 if (-not (World-Method 'Reveal' 'Log').Contains('else if (!ledgerAccountsHeard.all())') -or
     -not (World-Method 'ChooseRecord' 'Initialize').Contains('|| !ledgerAccountsHeard.all()'))

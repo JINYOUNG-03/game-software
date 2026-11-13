@@ -119,7 +119,7 @@ foreach ($contract in @('bool helpVisible = true', 'UiPart::GuideHelp', 'continu
     if (-not $renderSource.Contains($contract)) { throw "Missing first-time guidance contract: $contract" }
 }
 if (-not $npcSource.Contains('ObjectiveGuide World::Guide() const') -or
-    -not $npcSource.Contains('npc = questGiver;'))
+    -not $renderSource.Contains('harbor.NearbyQuestSpeaker()'))
 { throw 'Contextual objective guide or quest-giver interaction priority missing.' }
 
 # Keep onboarding readable without reclaiming the large gameplay-covering panels.

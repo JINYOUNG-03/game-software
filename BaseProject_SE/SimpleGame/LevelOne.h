@@ -169,7 +169,8 @@ namespace Level
         std::vector<Position> FindPath(const Position& from,
                                        const Position& to,
                                        PathPurpose purpose = PathPurpose::Npc) const;
-        bool PickUp();
+        bool CanPickUp(const Loot& loot) const;
+        bool PickUp(ActorId target);
         void UsePotion();
         void Allocate(int attribute);
         bool Walkable(float x, float y) const;

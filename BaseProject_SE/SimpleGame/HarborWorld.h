@@ -200,7 +200,8 @@ namespace Harbor
         void Initialize();
         void Update(float dt);
         void PlayerAttack();
-        void Talk();
+        Npc* NearbyQuestSpeaker();
+        void Talk(ActorId target);
         void AdvanceDialogue();
         void ChooseDialogue(size_t choice);
         void EndDialogue();

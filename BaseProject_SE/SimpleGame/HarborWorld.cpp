@@ -2109,7 +2109,8 @@ namespace Harbor
         for (Npc* npc : level.Scene().Actors<Npc>(ActorKind::Npc))
         {
             float d = Distance(level.Player().WorldPosition(), npc->WorldPosition());
-            if (d < radius && level.ClearLine(level.Player().WorldPosition(), npc->WorldPosition()))
+            if (d < radius && npc->IsVisible() &&
+                level.ClearLine(level.Player().WorldPosition(), npc->WorldPosition()))
             {
                 result = npc;
                 radius = d;
@@ -2124,7 +2125,7 @@ namespace Harbor
         for (ActorId artifact : {ledger, key})
         {
             Actor& item = level.Scene().Get(artifact);
-            if (!Holder(artifact) && Distance(hero, item.WorldPosition()) < 1.5f &&
+            if (item.IsVisible() && !Holder(artifact) && Distance(hero, item.WorldPosition()) < 1.5f &&
                 level.ClearLine(hero, item.WorldPosition()))
             {
                 return &item;
@@ -2643,26 +2644,31 @@ namespace Harbor
         UpdateQuest();
     }
 
-    void World::Talk()
+    Npc* World::NearbyQuestSpeaker()
+    {
+        if (questStep != MeetMira && questStep != ReportSluice && questStep != HearLedgerAccounts)
+        {
+            return nullptr;
+        }
+        auto* npc = dynamic_cast<Npc*>(level.Scene().Find(ObjectiveTarget()));
+        const Position player = level.Player().WorldPosition();
+        return CanHearFrom(npc) && npc->IsVisible() && Distance(player, npc->WorldPosition()) < 1.5f &&
+                       level.ClearLine(player, npc->WorldPosition())
+                   ? npc
+                   : nullptr;
+    }
+
+    void World::Talk(ActorId target)
     {
         if (dialogue.Active())
         {
             return;
         }
         UpdateQuest();
-        Npc* npc = Nearest();
-        // Talking at the marked quest giver must not select a slightly closer bystander.
-        if (questStep == MeetMira || questStep == ReportSluice || questStep == HearLedgerAccounts)
-        {
-            auto* questGiver = dynamic_cast<Npc*>(level.Scene().Find(ObjectiveTarget()));
-            if (CanHearFrom(questGiver) &&
-                Distance(level.Player().WorldPosition(), questGiver->WorldPosition()) < 1.5f &&
-                level.ClearLine(level.Player().WorldPosition(), questGiver->WorldPosition()))
-            {
-                npc = questGiver;
-            }
-        }
-        if (!npc)
+        auto* npc = dynamic_cast<Npc*>(level.Scene().Find(target));
+        const Position player = level.Player().WorldPosition();
+        if (!npc || !npc->IsActive() || !npc->IsVisible() || Distance(player, npc->WorldPosition()) >= 1.5f ||
+            !level.ClearLine(player, npc->WorldPosition()))
         {
             level.message =
                 L"\ub9d0\uc744 \uac78\ub824\uba74 \uc870\uae08 \ub354 \uac00\uae4c\uc774 \uac00\uc790.";
