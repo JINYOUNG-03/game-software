@@ -198,6 +198,7 @@ namespace Perf
         QuestRouteDots,
         HuntHintCandidates,
         HuntHintMarkers,
+        EnemyAttackCuesDrawn,
         Count
     };
 

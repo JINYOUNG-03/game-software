@@ -190,7 +190,8 @@ namespace Perf
                                       "quest_route_failures",
                                       "quest_route_dots",
                                       "hunt_hint_candidates",
-                                      "hunt_hint_markers"};
+                                      "hunt_hint_markers",
+                                      "enemy_attack_cues_drawn"};
         static_assert(sizeof(CpuNames) / sizeof(*CpuNames) == size_t(Cpu::Count), "CPU schema mismatch");
         static_assert(sizeof(CounterNames) / sizeof(*CounterNames) == size_t(Counter::Count),
                       "Counter schema mismatch");

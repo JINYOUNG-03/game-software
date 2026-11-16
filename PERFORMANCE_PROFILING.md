@@ -184,6 +184,7 @@
 | cpu_ms.enemy_combat | 짐승 공격 시작·진행의 중첩 포함 CPU ms. AI 또는 NPC 갱신의 자식 구간이며 합산하지 않음. 대상 사망 일괄 취소는 combat으로 계측해 같은 키의 중첩을 피함 |
 | counters.enemy_attacks_started / enemy_attack_updates | 시작한 공격 횟수 / 공격 상태를 갱신한 작업 수. 프레임·인구·드로우콜 수와 구분 |
 | counters.enemy_attack_impacts / enemy_attack_hits / enemy_attack_misses | 1회 타격 창 시도 / 플레이어·NPC 실제 피해 / 거리·방향·차폐·보호·무적·사망 대상으로 무효화된 판정 |
+| counters.enemy_attack_cues_drawn | 가시 짐승의 공격 준비 표시 수. 표시 하나당 기존 효과 배치에 사각형 인스턴스 하나를 추가하며 CPU 시간은 render_effects에 포함 |
 | cpu_ms.hit_feedback_spawn / hit_feedback_update / hit_feedback_render | 승인된 피해의 효과 배치 / 48개 풀 수명 갱신 / 가시 효과와 숫자 제출의 중첩 포함 CPU ms. combat·world_update·render_effects의 자식 구간이므로 합산하지 않음 |
 | counters.hit_effects_spawned / hit_effects_active | 활성화한 명중 효과 / 해당 갱신에서 수명을 처리한 활성 슬롯 수. 고유 Actor 수/인구/가시 수와 구분 |
 | counters.hit_effects_overwritten / hit_effects_skipped | 48개 풀에서 아직 활성인 슬롯을 덮어쓴 횟수 / 먼 비플레이어 전투의 효과 배치를 생략한 횟수 |

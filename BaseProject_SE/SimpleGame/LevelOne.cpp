@@ -1388,8 +1388,9 @@ namespace Level
             Perf::Count(Perf::Counter::EnemyAttackImpacts);
             const Position from = enemy.WorldPosition(), to = target->WorldPosition();
             const float dx = to.x - from.x, dy = to.y - from.y, distance = std::hypot(dx, dy);
-            const bool inFront = distance < .001f ||
-                                 (dx * enemy.attackForward.x + dy * enemy.attackForward.y) / distance >= .45f;
+            const bool inFront =
+                distance < .001f || (dx * enemy.attackForward.x + dy * enemy.attackForward.y) / distance >=
+                                        CharacterPresentation::BeastAttackConeDot;
             const Position gridTarget = ToGrid(to);
             const bool safe = target->Id() == Player().Id() && InCamp(int(gridTarget.x), int(gridTarget.y));
             if (distance <= CharacterPresentation::BeastAttackRange && inFront && !safe &&

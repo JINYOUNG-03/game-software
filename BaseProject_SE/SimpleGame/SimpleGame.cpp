@@ -524,12 +524,18 @@ namespace
             if (const auto* enemy =
                     dynamic_cast<const Level::Enemy*>(firstLevel.Scene().Find(actor.ParentId())))
             {
-                if (enemy->attackTime >= 0 &&
-                    enemy->attackTime < CharacterPresentation::BeastAttackDuration(enemy->kind) *
-                                            CharacterPresentation::BeastImpactFraction)
+                if (enemy->attackTime >= 0 && enemy->attackImpactPending)
                 {
-                    // Existing status Actor also carries the wind-up warning; no new scene placement.
-                    renderer->DrawEllipse(x, y + 2, 62, 25, .95f, .48f, .15f, .27f);
+                    using namespace CharacterPresentation;
+                    const float windup = BeastAttackDuration(enemy->kind) * BeastImpactFraction;
+                    constexpr float span = BeastAttackRange * 1.41421356f;
+                    const float progress = Clamp01(enemy->attackTime / windup);
+                    renderer->SetSurfaceData(
+                        {{enemy->attackForward.x, enemy->attackForward.y, BeastAttackConeDot, progress}});
+                    renderer->SetMaterial(29);
+                    renderer->DrawSolidRect(x, y, span * TileWidth, span * TileHeight, 1, .46f, .14f, .9f);
+                    renderer->SetMaterial(0);
+                    Perf::Count(Perf::Counter::EnemyAttackCuesDrawn);
                 }
                 if (enemy->flash > 0)
                 {

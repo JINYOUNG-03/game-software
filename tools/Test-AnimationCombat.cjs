@@ -44,7 +44,8 @@ const attack =
     source.match(/void FirstLevel::UpdateEnemyAttack[\s\S]*?(?=std::vector<EnemyAttackImpact>)/)[0];
 for (const contract
          of ["enemy.attackImpactPending = false", "BeastImpactFraction", "inFront", "!safe",
-             "ClearLine(from, to)", "BeastAttackRange", "enemyAttackImpacts.push_back", "EnemyAttackMisses"])
+             "ClearLine(from, to)", "BeastAttackRange", "BeastAttackConeDot",
+             "enemyAttackImpacts.push_back", "EnemyAttackMisses"])
 {
     assert(attack.includes(contract), `Missing staged attack gate: ${contract}`);
 }
@@ -148,14 +149,42 @@ for (const dt of [1 / 144, 1 / 60, 1 / 20, .25, 2])
         assert.equal(attempts, 1);
     }
 }
+const attackRange = constant("BeastAttackRange"), coneDot = constant("BeastAttackConeDot");
 const hit = (distance, forward, clear, safe, invulnerable) =>
-    distance <= constant("BeastAttackRange") && forward >= .45 && clear && !safe && !invulnerable;
+    distance <= attackRange && forward >= coneDot && clear && !safe && !invulnerable;
 assert(hit(.8, 1, true, false, false));
 assert(!hit(1.4, 1, true, false, false));
 assert(!hit(.8, -1, true, false, false));
 assert(!hit(.8, 1, false, false, false));
 assert(!hit(.8, 1, true, true, false));
 assert(!hit(.8, 1, true, false, true));
+const beastCue = game.match(/case ActorEffect::EnemyStatus:[\s\S]*?(?=case ActorEffect::NpcStatus:)/)[0];
+assert(beastCue.includes("enemy->attackTime >= 0 && enemy->attackImpactPending"));
+assert(beastCue.includes("enemy->attackForward.x, enemy->attackForward.y, BeastAttackConeDot, progress"));
+assert(beastCue.includes("BeastAttackRange * 1.41421356f") && beastCue.includes("span * TileWidth, span * TileHeight"));
+assert(beastCue.includes("SetMaterial(29)") && beastCue.includes("Perf::Counter::EnemyAttackCuesDrawn"));
+const cueShader = read("Shaders/SolidRect.fs");
+assert(cueShader.includes("v_Material == 29") &&
+       cueShader.includes("vec2(screen.x + screen.y, screen.y - screen.x) * .70710678") &&
+       cueShader.includes("along * sqrt(1.0 - coneDot * coneDot) - across * coneDot") &&
+       cueShader.includes("min(1.0 - distance, side)"));
+for (let direction = 0; direction < 8; ++direction)
+{
+    const angle = direction * Math.PI / 4, fx = Math.cos(angle), fy = Math.sin(angle);
+    for (const relative of [0, .7, 1.09, 1.12, 1.57, Math.PI, -1.09, -1.12])
+    {
+        for (const distance of [.3, attackRange - .001, attackRange + .001])
+        {
+            const x = Math.cos(angle + relative) * distance, y = Math.sin(angle + relative) * distance;
+            const sx = (x - y) / (attackRange * Math.SQRT2), sy = (x + y) / (attackRange * Math.SQRT2);
+            const dx = (sx + sy) * Math.SQRT1_2, dy = (sy - sx) * Math.SQRT1_2;
+            const along = dx * fx + dy * fy, across = Math.abs(-dx * fy + dy * fx);
+            const edge = Math.min(1 - Math.hypot(dx, dy),
+                                  along * Math.sqrt(1 - coneDot * coneDot) - across * coneDot);
+            assert.equal(edge > 0, hit(distance, Math.cos(relative), true, false, false));
+        }
+    }
+}
 for (const id of ["animal_deer", "animal_wolf", "animal_tiger"])
 {
     const asset = load(id);

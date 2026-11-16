@@ -70,6 +70,25 @@ void main()
         FragColor = cached * v_Color;
         return;
     }
+    if (v_Material == 29)
+    {
+        // Inverse quarter-view projection, normalized by the attack range.
+        vec2 screen = (v_Local - .5) * vec2(2.0, -2.0);
+        vec2 offset = vec2(screen.x + screen.y, screen.y - screen.x) * .70710678;
+        vec2 forward = v_Surface.xy;
+        float coneDot = v_Surface.z;
+        float along = dot(offset, forward);
+        float across = abs(dot(offset, vec2(-forward.y, forward.x)));
+        float distance = length(offset);
+        float side = along * sqrt(1.0 - coneDot * coneDot) - across * coneDot;
+        float edge = min(1.0 - distance, side);
+        float mask = smoothstep(0.0, max(fwidth(edge), .001), edge);
+        float border = 1.0 - smoothstep(.025, .055, edge);
+        float fill = 1.0 - smoothstep(v_Surface.w, v_Surface.w + .045, distance);
+        vec3 color = mix(v_Color.rgb, vec3(1.0, .76, .31), border);
+        FragColor = vec4(color, v_Color.a * mask * (.16 + .24 * fill + .52 * border));
+        return;
+    }
 
     vec3 c = v_Color.rgb;
     float a = v_Color.a;
