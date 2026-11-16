@@ -69,7 +69,8 @@ namespace
         GuideHelp,
         Dialogue,
         Trade,
-        WorldMap
+        WorldMap,
+        Checkpoint
     };
     ActorId promptId = InvalidActorId;
     ActorId questMarkerId = InvalidActorId;
@@ -146,9 +147,12 @@ namespace
     {
         None,
         Save,
-        Load
+        Load,
+        ConfirmLoad,
+        CancelLoad
     };
     CheckpointRequest checkpointRequest = CheckpointRequest::None;
+    bool loadConfirmation = false;
     std::wstring checkpointNotice;
     bool helpVisible = true;
     bool helpPressed = false;
@@ -339,7 +343,8 @@ namespace
                             UiPart::GuideHelp,
                             UiPart::Dialogue,
                             UiPart::Trade,
-                            UiPart::WorldMap})
+                            UiPart::WorldMap,
+                            UiPart::Checkpoint})
         {
             Actor& ui = scene.Create(firstLevel.OverlayRoot(), "UIPanel", ActorKind::UI);
             ui.variant = int(part);
@@ -357,13 +362,14 @@ namespace
             }
             ui.drawable = true;
             ui.pass = ScenePass::Overlay;
-            ui.drawOrder = part == UiPart::GuideHelp  ? 200
-                           : part == UiPart::Dialogue ? 150
-                           : part == UiPart::Trade    ? 140
-                           : part == UiPart::WorldMap ? 130
-                           : part == UiPart::Stats    ? 120
-                           : part == UiPart::Pause    ? 100
-                                                      : int(part);
+            ui.drawOrder = part == UiPart::Checkpoint  ? 210
+                           : part == UiPart::GuideHelp ? 200
+                           : part == UiPart::Dialogue  ? 150
+                           : part == UiPart::Trade     ? 140
+                           : part == UiPart::WorldMap  ? 130
+                           : part == UiPart::Stats     ? 120
+                           : part == UiPart::Pause     ? 100
+                                                       : int(part);
         }
         helpVisible = introVisible = true;
         introPage = 0;
@@ -2076,6 +2082,33 @@ namespace
         }
     }
 
+    void DrawLoadConfirmation()
+    {
+        if (!loadConfirmation)
+        {
+            return;
+        }
+        renderer->DrawSolidRect(640, 400, ScreenWidth, ScreenHeight, .015f, .025f, .03f, .70f);
+        renderer->DrawSolidRect(640, 400, 624, 222, .45f, .38f, .25f, 1);
+        renderer->DrawSolidRect(640, 400, 620, 218, .055f, .085f, .09f, 1);
+        DrawText(359,
+                 327,
+                 L"\uc800\uc7a5\ud55c \uac8c\uc784\uc744 \ubd88\ub7ec\uc62c\uae4c\uc694?",
+                 .97f,
+                 .86f,
+                 .59f);
+        DrawText(
+            359,
+            365,
+            L"\ub9c8\uc9c0\ub9c9\uc73c\ub85c \uc800\uc7a5\ud55c \uc2dc\uc810\uc73c\ub85c \ub3cc\uc544\uac11\ub2c8\ub2e4.");
+        DrawText(
+            359,
+            391,
+            L"\uadf8 \ub4a4\uc5d0 \uc9c4\ud589\ud55c \ub0b4\uc6a9\uc740 \uc0ac\ub77c\uc9d1\ub2c8\ub2e4.");
+        DrawWrapped(359, 439, checkpointNotice, 560, 2);
+        DrawText(359, 482, L"ENTER \ubd88\ub7ec\uc624\uae30    ESC \ucde8\uc18c", .78f, .84f, .76f);
+    }
+
     struct LabelBounds
     {
         float left, top, right, bottom;
@@ -2337,6 +2370,9 @@ namespace
                 case UiPart::Pause:
                     DrawPausePanel();
                     break;
+                case UiPart::Checkpoint:
+                    DrawLoadConfirmation();
+                    break;
                 default:
                     break;
                 }
@@ -2371,7 +2407,7 @@ namespace
     bool WorldPaused()
     {
         return journalPanel || paused || helpVisible || statsPanel || harbor.Conversation().Active() ||
-               harbor.Trading().Active() || worldMap;
+               harbor.Trading().Active() || worldMap || loadConfirmation;
     }
 
     void UpdateInventoryInput()
@@ -2533,8 +2569,24 @@ namespace
 
     void UpdateCheckpoint(CheckpointRequest request)
     {
-        if (harbor.Conversation().Active() || harbor.Trading().Active() || statsPanel)
+        if (request == CheckpointRequest::CancelLoad)
         {
+            loadConfirmation = false;
+            checkpointNotice.clear();
+            ClearGameplayInput();
+            return;
+        }
+        const bool confirmingLoad = request == CheckpointRequest::ConfirmLoad;
+        if (loadConfirmation != confirmingLoad || harbor.Conversation().Active() ||
+            harbor.Trading().Active() || statsPanel)
+        {
+            return;
+        }
+        if (request == CheckpointRequest::Load && !introVisible)
+        {
+            loadConfirmation = true;
+            checkpointNotice.clear();
+            ClearGameplayInput();
             return;
         }
         const bool saving = request == CheckpointRequest::Save;
@@ -2550,6 +2602,7 @@ namespace
         case GameSave::Result::Success:
             if (!saving)
             {
+                loadConfirmation = false;
                 InitializeSceneActors();
                 paused = helpVisible = introVisible = journalPanel = statsPanel = false;
                 worldMap = false;
@@ -2577,8 +2630,11 @@ namespace
                 L"\uc800\uc7a5 \ud30c\uc77c\uc5d0 \uc811\uadfc\ud558\uc9c0 \ubabb\ud588\ub2e4.";
             break;
         }
-        firstLevel.message = checkpointNotice;
-        firstLevel.messageTime = 5;
+        if (!loadConfirmation)
+        {
+            firstLevel.message = checkpointNotice;
+            firstLevel.messageTime = 5;
+        }
         ClearGameplayInput();
     }
 
@@ -2593,6 +2649,10 @@ namespace
             checkpointRequest = CheckpointRequest::None;
             UpdateCheckpoint(request);
             UpdatePromptActor();
+            return;
+        }
+        if (loadConfirmation)
+        {
             return;
         }
         if (harbor.Trading().Active())
@@ -2877,6 +2937,18 @@ void KeyDown(unsigned char key)
         return;
     }
     keys[key] = true;
+    if (loadConfirmation)
+    {
+        if (key == 27)
+        {
+            checkpointRequest = CheckpointRequest::CancelLoad;
+        }
+        else if (key == 13 && checkpointRequest == CheckpointRequest::None)
+        {
+            checkpointRequest = CheckpointRequest::ConfirmLoad;
+        }
+        return;
+    }
     if (harbor.Trading().Active())
     {
         if (key == 27 || key == 't')
@@ -3143,7 +3215,7 @@ void WindowSizeChanged(GLFWwindow*, int width, int height)
 void WindowKey(GLFWwindow*, int key, int, int action, int)
 {
     Perf::Count(Perf::Counter::WindowKeyEvents);
-    if (journalPanel && (key == GLFW_KEY_UP || key == GLFW_KEY_DOWN))
+    if (journalPanel && !loadConfirmation && (key == GLFW_KEY_UP || key == GLFW_KEY_DOWN))
     {
         if (action == GLFW_PRESS || action == GLFW_REPEAT)
         {
@@ -3165,7 +3237,7 @@ void WindowKey(GLFWwindow*, int key, int, int action, int)
     }
     if (key == GLFW_KEY_F5 || key == GLFW_KEY_F9)
     {
-        if (action == GLFW_PRESS)
+        if (action == GLFW_PRESS && !loadConfirmation)
         {
             checkpointRequest = key == GLFW_KEY_F5 ? CheckpointRequest::Save : CheckpointRequest::Load;
         }
@@ -3192,6 +3264,10 @@ void WindowKey(GLFWwindow*, int key, int, int action, int)
 void WindowMouse(GLFWwindow* window, int button, int action, int)
 {
     Perf::Count(Perf::Counter::WindowMouseEvents);
+    if (loadConfirmation)
+    {
+        return;
+    }
     double x = 0, y = 0;
     glfwGetCursorPos(window, &x, &y);
     if (worldMap && button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
@@ -3207,7 +3283,7 @@ void WindowMouse(GLFWwindow* window, int button, int action, int)
 void WindowScroll(GLFWwindow*, double, double y)
 {
     Perf::Count(Perf::Counter::WindowMouseEvents);
-    if (journalPanel && y != 0)
+    if (journalPanel && !loadConfirmation && y != 0)
     {
         journalScrollPressed += y > 0 ? -3 : 3;
     }

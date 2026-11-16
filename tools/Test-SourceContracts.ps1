@@ -75,10 +75,24 @@ if (-not $keyCallback.Contains('GLFW_KEY_F5 || key == GLFW_KEY_F9') -or
     $keyCallback -match 'GameSave::(?:Save|Load)\(' -or
     -not $gameSource.Contains('UpdateCheckpoint(request)'))
 { throw 'Checkpoint input must queue work for Update instead of rebuilding inside the GLFW callback.' }
+$checkpointUpdate = [regex]::Match($gameSource, '(?s)void UpdateCheckpoint\(.*?(?=void Update\(float dt\))').Value
+if ($checkpointUpdate -notmatch 'if \(request == CheckpointRequest::Load && !introVisible\)\s*\{\s*loadConfirmation = true;\s*checkpointNotice.clear\(\);\s*ClearGameplayInput\(\);\s*return;' -or
+    $checkpointUpdate -notmatch 'if \(request == CheckpointRequest::CancelLoad\)\s*\{\s*loadConfirmation = false;\s*checkpointNotice.clear\(\);\s*ClearGameplayInput\(\);\s*return;' -or
+    -not $checkpointUpdate.Contains('loadConfirmation != confirmingLoad') -or
+    -not $keyCallback.Contains('if (action == GLFW_PRESS && !loadConfirmation)'))
+{ throw 'In-game load requests must wait for confirmation and cancel without applying the saved slot.' }
+$checkpointKeys = [regex]::Match($gameSource, '(?s)void KeyDown\(.*?(?=if \(harbor.Trading\(\).Active\(\)\))').Value
+if (-not $checkpointKeys.Contains('checkpointRequest = CheckpointRequest::CancelLoad') -or
+    -not $checkpointKeys.Contains('else if (key == 13 && checkpointRequest == CheckpointRequest::None)') -or
+    -not $checkpointKeys.Contains('checkpointRequest = CheckpointRequest::ConfirmLoad') -or
+    -not $gameSource.Contains('case UiPart::Checkpoint:') -or
+    -not $gameSource.Contains('|| worldMap || loadConfirmation'))
+{ throw 'Load confirmation must consume Enter/ESC and pause normal gameplay while visible.' }
 
 [pscustomobject]@{
     event = 'source_static_contracts'; passed = $true; files_checked = $checkedFiles.Count
     balanced_delimiters = $true; profiler_enum_keys_match = $true
     checkpoint_preflight = $true; checkpoint_no_reward_replay = $true
+    checkpoint_in_game_confirmation = $true
     game_build_performed = $false; game_execution_performed = $false
 } | ConvertTo-Json
