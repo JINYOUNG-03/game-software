@@ -61,7 +61,8 @@ namespace
         QuestTracker,
         GuideHelp,
         Dialogue,
-        Trade
+        Trade,
+        WorldMap
     };
     ActorId promptId = InvalidActorId;
     ActorId questMarkerId = InvalidActorId;
@@ -117,6 +118,7 @@ namespace
     int journalFirstRow = 0;
     std::vector<std::wstring> journalRows;
     bool worldMap = false;
+    bool worldMapTogglePressed = false;
     int attributePressed = 0;
     bool statsPanel = false;
     bool inventoryTogglePressed = false;
@@ -324,7 +326,8 @@ namespace
                             UiPart::QuestTracker,
                             UiPart::GuideHelp,
                             UiPart::Dialogue,
-                            UiPart::Trade})
+                            UiPart::Trade,
+                            UiPart::WorldMap})
         {
             Actor& ui = scene.Create(firstLevel.OverlayRoot(), "UIPanel", ActorKind::UI);
             ui.variant = int(part);
@@ -341,6 +344,7 @@ namespace
             ui.drawOrder = part == UiPart::GuideHelp  ? 200
                            : part == UiPart::Dialogue ? 150
                            : part == UiPart::Trade    ? 140
+                           : part == UiPart::WorldMap ? 130
                            : part == UiPart::Stats    ? 120
                            : part == UiPart::Pause    ? 100
                                                       : int(part);
@@ -411,8 +415,8 @@ namespace
         }
         nearbySiteTarget = harbor.NearbySite();
         nearbyTradeTarget = InvalidActorId;
-        if (!paused && !helpVisible && !statsPanel && !journalPanel && !harbor.Conversation().Active() &&
-            !harbor.Trading().Active())
+        if (!paused && !helpVisible && !statsPanel && !journalPanel && !worldMap &&
+            !harbor.Conversation().Active() && !harbor.Trading().Active())
         {
             if (const Npc* trader = harbor.NearbyTrader())
             {
@@ -878,32 +882,45 @@ namespace
         }
     }
 
-    void RenderMiniMap()
+    void RenderMiniMap(bool wholeWorld)
     {
         Perf::Scope scope(Perf::Cpu::MiniMap);
-        constexpr float cx = 1150, cy = 163, extent = 208;
-        const int span = worldMap ? MapSize : 64;
+        const float cx = wholeWorld ? 478 : 1150, cy = wholeWorld ? 408 : 163;
+        const float extent = wholeWorld ? Renderer::WorldMapExtent : 208;
+        const int span = wholeWorld ? MapSize : 64;
         const int originX =
-            worldMap ? 0
-                     : (std::max)(0, (std::min)(MapSize - span, int(PlayerPosition().x) / 8 * 8 - span / 2));
+            wholeWorld
+                ? 0
+                : (std::max)(0, (std::min)(MapSize - span, int(PlayerPosition().x) / 8 * 8 - span / 2));
         const int originY =
-            worldMap ? 0
-                     : (std::max)(0, (std::min)(MapSize - span, int(PlayerPosition().y) / 8 * 8 - span / 2));
+            wholeWorld
+                ? 0
+                : (std::max)(0, (std::min)(MapSize - span, int(PlayerPosition().y) / 8 * 8 - span / 2));
         const float scale = extent / static_cast<float>(span);
         const float left = cx - extent * .5f, top = cy - extent * .5f;
         renderer->SetMaterial(0);
-        renderer->DrawSolidRect(cx, 164, 240, 300, .16f, .21f, .18f, .98f);
-        // Snapped local windows reuse the terrain texture; the atlas is available without shrinking local markers.
-        const std::uint64_t revision = firstLevel.MapRevision() ^ (std::uint64_t(originX) << 48) ^
-                                       (std::uint64_t(originY) << 40) ^
-                                       (worldMap ? (std::uint64_t(1) << 63) : 0);
+        if (wholeWorld)
+        {
+            renderer->DrawSolidRect(640, 400, 1280, 800, .015f, .025f, .03f, .65f);
+            renderer->DrawSolidRect(640, 408, 940, 616, .45f, .38f, .25f, 1);
+            renderer->DrawSolidRect(640, 408, 936, 612, .055f, .085f, .09f, 1);
+        }
+        else
+        {
+            renderer->DrawSolidRect(cx, 164, Renderer::MiniMapWidth, 300, .16f, .21f, .18f, .98f);
+        }
+
+        // Each view retains its terrain texture when the other view is opened.
+        const std::uint64_t revision =
+            firstLevel.MapRevision() ^ (std::uint64_t(originX) << 48) ^ (std::uint64_t(originY) << 40);
         renderer->DrawMiniMapLayer(revision,
                                    cx,
                                    cy,
+                                   wholeWorld,
                                    [&]()
                                    {
                                        renderer->DrawSolidRect(cx, cy, extent, extent, .67f, .72f, .51f, 1);
-                                       const int stride = worldMap ? 2 : 1;
+                                       const int stride = wholeWorld ? 2 : 1;
                                        for (int y = originY; y < originY + span; y += stride)
                                        {
                                            for (int x = originX; x < originX + span; x += stride)
@@ -943,8 +960,8 @@ namespace
         if (questRoute.visible)
         {
             const auto& points = questRoute.points;
-            const size_t stride = worldMap ? 4 : 1;
-            const float size = worldMap ? 2.6f : 3.0f;
+            const size_t stride = wholeWorld ? 4 : 1;
+            const float size = wholeWorld ? 3.5f : 3.0f;
             const float radius = size * .5f;
             for (size_t i = questRoute.waypoint; i < points.size(); ++i)
             {
@@ -983,50 +1000,82 @@ namespace
             const auto* site = dynamic_cast<const Harbor::Landmark*>(firstLevel.Scene().Find(id));
             if (site)
             {
-                marker(site->WorldPosition(),
-                       site->site == 7 ? 1.0f : .9f,
-                       site->site == 7 ? .2f : .73f,
-                       site->site == 7 ? .15f : .42f,
-                       6,
-                       false);
+                const bool raiderCamp = site->site == 7;
+                if (!wholeWorld || raiderCamp)
+                {
+                    marker(site->WorldPosition(),
+                           raiderCamp ? 1.0f : .9f,
+                           raiderCamp ? .2f : .73f,
+                           raiderCamp ? .15f : .42f,
+                           6,
+                           false);
+                }
             }
         }
-        for (const Npc* npc : firstLevel.Scene().Actors<Npc>(ActorKind::Npc))
+        if (wholeWorld)
         {
-            if (npc->health > 0)
+            for (int village = 0; village < WorldLayout::VillageCount; ++village)
             {
-                bool raider = npc->job == Harbor::Job::Raider;
-                marker(npc->WorldPosition(), raider ? 1.0f : .3f, raider ? .2f : .45f, .2f, 3, false);
+                const Vec3 market = WorldLayout::VillageMarket(village);
+                const wchar_t* name = WorldLayout::VillageName(village);
+                const float x = left + market.x * scale, y = top + market.y * scale;
+                const float width = renderer->TextWidth(name, fontDC, fontHandle);
+                const float labelX = std::clamp(x, left + width * .5f + 8, left + extent - width * .5f - 8);
+                const float labelY = (std::max)(top + 15, y - 24);
+                marker(market, .73f, .56f, .32f, 8, false);
+                renderer->DrawSolidRect(labelX, labelY, width + 14, 22, .04f, .06f, .07f, .96f);
+                DrawText(labelX - width * .5f, labelY + 5, name);
             }
         }
-        for (const auto* enemy : firstLevel.Enemies())
+        else
         {
-            if (!worldMap && enemy->health > 0 && Distance2D(enemy->WorldPosition(), PlayerPosition()) < 25)
+            for (const Npc* npc : firstLevel.Scene().Actors<Npc>(ActorKind::Npc))
             {
-                marker(enemy->WorldPosition(), .9f, .28f, .15f, 3, false);
+                if (npc->health > 0)
+                {
+                    const bool raider = npc->job == Harbor::Job::Raider;
+                    marker(npc->WorldPosition(), raider ? 1.0f : .3f, raider ? .2f : .45f, .2f, 3, false);
+                }
+            }
+            for (const auto* enemy : firstLevel.Enemies())
+            {
+                if (enemy->health > 0 && Distance2D(enemy->WorldPosition(), PlayerPosition()) < 25)
+                {
+                    marker(enemy->WorldPosition(), .9f, .28f, .15f, 3, false);
+                }
             }
         }
         if (const Actor* goal = firstLevel.Scene().Find(frameGuide.target))
         {
             marker(goal->WorldPosition(), 1, .85f, .15f, 8 + std::sin(elapsed * 4), true);
         }
-        if (const Actor* hunt = firstLevel.Scene().Find(huntHintTarget))
+        if (const Actor* hunt = wholeWorld ? nullptr : firstLevel.Scene().Find(huntHintTarget))
         {
             marker(hunt->WorldPosition(), .57f, 1, .72f, 5, false);
             Perf::Count(Perf::Counter::HuntHintMarkers);
         }
         marker(PlayerPosition(), 1, 1, 1, 6, true);
-        std::wstring title = worldMap ? L"\uc804\uccb4 \uc9c0\ub3c4 " + std::to_wstring(MapSize) + L"x" +
-                                            std::to_wstring(MapSize) + L" [M]"
-                                      : L"\uc8fc\ubcc0 \uc9c0\ub3c4 64x64 [M]";
-        DrawText(1040, 38, title.c_str(), .97f, .89f, .67f);
+        if (wholeWorld)
+        {
+            DrawText(795, 157, L"\uc804\uccb4 \uc9c0\ub3c4", .97f, .89f, .67f);
+            DrawText(795, 213, L"\ud604\uc7ac \ubaa9\uc801\uc9c0", .78f, .81f, .76f);
+            DrawText(795, 242, frameGuide.destination.c_str());
+            DrawText(795, 319, L"\ud770\uc0c9 \u00b7 \ub098\uc758 \uc704\uce58", 1, 1, 1);
+            DrawText(795, 346, L"\uae08\ube5b \u00b7 \uc758\ub8b0 \ubaa9\ud45c", 1, .85f, .45f);
+            DrawText(795, 373, L"\ud558\ub298\uc0c9 \u00b7 \uac78\uc5b4\uac08 \uae38", .54f, .91f, 1);
+            DrawText(
+                795, 400, L"\ubd89\uc740\uc0c9 \u00b7 \uc57d\ud0c8\uc790 \uc57c\uc601\uc9c0", 1, .53f, .44f);
+            DrawText(795, 681, L"M / ESC \ub2eb\uae30", .78f, .81f, .76f);
+            return;
+        }
+
+        DrawText(1040, 38, L"\uc8fc\ubcc0 \uc9c0\ub3c4 64x64 [M]", .97f, .89f, .67f);
         DrawText(1040, 290, L"\uae08\ube5b \ubaa9\ud45c / \ud770\uc0c9 \ub098", .97f, .9f, .7f);
         DrawText(1040,
                  313,
                  huntHintTarget
                      ? L"\uc5f0\ub450\uc0c9 \ud45c\uc2dd \u00b7 \uc0ac\uc2b4 \ub610\ub294 \uac00\uc8fd"
                  : questRoute.visible ? L"\ud558\ub298\uc0c9 \uc810 \u00b7 \uac78\uc5b4\uac08 \uae38"
-                 : worldMap           ? L"\ubd89\uc740 \uac70\uc810: \uc57d\ud0c8\uc790"
                                       : L"\uc804\uccb4 \uc6d4\ub4dc \uc911 \uc77c\ubd80",
                  .83f,
                  .87f,
@@ -1368,7 +1417,8 @@ namespace
         {
             renderer->DrawSolidRect(390, 583, 740, 54, .035f, .055f, .06f, .93f);
             DrawWrapped(35, 573, harbor.AreaName(), 710, 1);
-            if (nearbySiteTarget && !paused && !helpVisible && !statsPanel && !harbor.Trading().Active())
+            if (nearbySiteTarget && !paused && !helpVisible && !statsPanel && !worldMap &&
+                !harbor.Trading().Active())
             {
                 renderer->DrawSolidRect(990, 583, 420, 38, .035f, .055f, .06f, .93f);
                 DrawWrapped(792, 589, harbor.InspectionLabel(nearbySiteTarget), 396, 1);
@@ -1920,7 +1970,7 @@ namespace
     {
         LabelBounds bounds = {x - width * .5f, y - height * .5f, x + width * .5f, y + height * .5f};
         bool blocked = paused || helpVisible || harbor.Conversation().Active() || harbor.Trading().Active() ||
-                       journalPanel || statsPanel || bounds.left < 20 || bounds.right > 1000 ||
+                       journalPanel || statsPanel || worldMap || bounds.left < 20 || bounds.right > 1000 ||
                        bounds.top < 226 || bounds.bottom > 540;
         for (const auto& other : worldLabelBounds)
         {
@@ -1992,7 +2042,7 @@ namespace
                 if (part == UiPart::QuestMarker)
                 {
                     if (paused || helpVisible || harbor.Conversation().Active() ||
-                        harbor.Trading().Active() || journalPanel || statsPanel)
+                        harbor.Trading().Active() || journalPanel || statsPanel || worldMap)
                     {
                         return;
                     }
@@ -2147,7 +2197,16 @@ namespace
                     DrawQuestTracker();
                     break;
                 case UiPart::MiniMap:
-                    RenderMiniMap();
+                    if (!worldMap)
+                    {
+                        RenderMiniMap(false);
+                    }
+                    break;
+                case UiPart::WorldMap:
+                    if (worldMap)
+                    {
+                        RenderMiniMap(true);
+                    }
                     break;
                 case UiPart::Stats:
                     DrawStatsPanel();
@@ -2177,6 +2236,7 @@ namespace
         dodgePressed = false;
         journalTogglePressed = false;
         journalScrollPressed = 0;
+        worldMapTogglePressed = false;
         attributePressed = 0;
         inventoryTogglePressed = inventoryClosePressed = inventoryUsePressed = inventoryClickPressed = false;
         inventoryMovePressed = 0;
@@ -2193,7 +2253,7 @@ namespace
     bool WorldPaused()
     {
         return journalPanel || paused || helpVisible || statsPanel || harbor.Conversation().Active() ||
-               harbor.Trading().Active();
+               harbor.Trading().Active() || worldMap;
     }
 
     void UpdateInventoryInput()
@@ -2345,6 +2405,7 @@ namespace
             {
                 InitializeSceneActors();
                 paused = helpVisible = introVisible = journalPanel = statsPanel = false;
+                worldMap = false;
                 inventorySelection = 0;
                 tradeConfirmPending = false;
                 previousTime = std::chrono::steady_clock::now();
@@ -2474,11 +2535,23 @@ namespace
         {
             continueHelpPressed = false;
             journalTogglePressed = false;
+            worldMapTogglePressed = false;
             interactionPressed = false;
             potionPressed = false;
             tradePressed = sitePressed = revealPressed = false;
             attributePressed = 0;
             UpdatePromptActor();
+            return;
+        }
+        if (worldMapTogglePressed)
+        {
+            worldMap = !worldMap;
+            ClearGameplayInput();
+            UpdatePromptActor();
+            return;
+        }
+        if (worldMap)
+        {
             return;
         }
         elapsed += dt;
@@ -2710,6 +2783,14 @@ void KeyDown(unsigned char key)
         }
         return;
     }
+    if (worldMap)
+    {
+        if (key == 'm' || key == 27)
+        {
+            worldMapTogglePressed = true;
+        }
+        return;
+    }
     if (key == 'h' && !paused)
     {
         helpPressed = true;
@@ -2772,9 +2853,9 @@ void KeyDown(unsigned char key)
     {
         journalTogglePressed = true;
     }
-    else if (key == 'm')
+    else if (key == 'm' && !paused)
     {
-        worldMap = !worldMap;
+        worldMapTogglePressed = true;
     }
     else if (!paused)
     {

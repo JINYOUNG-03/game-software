@@ -38,7 +38,11 @@ class Renderer
                   float alpha = 1);
     float TextWidth(const wchar_t* text, void* dc, void* font);
     float TextAdvance(wchar_t character, void* dc, void* font);
-    void DrawMiniMapLayer(std::uint64_t revision, float cx, float cy, const std::function<void()>& draw);
+    static constexpr int MiniMapWidth = 240;
+    static constexpr int MiniMapHeight = 225;
+    static constexpr int WorldMapExtent = 560;
+    void DrawMiniMapLayer(
+        std::uint64_t revision, float cx, float cy, bool wholeWorld, const std::function<void()>& draw);
     void FinishOverlay();
 
     void SetOutputSize(int w, int h)
@@ -171,9 +175,16 @@ class Renderer
     GLuint m_QueueTexture = 0;
     float m_TargetWidth = 1280, m_TargetHeight = 800;
     std::array<GLuint, 2> m_GlowFbo{}, m_GlowTexture{};
-    GLuint m_MiniMapFbo = 0, m_MiniMapTexture = 0;
-    std::uint64_t m_MiniMapRevision = 0;
-    bool m_MiniMapValid = false;
+
+    struct MapLayer
+    {
+        GLuint framebuffer = 0;
+        GLuint texture = 0;
+        std::uint64_t revision = 0;
+        bool valid = false;
+    };
+
+    MapLayer m_MiniMap, m_WorldMap;
     std::vector<GLuint> m_FontPages;
     std::map<wchar_t, Glyph> m_Glyphs;
     int m_FontX = 1, m_FontY = 1, m_FontRow = 0;

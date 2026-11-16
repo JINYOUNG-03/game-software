@@ -175,9 +175,13 @@ void Renderer::FinishOverlay()
     Perf::Profiler::Get().GpuMark("overlay");
 }
 
-void Renderer::DrawMiniMapLayer(std::uint64_t revision, float cx, float cy, const std::function<void()>& draw)
+void Renderer::DrawMiniMapLayer(
+    std::uint64_t revision, float cx, float cy, bool wholeWorld, const std::function<void()>& draw)
 {
-    if (!m_MiniMapValid || revision != m_MiniMapRevision)
+    MapLayer& layer = wholeWorld ? m_WorldMap : m_MiniMap;
+    const int width = wholeWorld ? WorldMapExtent : MiniMapWidth;
+    const int height = wholeWorld ? WorldMapExtent : MiniMapHeight;
+    if (!layer.valid || revision != layer.revision)
     {
         Perf::Scope scope(Perf::Cpu::MiniMapRebuild);
         Perf::Count(Perf::Counter::MiniMapCacheMiss);
@@ -187,12 +191,12 @@ void Renderer::DrawMiniMapLayer(std::uint64_t revision, float cx, float cy, cons
         glGetIntegerv(GL_FRAMEBUFFER_BINDING, &framebuffer);
         glGetIntegerv(GL_VIEWPORT, viewport);
         float offsetX = m_OffsetX, offsetY = m_OffsetY;
-        m_OffsetX = 120 - cx;
-        m_OffsetY = 112.5f - cy;
-        m_TargetWidth = 240;
-        m_TargetHeight = 225;
-        glBindFramebuffer(GL_FRAMEBUFFER, m_MiniMapFbo);
-        glViewport(0, 0, 240, 225);
+        m_OffsetX = width * .5f - cx;
+        m_OffsetY = height * .5f - cy;
+        m_TargetWidth = float(width);
+        m_TargetHeight = float(height);
+        glBindFramebuffer(GL_FRAMEBUFFER, layer.framebuffer);
+        glViewport(0, 0, width, height);
         glClearColor(0, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
         draw();
@@ -203,15 +207,15 @@ void Renderer::DrawMiniMapLayer(std::uint64_t revision, float cx, float cy, cons
         m_OffsetY = offsetY;
         m_TargetWidth = float(m_WindowSizeX);
         m_TargetHeight = float(m_WindowSizeY);
-        m_MiniMapRevision = revision;
-        m_MiniMapValid = true;
+        layer.revision = revision;
+        layer.valid = true;
     }
     else
     {
         Perf::Count(Perf::Counter::MiniMapCacheHit);
     }
     const float color[] = {1, 1, 1, 1};
-    QueueRect(cx, cy, 240, 225, color, 11, m_MiniMapTexture);
+    QueueRect(cx, cy, float(width), float(height), color, 11, layer.texture);
 }
 
 Renderer::Glyph Renderer::CreateGlyph(wchar_t c, void* dcHandle, void* fontHandle)

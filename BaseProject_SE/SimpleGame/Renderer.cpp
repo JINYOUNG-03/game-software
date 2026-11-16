@@ -32,8 +32,10 @@ Renderer::~Renderer()
     glDeleteVertexArrays(1, &m_PostVAO);
     glDeleteFramebuffers(2, m_GlowFbo.data());
     glDeleteTextures(2, m_GlowTexture.data());
-    glDeleteFramebuffers(1, &m_MiniMapFbo);
-    glDeleteTextures(1, &m_MiniMapTexture);
+    glDeleteFramebuffers(1, &m_MiniMap.framebuffer);
+    glDeleteTextures(1, &m_MiniMap.texture);
+    glDeleteFramebuffers(1, &m_WorldMap.framebuffer);
+    glDeleteTextures(1, &m_WorldMap.texture);
     if (!m_FontPages.empty())
     {
         glDeleteTextures(GLsizei(m_FontPages.size()), m_FontPages.data());
@@ -84,7 +86,10 @@ void Renderer::Initialize(int windowSizeX, int windowSizeY)
         targetReady =
             CreateTarget(m_GlowFbo[i], m_GlowTexture[i], windowSizeX / 4, windowSizeY / 4) && targetReady;
     }
-    targetReady = CreateTarget(m_MiniMapFbo, m_MiniMapTexture, 240, 225) && targetReady;
+    targetReady =
+        CreateTarget(m_MiniMap.framebuffer, m_MiniMap.texture, MiniMapWidth, MiniMapHeight) && targetReady;
+    targetReady = CreateTarget(m_WorldMap.framebuffer, m_WorldMap.texture, WorldMapExtent, WorldMapExtent) &&
+                  targetReady;
     m_BatchLocations.screen = glGetUniformLocation(m_SolidRectShader, "u_Screen");
     m_BatchLocations.time = glGetUniformLocation(m_SolidRectShader, "u_Time");
     m_BatchLocations.texture = glGetUniformLocation(m_SolidRectShader, "u_Texture");

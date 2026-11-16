@@ -86,11 +86,26 @@ foreach ($contract in @('World::Objective()', 'World::ObjectiveTarget()', 'World
 {
     if (-not $npcSource.Contains($contract)) { throw "Missing player progression contract: $contract" }
 }
-foreach ($contract in @('const int span = worldMap ? MapSize : 64', 'renderer->TextWidth(',
+foreach ($contract in @('const int span = wholeWorld ? MapSize : 64', 'renderer->TextWidth(',
                        'ReserveWorldLabel(', 'UiPart::QuestMarker', 'worldMap = !worldMap'))
 {
     if (-not $renderSource.Contains($contract)) { throw "Missing readable UI contract: $contract" }
 }
+$mapRenderer = Get-Content -Raw (Join-Path $openWorldSourceRoot 'RendererBatch.cpp')
+foreach ($contract in @('Renderer::WorldMapExtent', 'WorldLayout::VillageCount', 'WorldLayout::VillageMarket(village)',
+                        'WorldLayout::VillageName(village)', 'frameGuide.destination.c_str()'))
+{
+    if (-not $routeMap.Contains($contract)) { throw "Missing whole-world map presentation: $contract" }
+}
+if (-not $mapRenderer.Contains('wholeWorld ? m_WorldMap : m_MiniMap') -or
+    -not $mapRenderer.Contains('glViewport(0, 0, width, height)') -or
+    -not $mapRenderer.Contains('QueueRect(cx, cy, float(width), float(height), color, 11, layer.texture)'))
+{ throw 'The large and local maps must reuse their own correctly sized terrain textures.' }
+$mapUpdate = [regex]::Match($renderSource, '(?s)if \(worldMapTogglePressed\).*?(?=elapsed \+= dt)').Value
+if (-not $mapUpdate.Contains('ClearGameplayInput()') -or -not $mapUpdate.Contains('if (worldMap)') -or
+    -not $renderSource.Contains("key == 'm' || key == 27") -or
+    -not $renderSource.Contains('UiPart::WorldMap'))
+{ throw 'The world map must be modal, dismissible by M/ESC and managed by SceneGraph.' }
 if (-not $levelSource.Contains('tile.SetVariant(4)')) { throw 'Sluice changes visuals but not shared terrain.' }
 $think = [regex]::Match($npcSource, '(?s)void World::Think\(.*?(?=bool World::RaidAllowed\()').Value
 if ($think.Contains('Position gathering') -or $think.Contains('delegated || gateOpen') -or
@@ -187,6 +202,7 @@ if ($probes -eq 0) { throw 'No visible chunk coverage samples.' }
     visible_chunk_probes = $probes; player_driven_story_contracts = $true; readable_ui_contracts = $true
     first_time_guidance_contracts = $true; npc_name_distance_tiles = [double]$nameDistance
     quest_route_reuse_and_invalidation = $true; quest_route_on_minimap = $true
+    full_world_map_with_named_villages = $true
     compact_ui_contracts = $true; ui_font_height_pixels = 15; result_panel_left_pixels = 20
     quest_panel_pixels = @(740, 88); help_panel_pixels = @(720, 360)
     game_build_performed = $false; game_execution_performed = $false
