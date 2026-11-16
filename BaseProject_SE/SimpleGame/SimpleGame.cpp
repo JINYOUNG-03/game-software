@@ -2495,6 +2495,13 @@ namespace
             harbor.PlayerAttack();
         }
         harbor.Update(dt);
+        if (firstLevel.ConsumePlayerRecovery())
+        {
+            questRoute = {};
+            ClearGameplayInput();
+            UpdatePromptActor();
+            return;
+        }
         if (keys[' '])
         {
             firstLevel.Attack();

@@ -165,6 +165,7 @@ namespace Level
         void CancelEnemyAttacksTargeting(ActorId target);
         std::vector<EnemyAttackImpact> ConsumeEnemyAttackImpacts();
         bool DamagePlayer(int damage, ActorId source = InvalidActorId);
+        bool ConsumePlayerRecovery();
         void MoveActor(Actor& actor, float dx, float dy);
         std::vector<Position> FindPath(const Position& from,
                                        const Position& to,
@@ -273,6 +274,7 @@ namespace Level
         float attackCooldown = 0;
         bool attackImpactPending = false;
         bool attackImpactReady = false;
+        bool playerRecovered = false;
         float navigationTime = 0;
         float invulnerability = 0;
         float dodgeRemaining = 0;
@@ -300,6 +302,7 @@ namespace Level
         Position ToWorld(const Position& grid) const;
         void Kill(Enemy& enemy, bool playerCredit);
         bool RespawnEnemy(Enemy& enemy);
+        void RecoverPlayer();
         void Notify(const std::wstring& text);
     };
 } // namespace Level

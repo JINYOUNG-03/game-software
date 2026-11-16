@@ -6,6 +6,7 @@ $layout = Get-Content -Raw (Join-Path $root 'WorldLayout.h')
 $world = Get-Content -Raw (Join-Path $root 'HarborWorld.cpp')
 $level = Get-Content -Raw (Join-Path $root 'LevelOne.cpp')
 $levelHeader = Get-Content -Raw (Join-Path $root 'LevelOne.h')
+$game = Get-Content -Raw (Join-Path $root 'SimpleGame.cpp')
 function Constant($source, $name)
 {
     $match = [regex]::Match($source, "\b$name\s*=\s*([.\d]+)")
@@ -77,6 +78,22 @@ foreach ($edge in @(@(0,1), @(1,2))) { $next[$edge[1]] = $next[$edge[1]] -bor $k
 if ($next[1] -ne 8 -or $next[2] -ne 0) { throw 'Rumours cascade without a later physical meeting.' }
 if ((Constant $layout 'RespawnDelaySeconds') -ne 2) { throw 'Fast respawn delay must be two seconds.' }
 
+$damage = [regex]::Match($level, '(?s)bool FirstLevel::DamagePlayer\(.*?(?=void FirstLevel::RecoverPlayer)').Value
+$recovery = [regex]::Match($level, '(?s)void FirstLevel::RecoverPlayer\(.*?(?=bool FirstLevel::ConsumePlayerRecovery)').Value
+if ($damage -notmatch 'if \(stats\.health <= 0\)\s*\{\s*RecoverPlayer\(\);' -or $damage.Contains('ToWorld(Camp)'))
+{ throw 'Lethal damage must use village recovery without changing the starting spawn.' }
+foreach ($token in @('recoveryPoint = fallenAt', 'village < WorldLayout::VillageCount',
+                     'ToWorld(WorldLayout::VillageMarket(village))', 'Distance(fallenAt, market)',
+                     'distance < closest && Walkable(market.x, market.y)', 'closest = distance',
+                     'hero.SetWorldPosition(recoveryPoint)', 'WorldLayout::VillageName(recoveryVillage)',
+                     'attackImpactPending = attackImpactReady = false', 'stats.health = stats.MaxHealth()'))
+{
+    if (-not $recovery.Contains($token)) { throw "Missing walkable village recovery behavior: $token" }
+}
+$recoveryFrame = [regex]::Match($game, '(?s)harbor\.Update\(dt\);.*?(?=firstLevel\.Attack\(\);)').Value
+if ($recoveryFrame -notmatch 'if \(firstLevel\.ConsumePlayerRecovery\(\)\)\s*\{\s*questRoute = \{\};\s*ClearGameplayInput\(\);\s*UpdatePromptActor\(\);\s*return;')
+{ throw 'Recovery must invalidate the route and discard queued actions before combat resumes.' }
+
 # All five markets must permit local trade, including merchants visiting from another home village.
 # Coordinates/radius come from production layout; these are geometry and source checks, not a C++ execution.
 $markets = $centres.Clone()
@@ -146,5 +163,6 @@ foreach ($token in @('npc.health > 0', 'npc.affinity >= -20', 'npc.threatTime <=
     village_count = $villages; resident_counts = $slots; courier_counts = $couriers
     projected_neighbour_travel_seconds = $seconds; monster_target = $monsters; respawn_delay_seconds = 2
     local_trade_markets = $markets.Count; shared_market_boundary_checks = $true
+    player_recovers_at_nearest_walkable_market = $true
     game_build_performed = $false; game_execution_performed = $false; actual_travel_measured = $false
 } | ConvertTo-Json -Depth 4

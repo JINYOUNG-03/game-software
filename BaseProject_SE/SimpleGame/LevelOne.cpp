@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <queue>
 
 namespace Level
@@ -476,6 +477,7 @@ namespace Level
         attackCooldown = 0;
         dodgeRemaining = dodgeCooldown = 0;
         enemyAttackImpacts.clear();
+        playerRecovered = false;
         invulnerability = 2;
         navigationTime = 0;
         hurtFlash = 0;
@@ -1442,18 +1444,60 @@ namespace Level
         hurtFlash = .22f;
         if (stats.health <= 0)
         {
-            CancelEnemyAttacksTargeting(Player().Id());
-            attackAnimation = 0;
-            dodgeRemaining = dodgeCooldown = 0;
-            attackImpactPending = attackImpactReady = false;
-            Player().SetWorldPosition(ToWorld(Camp));
-            stats.health = stats.MaxHealth();
-            invulnerability = 3;
-            navigationTime = 0;
-            Notify(
-                L"\ub9c8\uc744\uc5d0\uc11c \ub208\uc744 \ub5b4\ub2e4. \uc7a0\uae50 \uc228\uc744 \uace0\ub974\uc790.");
+            RecoverPlayer();
         }
         return true;
+    }
+
+    void FirstLevel::RecoverPlayer()
+    {
+        Actor& hero = Player();
+        const Position fallenAt = hero.WorldPosition();
+        Position recoveryPoint = fallenAt;
+        int recoveryVillage = -1;
+        float closest = std::numeric_limits<float>::infinity();
+        for (int village = 0; village < WorldLayout::VillageCount; ++village)
+        {
+            const Position market = ToWorld(WorldLayout::VillageMarket(village));
+            const float distance = Distance(fallenAt, market);
+            if (distance < closest && Walkable(market.x, market.y))
+            {
+                closest = distance;
+                recoveryPoint = market;
+                recoveryVillage = village;
+            }
+        }
+
+        CancelEnemyAttacksTargeting(hero.Id());
+        moving = false;
+        attackAnimation = attackCooldown = 0;
+        dodgeRemaining = dodgeCooldown = 0;
+        attackImpactPending = attackImpactReady = false;
+        hero.SetWorldPosition(recoveryPoint);
+        stats.health = stats.MaxHealth();
+        invulnerability = 3;
+        hurtFlash = cameraImpulse = 0;
+        navigationTime = 0;
+        playerRecovered = true;
+
+        if (recoveryVillage >= 0)
+        {
+            Notify(
+                std::wstring(WorldLayout::VillageName(recoveryVillage)) +
+                L" \uc7a5\ud130\uc5d0\uc11c \ub208\uc744 \ub5b4\ub2e4. \uccb4\ub825\uc744 \ud68c\ubcf5\ud588\ub2e4.");
+        }
+        else
+        {
+            Notify(
+                L"\uc4f0\ub7ec\uc84c\ub2e4\uac00 \ub2e4\uc2dc \uc77c\uc5b4\uc130\ub2e4. \uccb4\ub825\uc744 \ud68c\ubcf5\ud588\ub2e4.");
+        }
+    }
+
+    bool FirstLevel::ConsumePlayerRecovery()
+    {
+        const bool recovered = playerRecovered;
+        playerRecovered = false;
+        return recovered;
     }
 
     void FirstLevel::MoveActor(Actor& actor, float dx, float dy)

@@ -56,7 +56,10 @@ assert(/SetPose\(\s*\*enemy,\s*prefix \+ "attack"/.test(source));
 assert(source.includes('enemy->running ? "run" : ""'));
 assert(source.match(/void FirstLevel::Kill[\s\S]*?CancelEnemyAttack\(enemy\)/));
 assert(source.match(/bool FirstLevel::RespawnEnemy[\s\S]*?CancelEnemyAttack\(enemy\)/));
-assert(source.includes("CancelEnemyAttacksTargeting(Player().Id())"));
+const recovery = source.match(/void FirstLevel::RecoverPlayer[\s\S]*?(?=bool FirstLevel::ConsumePlayerRecovery)/)[0];
+assert(recovery.includes("Actor& hero = Player()") && recovery.includes("CancelEnemyAttacksTargeting(hero.Id())"));
+assert(recovery.indexOf("CancelEnemyAttacksTargeting(hero.Id())") <
+       recovery.indexOf("hero.SetWorldPosition(recoveryPoint)"));
 assert(world.includes("level.CancelEnemyAttacksTargeting(victim.Id())"));
 assert(!world.includes("Hurt(npc, 5 + beast->kind"));
 assert(world.includes("level.BeginEnemyAttack(*beast, npc.Id())"));
@@ -92,7 +95,7 @@ const dodgeCooldown = dodgeValue("DodgeCooldown");
 assert(dodgeProtection > 0 && dodgeProtection < dodgeDuration && dodgeDuration < dodgeCooldown);
 const dodgeStart = source.match(/bool FirstLevel::BeginDodge[\s\S]*?(?=void FirstLevel::MovePlayer)/)[0];
 const dodgeMove = source.match(/void FirstLevel::MovePlayer[\s\S]*?(?=bool FirstLevel::ClearLine)/)[0];
-const damagePlayer = source.match(/bool FirstLevel::DamagePlayer[\s\S]*?(?=void FirstLevel::MoveActor)/)[0];
+const damagePlayer = source.match(/bool FirstLevel::DamagePlayer[\s\S]*?(?=void FirstLevel::RecoverPlayer)/)[0];
 assert(dodgeStart.includes("!CanDodge()") && dodgeStart.includes("dodgeCooldown = DodgeCooldown"));
 assert(dodgeMove.includes("(std::min)(dt, dodgeRemaining)") && dodgeMove.includes("Move(Player(), dx, dy)"));
 assert(damagePlayer.indexOf("dodgeRemaining > DodgeDuration - DodgeProtection") <
