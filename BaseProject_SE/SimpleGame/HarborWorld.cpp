@@ -2983,24 +2983,40 @@ namespace Harbor
 
     std::vector<std::wstring> World::Journal() const
     {
+        std::vector<std::wstring> lines;
         if (!drainInspected)
         {
-            return {hideJob == HideJob::Delivered
-                        ? L"\uc758\ub8b0 \u00b7 \ubb3c\uc5d0 \uc7a0\uae34 \uace8\ubaa9"
-                        : L"\uc77c\uac10 \u00b7 \uc57d \uc0c1\uc790\ub97c \ubb36\uc744 \uac00\uc8fd",
-                    Objective(),
-                    Guide().reason,
-                    ObjectiveHint(),
-                    Status()};
+            lines = {hideJob == HideJob::Delivered
+                         ? L"\uc758\ub8b0 \u00b7 \ubb3c\uc5d0 \uc7a0\uae34 \uace8\ubaa9"
+                         : L"\uc77c\uac10 \u00b7 \uc57d \uc0c1\uc790\ub97c \ubb36\uc744 \uac00\uc8fd",
+                     Objective(),
+                     Guide().reason,
+                     ObjectiveHint(),
+                     Status()};
         }
-
-        if (copied && !returned)
+        else
         {
-            std::vector<std::wstring> lines{
-                L"\ubb3c\uae38 \uc544\ub798\uc758 \uc774\ub984\ub4e4 \u00b7 \uc99d\uc5b8 \uc77c\uc9c0",
-                Objective(),
-                ObjectiveHint(),
-                L"\uc7a5\ubd80 \ud55c \uc904 \u00b7 \ub3c4\ud558 / \uc57d \ub450 \ucca9 / \ubcf4\uc99d\uc778 \uc625\ubd84"};
+            lines = {returned ? L"\uc758\ub8b0: \uc218\ub808\uac00 \uc9c0\ub098\uac04 \uae38"
+                              : L"\uc758\ub8b0: \ubb3c\uae38 \uc544\ub798\uc758 \uc774\ub984\ub4e4",
+                     Objective(),
+                     ObjectiveHint(),
+                     L"\ub0b4 \uc120\ud0dd\uc758 \uacb0\uacfc: " + Consequence(),
+                     Status()};
+        }
+        if (returned)
+        {
+            lines.push_back(L"\uc218\uc9d1\ud55c \ub2e8\uc11c " + std::to_wstring(trailClues) + L"/" +
+                            std::to_wstring(TrailClueCount));
+            lines.push_back(Guide().reason);
+            for (size_t i = 0; i < trailClues; ++i)
+            {
+                lines.push_back(std::wstring(TrailStops[i].speaker) + L" \u00b7 " + TrailStops[i].text);
+            }
+        }
+        if (copied)
+        {
+            lines.push_back(
+                L"\uc7a5\ubd80 \ud55c \uc904 \u00b7 \ub3c4\ud558 / \uc57d \ub450 \ucca9 / \ubcf4\uc99d\uc778 \uc625\ubd84");
             for (size_t i = 0; i < std::size(LedgerAccounts); ++i)
             {
                 if (ledgerAccountsHeard[i])
@@ -3008,40 +3024,11 @@ namespace Harbor
                     lines.push_back(LedgerAccounts[i].journal);
                 }
             }
-            if (recordChoice != RecordChoice::Undecided)
-            {
-                lines.push_back(Consequence());
-            }
-            return lines;
         }
-
-        std::vector<std::wstring> lines;
-        lines.push_back(returned ? L"\uc758\ub8b0: \uc218\ub808\uac00 \uc9c0\ub098\uac04 \uae38"
-                                 : L"\uc758\ub8b0: \ubb3c\uae38 \uc544\ub798\uc758 \uc774\ub984\ub4e4");
-        lines.push_back(Objective());
-        lines.push_back(ObjectiveHint());
-        lines.push_back(L"\ub0b4 \uc120\ud0dd\uc758 \uacb0\uacfc: " + Consequence());
-        lines.push_back(Status());
-        if (returned)
+        if (!history.empty())
         {
-            lines.push_back(L"\uc218\uc9d1\ud55c \ub2e8\uc11c " + std::to_wstring(trailClues) + L"/" +
-                            std::to_wstring(TrailClueCount));
-            lines.push_back(Guide().reason);
-        }
-        lines.push_back(
-            L"\uacf5\uac1c: \uac00\uc871\ub4e4\uc774 \uc7a5\ud130\uc5d0 \ubaa8\uc778\ub2e4 / \uad00\uccad: \ud604\uc7a5 \ud1b5\uc81c / \ud310\ub9e4: \uc774\uc548\uc774 \ubd80\ub450\ub85c \uac04\ub2e4");
-        lines.push_back(
-            L"\uc218\ubb38\uc744 \uc5f4\uba74 \uc7a0\uae34 \uace8\ubaa9\uc744 \ub2e4\uc2dc \uc9c0\ub098\ub2e4\ub2d0 \uc218 \uc788\ub2e4.");
-        lines.push_back(
-            L"\uccab \uc758\ub8b0 \ubcf4\uc0c1: \uacbd\ud5d8\uce58 120 + 20\ub0e5 / \uc194\ubc14\ub78c \uac70\uc810 \ubc1c\uacac: \uacbd\ud5d8\uce58 40");
-        int shown = 0;
-        for (const auto& event : history)
-        {
-            if (shown++ == 3)
-            {
-                break;
-            }
-            lines.push_back(event);
+            lines.push_back(L"\ucd5c\uadfc \uc0ac\uac74");
+            lines.insert(lines.end(), history.begin(), history.end());
         }
         return lines;
     }

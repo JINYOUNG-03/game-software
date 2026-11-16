@@ -137,6 +137,20 @@ foreach ($contract in @('UiPart::Dialogue', 'void DrawStoryIntro()', 'introPage 
 {
     if (-not $game.Contains($contract)) { throw "Missing dialogue UI/input behavior: $contract" }
 }
+$journal = [regex]::Match($world, '(?s)World::Journal\(\) const.*?(?=void World::Log\()').Value
+foreach ($contract in @('if (copied)', 'if (ledgerAccountsHeard[i])', 'LedgerAccounts[i].journal',
+                       'i < trailClues', 'TrailStops[i].text', 'history.begin(), history.end()'))
+{
+    if (-not $journal.Contains($contract)) { throw "Missing recorded journal content: $contract" }
+}
+if ($journal.Contains('copied && !returned')) { throw 'Recorded testimony must remain readable after reporting.' }
+$journalInput = [regex]::Match($game, '(?s)if \(journalTogglePressed &&.*?(?=elapsed \+= dt)').Value
+if (-not $journalInput.Contains('BuildJournalRows()') -or
+    -not $journalInput.Contains('std::clamp(journalFirstRow + journalScrollPressed, 0, last)') -or
+    -not $game.Contains('return journalPanel || paused') -or
+    -not $game.Contains('glfwSetScrollCallback(gameWindow, WindowScroll)') -or
+    -not $game.Contains('row = journalFirstRow; row < end'))
+{ throw 'The journal must wrap on open, scroll within the recorded rows and pause world updates.' }
 foreach ($source in @($game, $world))
 {
     if ([regex]::IsMatch($source, '[^\x00-\x7f]'))
@@ -150,5 +164,6 @@ foreach ($source in @($game, $world))
     ledger_accounts = 4; ledger_disposition_requires_accounts = $true
     ledger_disclosure_requires_confirmation = $true
     trail_boards_in_order = 4; trail_notice_choices = 2
+    journal_scroll_and_recorded_evidence = $true
     game_build_performed = $false; game_execution_performed = $false
 } | ConvertTo-Json

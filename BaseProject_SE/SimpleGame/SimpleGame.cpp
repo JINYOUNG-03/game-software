@@ -36,6 +36,8 @@ namespace
     constexpr float NpcNameDistance = 2.5f;
     constexpr int UiFontHeight = 15;
     constexpr float TextLineHeight = 21;
+    constexpr int JournalVisibleRows = 17;
+    constexpr float JournalTextWidth = 938;
     constexpr float QuestPanelWidth = 740;
     constexpr float QuestPanelHeight = 88;
     constexpr float HelpPanelWidth = 720;
@@ -110,6 +112,10 @@ namespace
     bool revealPressed = false;
     bool dodgePressed = false;
     bool journalPanel = false;
+    bool journalTogglePressed = false;
+    int journalScrollPressed = 0;
+    int journalFirstRow = 0;
+    std::vector<std::wstring> journalRows;
     bool worldMap = false;
     int attributePressed = 0;
     bool statsPanel = false;
@@ -1825,6 +1831,37 @@ namespace
             .75f);
     }
 
+    void BuildJournalRows()
+    {
+        Perf::Scope scope(Perf::Cpu::Text);
+        journalRows.clear();
+        for (const auto& entry : harbor.Journal())
+        {
+            std::wstring row;
+            float width = 0;
+            for (const wchar_t character : entry)
+            {
+                const float advance =
+                    character == L'\n' ? 0 : renderer->TextAdvance(character, fontDC, fontHandle);
+                if (character == L'\n' || (!row.empty() && width + advance > JournalTextWidth))
+                {
+                    journalRows.push_back(row);
+                    row.clear();
+                    width = 0;
+                }
+                if (character != L'\n')
+                {
+                    row += character;
+                    width += advance;
+                }
+            }
+            if (!row.empty())
+            {
+                journalRows.push_back(row);
+            }
+        }
+    }
+
     void DrawJournal()
     {
         if (!journalPanel)
@@ -1832,20 +1869,30 @@ namespace
             return;
         }
         renderer->DrawSolidRect(510, 496, 980, 442, .03f, .055f, .065f, .98f);
-        float y = 305;
-        for (const auto& line : harbor.Journal())
+        DrawText(38, 305, L"\uc758\ub8b0 \uc77c\uc9c0", .97f, .86f, .59f);
+        const int rowCount = int(journalRows.size());
+        const int end = (std::min)(journalFirstRow + JournalVisibleRows, rowCount);
+        if (rowCount > JournalVisibleRows)
         {
-            int budget = (std::min)(3, int((680 - y) / TextLineHeight));
-            if (budget <= 0)
-            {
-                break;
-            }
-            y += DrawWrapped(38, y, line, 938, budget) + 5;
+            const std::wstring range = std::to_wstring(journalFirstRow + 1) + L"\u2013" +
+                                       std::to_wstring(end) + L" / " + std::to_wstring(rowCount);
+            DrawText(976 - renderer->TextWidth(range.c_str(), fontDC, fontHandle),
+                     305,
+                     range.c_str(),
+                     .8f,
+                     .83f,
+                     .72f);
+        }
+        float y = 335;
+        for (int row = journalFirstRow; row < end; ++row)
+        {
+            DrawText(38, y, journalRows[row].c_str());
+            y += TextLineHeight;
         }
         DrawText(
             38,
             705,
-            L"J \ub2eb\uae30 \u00b7 \uc9c0\ub098\uac04 \uc0ac\uac74\uacfc \ub0b4 \uc120\ud0dd\uc758 \uacb0\uacfc",
+            L"\u2191 / \u2193 \u00b7 \ub9c8\uc6b0\uc2a4 \ud720 \ub118\uae30\uae30   J / ESC \ub2eb\uae30",
             .8f,
             .83f,
             .72f);
@@ -2128,6 +2175,8 @@ namespace
         const bool tradeHeld = keys['t'], escapeHeld = keys[27];
         interactionPressed = potionPressed = tradePressed = sitePressed = revealPressed = false;
         dodgePressed = false;
+        journalTogglePressed = false;
+        journalScrollPressed = 0;
         attributePressed = 0;
         inventoryTogglePressed = inventoryClosePressed = inventoryUsePressed = inventoryClickPressed = false;
         inventoryMovePressed = 0;
@@ -2143,7 +2192,7 @@ namespace
 
     bool WorldPaused()
     {
-        return paused || helpVisible || statsPanel || harbor.Conversation().Active() ||
+        return journalPanel || paused || helpVisible || statsPanel || harbor.Conversation().Active() ||
                harbor.Trading().Active();
     }
 
@@ -2402,9 +2451,29 @@ namespace
             UpdatePromptActor();
             return;
         }
+        if (journalTogglePressed && !paused && !helpVisible)
+        {
+            journalPanel = !journalPanel;
+            if (journalPanel)
+            {
+                journalFirstRow = 0;
+                BuildJournalRows();
+            }
+            ClearGameplayInput();
+            UpdatePromptActor();
+            return;
+        }
+        if (journalPanel)
+        {
+            const int last = (std::max)(0, int(journalRows.size()) - JournalVisibleRows);
+            journalFirstRow = std::clamp(journalFirstRow + journalScrollPressed, 0, last);
+            journalScrollPressed = 0;
+            return;
+        }
         if (paused || helpVisible)
         {
             continueHelpPressed = false;
+            journalTogglePressed = false;
             interactionPressed = false;
             potionPressed = false;
             tradePressed = sitePressed = revealPressed = false;
@@ -2415,7 +2484,7 @@ namespace
         elapsed += dt;
         float sx = (keys['d'] ? 1.0f : 0) - (keys['a'] ? 1.0f : 0);
         float sy = (keys['s'] ? 1.0f : 0) - (keys['w'] ? 1.0f : 0);
-        if (tryDodge && !journalPanel)
+        if (tryDodge)
         {
             firstLevel.BeginDodge(sx, sy);
         }
@@ -2680,17 +2749,21 @@ void KeyDown(unsigned char key)
         }
         return;
     }
+    if (journalPanel)
+    {
+        if (key == 'j' || key == 27)
+        {
+            journalTogglePressed = true;
+        }
+        return;
+    }
     if (key == 27)
     {
         paused = !paused;
     }
-    else if (key == 'j')
+    else if (key == 'j' && !paused)
     {
-        journalPanel = !journalPanel;
-        if (journalPanel)
-        {
-            statsPanel = false;
-        }
+        journalTogglePressed = true;
     }
     else if (key == 'm')
     {
@@ -2704,7 +2777,7 @@ void KeyDown(unsigned char key)
             interactionTarget = prompt && prompt->IsVisible() ? prompt->ParentId() : InvalidActorId;
             interactionPressed = true;
         }
-        if (key == 't' && !journalPanel)
+        if (key == 't')
         {
             tradeInputTarget = nearbyTradeTarget;
             tradePressed = true;
@@ -2832,13 +2905,21 @@ void WindowSizeChanged(GLFWwindow*, int width, int height)
 void WindowKey(GLFWwindow*, int key, int, int action, int)
 {
     Perf::Count(Perf::Counter::WindowKeyEvents);
+    if (journalPanel && (key == GLFW_KEY_UP || key == GLFW_KEY_DOWN))
+    {
+        if (action == GLFW_PRESS || action == GLFW_REPEAT)
+        {
+            journalScrollPressed += key == GLFW_KEY_UP ? -1 : 1;
+        }
+        return;
+    }
     if (action == GLFW_REPEAT)
     {
         return;
     }
     if (key == GLFW_KEY_LEFT_SHIFT || key == GLFW_KEY_RIGHT_SHIFT)
     {
-        if (action == GLFW_PRESS && !WorldPaused() && !journalPanel)
+        if (action == GLFW_PRESS && !WorldPaused())
         {
             dodgePressed = true;
         }
@@ -2876,6 +2957,15 @@ void WindowMouse(GLFWwindow* window, int button, int action, int)
     double x = 0, y = 0;
     glfwGetCursorPos(window, &x, &y);
     InventoryMouse(button, action, x, y);
+}
+
+void WindowScroll(GLFWwindow*, double, double y)
+{
+    Perf::Count(Perf::Counter::WindowMouseEvents);
+    if (journalPanel && y != 0)
+    {
+        journalScrollPressed += y > 0 ? -3 : 3;
+    }
 }
 
 void WindowError(int code, const char* message)
@@ -2956,6 +3046,7 @@ int main()
         glfwSetFramebufferSizeCallback(gameWindow, Reshape);
         glfwSetKeyCallback(gameWindow, WindowKey);
         glfwSetMouseButtonCallback(gameWindow, WindowMouse);
+        glfwSetScrollCallback(gameWindow, WindowScroll);
         glfwSetCursorEnterCallback(gameWindow, Entry);
         glfwSetWindowFocusCallback(gameWindow, FocusChanged);
         glDisable(GL_DEPTH_TEST);
