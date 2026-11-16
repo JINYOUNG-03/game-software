@@ -102,6 +102,8 @@ namespace
     ActorId interactionTarget = InvalidActorId;
     bool potionPressed = false;
     bool tradePressed = false;
+    ActorId nearbyTradeTarget = InvalidActorId;
+    ActorId tradeInputTarget = InvalidActorId;
     bool sitePressed = false;
     ActorId nearbySiteTarget = InvalidActorId;
     ActorId siteInputTarget = InvalidActorId;
@@ -402,6 +404,15 @@ namespace
             }
         }
         nearbySiteTarget = harbor.NearbySite();
+        nearbyTradeTarget = InvalidActorId;
+        if (!paused && !helpVisible && !statsPanel && !journalPanel && !harbor.Conversation().Active() &&
+            !harbor.Trading().Active())
+        {
+            if (const Npc* trader = harbor.NearbyTrader())
+            {
+                nearbyTradeTarget = trader->Id();
+            }
+        }
         prompt->SetVisible(target != InvalidActorId && !paused && !helpVisible &&
                            !harbor.Conversation().Active());
         if (target)
@@ -1356,11 +1367,16 @@ namespace
                 renderer->DrawSolidRect(990, 583, 420, 38, .035f, .055f, .06f, .93f);
                 DrawWrapped(792, 589, harbor.InspectionLabel(nearbySiteTarget), 396, 1);
             }
+            const auto* trader = dynamic_cast<const Npc*>(firstLevel.Scene().Find(nearbyTradeTarget));
+            if (trader)
+            {
+                renderer->DrawSolidRect(990, 617, 420, 26, .035f, .055f, .06f, .93f);
+                DrawWrapped(792, 622, L"[T] " + trader->name + L" \uac70\ub798", 396, 1);
+            }
             if (Npc* npc = harbor.Nearest(2.2f))
             {
                 std::wstring info = npc->name + L" \u00b7 " + Harbor::World::ActionLabel(npc->action) +
-                                    L"  [E \ub300\ud654 / T \uac70\ub798]  \uccb4\ub825 " +
-                                    std::to_wstring(npc->health);
+                                    L"  \uccb4\ub825 " + std::to_wstring(npc->health);
                 DrawWrapped(35, 603, info, 710, 1);
             }
             if (firstLevel.messageTime > 0)
@@ -2428,7 +2444,7 @@ namespace
         }
         if (tradePressed)
         {
-            harbor.Trade();
+            harbor.Trade(tradeInputTarget);
             tradePressed = false;
             if (harbor.Trading().Active())
             {
@@ -2688,8 +2704,9 @@ void KeyDown(unsigned char key)
             interactionTarget = prompt && prompt->IsVisible() ? prompt->ParentId() : InvalidActorId;
             interactionPressed = true;
         }
-        if (key == 't')
+        if (key == 't' && !journalPanel)
         {
+            tradeInputTarget = nearbyTradeTarget;
             tradePressed = true;
         }
         if (key == 'f')

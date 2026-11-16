@@ -8,6 +8,8 @@ namespace Harbor
 {
     namespace
     {
+        constexpr float TradeDistance = 1.5f;
+
         bool IsShopkeeper(const Npc& npc)
         {
             return npc.job == Job::Merchant || npc.job == Job::Broker;
@@ -17,23 +19,60 @@ namespace Harbor
     bool World::CanTradeWith(const Npc& npc) const
     {
         const Position hero = level.Player().WorldPosition(), partner = npc.WorldPosition();
-        return npc.IsActive() && npc.health > 0 && npc.affinity >= -20 && npc.threatTime <= 0 &&
-               npc.attackTime < 0 && std::hypot(hero.x - partner.x, hero.y - partner.y) < 1.5f &&
+        return npc.IsActive() && npc.IsVisible() && npc.health > 0 && npc.affinity >= -20 &&
+               npc.threatTime <= 0 && npc.attackTime < 0 &&
+               std::hypot(hero.x - partner.x, hero.y - partner.y) < TradeDistance &&
+               (IsShopkeeper(npc) || npc.job == Job::Resident || HasLedgerSaleOffer(npc) ||
+                HasKeyHandoffOffer(npc)) &&
                level.ClearLine(hero, partner) && WorldLayout::ShareMarket(hero, partner);
     }
 
-    void World::Trade()
+    bool World::HasLedgerSaleOffer(const Npc& npc) const
+    {
+        return Holder(ledger) == level.Player().Id() && (npc.variant == 2 || npc.variant == 3) &&
+               recordChoice == RecordChoice::Undecided;
+    }
+
+    bool World::HasKeyHandoffOffer(const Npc& npc) const
+    {
+        return Holder(key) == level.Player().Id() && (npc.job == Job::Engineer || npc.job == Job::Apprentice);
+    }
+
+    const Npc* World::NearbyTrader() const
+    {
+        const Position hero = level.Player().WorldPosition();
+        if (WorldLayout::MarketAt(hero) < 0)
+        {
+            return nullptr;
+        }
+
+        const Npc* result = nullptr;
+        float closest = TradeDistance;
+        for (const Npc* npc : level.Scene().Actors<Npc>(ActorKind::Npc))
+        {
+            const Position partner = npc->WorldPosition();
+            const float distance = std::hypot(hero.x - partner.x, hero.y - partner.y);
+            if (distance < closest && CanTradeWith(*npc))
+            {
+                result = npc;
+                closest = distance;
+            }
+        }
+        return result;
+    }
+
+    void World::Trade(ActorId target)
     {
         Perf::Scope scope(Perf::Cpu::NpcTrade);
         if (trade.Active() || dialogue.Active())
         {
             return;
         }
-        Npc* npc = Nearest();
+        const auto* npc = dynamic_cast<const Npc*>(level.Scene().Find(target));
         if (!npc || !CanTradeWith(*npc))
         {
             Event(
-                L"\uac70\ub798\ud558\ub824\uba74 \uc7a5\ud130\uc5d0 \uc788\ub294 \uc8fc\ubbfc\uc5d0\uac8c \uac00\uae4c\uc774 \ub2e4\uac00\uac00\uc790. \uc801\ub300\uc801\uc774\uac70\ub098 \uc2f8\uc6b0\ub294 \uc911\uc778 \uc0c1\ub300\uc640\ub294 \uac70\ub798\ud560 \uc218 \uc5c6\ub2e4.");
+                L"\uc7a5\ud130\uc5d0\uc11c \uac70\ub798\ud560 \uc0ac\ub78c\uc5d0\uac8c \uac00\uae4c\uc774 \uac00\uc790.");
             return;
         }
         trade.partner = npc->Id();
@@ -116,8 +155,7 @@ namespace Harbor
                 (std::min)(1, TransferLimit(stats.coins, 1, 50, 0, npc->coins)),
                 L"\uc7a5\ubd80\ub97c \ub418\uc0b4 \ub3c8\uc774\ub098 \uac70\ub798\ud560 \uc5ec\uc720\uac00 \ubd80\uc871\ud558\ub2e4.");
         }
-        if (Holder(ledger) == level.Player().Id() && (npc->variant == 2 || npc->variant == 3) &&
-            recordChoice == RecordChoice::Undecided)
+        if (HasLedgerSaleOffer(*npc))
         {
             const bool authority = npc->job == Job::Guard;
             const int price = authority ? 30 : 40;
@@ -137,7 +175,7 @@ namespace Harbor
                     ? L"\uae08\ube5b \ud45c\uc2dc\ub97c \ub530\ub77c \uc7a5\ubd80\uc5d0 \uc5bd\ud78c \ub124 \uc0ac\ub78c\uc758 \uc0ac\uc815\uc744 \uba3c\uc800 \ub4e3\uc790."
                     : L"\uc0c1\ub300\uc758 \ub3c8\uc774\ub098 \uac70\ub798\ud560 \uc5ec\uc720\uac00 \ubd80\uc871\ud558\ub2e4.");
         }
-        if (Holder(key) == level.Player().Id() && (npc->job == Job::Engineer || npc->job == Job::Apprentice))
+        if (HasKeyHandoffOffer(*npc))
         {
             add(TradeAction::GiveKey,
                 L"\uc218\ubb38 \uc5f4\uc1e0 \ub9e1\uae30\uae30",

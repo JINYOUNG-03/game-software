@@ -9,7 +9,9 @@ const trade = read("HarborTrade.cpp"), game = read("SimpleGame.cpp"), header = r
 const layout = read("TradePresentation.h");
 const section = (source, begin, end) =>
     source.slice(source.indexOf(begin), source.indexOf(end, source.indexOf(begin)));
-const open = section(trade, "void World::Trade()", "void World::EndTrade()");
+const nearby = section(trade, "const Npc* World::NearbyTrader()", "void World::Trade(");
+const open = section(trade, "void World::Trade(ActorId target)", "void World::EndTrade()");
+const eligibility = section(trade, "bool World::CanTradeWith(", "bool World::HasLedgerSaleOffer(");
 const close = section(trade, "void World::EndTrade()", "std::vector<TradeOffer>");
 const offers = section(trade, "std::vector<TradeOffer>", "bool World::ExecuteTrade");
 const commit = trade.slice(trade.indexOf("bool World::ExecuteTrade"));
@@ -20,6 +22,18 @@ for (const source of [open, close, offers])
            "Browsing/closing must not perform a transaction");
 }
 assert(open.includes("trade.partner = npc->Id()"));
+assert(open.includes("Find(target)") && open.includes("!CanTradeWith(*npc)") && !open.includes("Nearest("),
+       "Opening the shop must revalidate the advertised partner without choosing a substitute");
+assert(nearby.includes("distance < closest && CanTradeWith(*npc)") && nearby.includes("closest = distance"));
+for (const offer of ["IsShopkeeper(npc)", "npc.job == Job::Resident", "HasLedgerSaleOffer(npc)",
+                     "HasKeyHandoffOffer(npc)"])
+    assert(eligibility.includes(offer), "Only NPCs with trade offers can be selected");
+assert(eligibility.includes("npc.IsVisible()"));
+assert(game.includes("nearbyTradeTarget = trader->Id()") &&
+       game.includes("Find(nearbyTradeTarget)") &&
+       game.includes("tradeInputTarget = nearbyTradeTarget") &&
+       game.includes("harbor.Trade(tradeInputTarget)"),
+       "The HUD and T input must use the same trader");
 assert(commit.includes("Find(trade.partner)") && !commit.includes("Nearest("), "Keep the original partner");
 assert(commit.indexOf("!CanTradeWith(*npc)") < commit.indexOf("stats.coins -= total"));
 assert(commit.indexOf("const auto offers = TradeOffers()") < commit.indexOf("stats.coins -= total"));
@@ -31,7 +45,7 @@ for (const condition
              "WorldLayout::ShareMarket(hero, partner)", "recordChoice == RecordChoice::Undecided",
              "Holder(key) == level.Player().Id()"])
     assert(trade.includes(condition), condition);
-const ledgerOffer = section(offers, "const bool authority", "if (Holder(key)");
+const ledgerOffer = section(offers, "const bool authority", "if (HasKeyHandoffOffer(*npc))");
 assert(ledgerOffer.includes("const bool ready = copied && ledgerAccountsHeard.all()") &&
        /ready\s*\?\s*\(std::min\)/.test(ledgerOffer) && ledgerOffer.includes(": 0,"),
        "The ledger offer must stay unavailable until all four accounts are recorded");
@@ -146,6 +160,7 @@ console.log(JSON.stringify({
     browse_without_mutation : true,
     explicit_purchase_with_hides : true,
     story_confirmation : true,
+    displayed_partner_revalidated_on_open : true,
     fixed_partner_revalidated : true,
     game_build_performed : false,
     game_execution_performed : false

@@ -135,8 +135,8 @@ if (-not $playerTrade.Contains('WorldLayout::ShareMarket(hero, partner)') -or
     -not $npcStep.Contains('WorldLayout::ShareMarket(npc.WorldPosition(), merchant->WorldPosition())') -or
     $playerTrade.Contains('Site(2)') -or $npcStep.Contains('Distance(merchant->WorldPosition(), Site(2))'))
 { throw 'Player, NPC hide trade and NPC food purchases must share the five-market policy.' }
-foreach ($token in @('npc.health > 0', 'npc.affinity >= -20', 'npc.threatTime <= 0', 'Npc* npc = Nearest()',
-                     'npc->variant == 2 || npc->variant == 3', 'recordChoice == RecordChoice::Undecided',
+foreach ($token in @('npc.health > 0', 'npc.affinity >= -20', 'npc.threatTime <= 0',
+                     'npc.variant == 2 || npc.variant == 3', 'recordChoice == RecordChoice::Undecided',
                      'TransferLimit(npc->coins, stats.hides, 6', 'TransferLimit(stats.coins, npc->food, 8'))
 {
     if (-not $playerTrade.Contains($token)) { throw "Trade safeguard/story condition missing: $token" }

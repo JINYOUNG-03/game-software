@@ -211,7 +211,8 @@ namespace Harbor
             return dialogue;
         }
 
-        void Trade();
+        const Npc* NearbyTrader() const;
+        void Trade(ActorId target);
         void EndTrade();
         bool ExecuteTrade(TradeAction action, int quantity);
         std::vector<TradeOffer> TradeOffers() const;
@@ -311,6 +312,8 @@ namespace Harbor
         TradeSession trade;
 
         bool CanTradeWith(const Npc& npc) const;
+        bool HasLedgerSaleOffer(const Npc& npc) const;
+        bool HasKeyHandoffOffer(const Npc& npc) const;
         bool CanInspect(ActorId target) const;
 
         Level::Position Site(int index) const;
