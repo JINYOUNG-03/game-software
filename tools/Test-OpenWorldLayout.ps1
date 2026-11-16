@@ -56,20 +56,20 @@ if (-not $npcSource.Contains('npc.job != Job::Raider && IsMerchant(*candidate)')
 { throw 'Raider village trade exclusion missing.' }
 if (-not $renderSource.Contains('firstLevel.MapRevision()')) { throw 'Minimap depends on visible terrain.' }
 if (-not $levelSource.Contains('std::priority_queue<Visit>')) { throw 'A* navigation contract missing.' }
-$routeUpdate = [regex]::Match($renderSource, '(?s)void UpdateQuestRoute\(.*?(?=void RenderMiniMap\()').Value
+$routeUpdate = [regex]::Match($renderSource, '(?s)void UpdateNavigationRoute\(.*?(?=struct VillageMapLabel)').Value
 $routeMap = [regex]::Match($renderSource, '(?s)void RenderMiniMap\(.*?(?=float DrawWrapped\()').Value
-$routeHint = [regex]::Match($renderSource, '(?s)std::wstring TravelHint\(.*?(?=void DrawQuestTracker\()').Value
-foreach ($contract in @('route.target != goal->Id() || route.revision != revision', 'frameGuide.ready',
-                       'SameRouteTile(destination, route.destination)', 'FollowQuestRoute(player)',
+$routeHint = [regex]::Match($renderSource, '(?s)std::wstring RouteDirections\(.*?(?=void DrawQuestTracker\()').Value
+foreach ($contract in @('route.target != target || route.revision != revision', 'frameGuide.ready',
+                       'SameRouteTile(destination, route.destination)', 'FollowRoute(player)',
                        'route.refreshIn > 0', 'firstLevel.FindPath(player, destination, Level::PathPurpose::Quest)'))
 {
     if (-not $routeUpdate.Contains($contract)) { throw "Missing route refresh/reuse condition: $contract" }
 }
-if (-not $routeHint.Contains('questRoute.points[questRoute.waypoint]') -or
+if (-not $routeHint.Contains('navigationRoute.points[navigationRoute.waypoint]') -or
     -not $routeMap.Contains('QuestRouteDots') -or
-    $routeMap.IndexOf('DrawMiniMapLayer(') -ge $routeMap.IndexOf('if (questRoute.visible)') -or
+    $routeMap.IndexOf('DrawMiniMapLayer(') -ge $routeMap.IndexOf('if (navigationRoute.visible)') -or
     $routeMap.Contains('FindPath(') -or
-    -not $renderSource.Contains('UpdateQuestRoute((std::min)(dt, .05f))'))
+    -not $renderSource.Contains('UpdateNavigationRoute((std::min)(dt, .05f))'))
 { throw 'The next direction and live route dots must use the updated path outside the terrain cache.' }
 if (-not $levelSource.Contains('Perf::Counter::QuestRouteCells : Perf::Counter::NpcPathCells') -or
     -not $levelSource.Contains('if (!Open(x, y))'))
@@ -106,6 +106,19 @@ if (-not $mapUpdate.Contains('ClearGameplayInput()') -or -not $mapUpdate.Contain
     -not $renderSource.Contains("key == 'm' || key == 27") -or
     -not $renderSource.Contains('UiPart::WorldMap'))
 { throw 'The world map must be modal, dismissible by M/ESC and managed by SceneGraph.' }
+$mapClick = [regex]::Match($renderSource, '(?s)void UpdateWorldMapInput\(.*?(?=void UpdateCheckpoint\()').Value
+if (-not $mapUpdate.Contains('UpdateWorldMapInput()') -or
+    -not $renderSource.Contains('worldMapClickX = float(x) * ScreenWidth') -or
+    -not $renderSource.Contains('worldMapClickY = float(y) * ScreenHeight') -or
+    -not $mapClick.Contains('worldMapClickX - origin.x') -or
+    -not $mapClick.Contains('worldMapClickY - origin.y') -or
+    -not $mapClick.Contains('VillageLabel(village)') -or -not $routeMap.Contains('VillageLabel(village)') -or
+    -not $mapClick.Contains('if (onLabel || onMarker)') -or -not $mapClick.Contains('SetWaypointVillage(village)') -or
+    -not $mapClick.Contains('SetWaypointVillage(-1)') -or
+    -not $routeUpdate.Contains('SetWaypointVillage(-1)') -or
+    -not $routeUpdate.Contains('personal ? WorldLayout::VillageMarket(waypointVillage)') -or
+    -not $routeMap.Contains('Find(frameGuide.target)'))
+{ throw 'Map clicks must match the drawn village, set or clear the walking route and keep the quest marker.' }
 if (-not $levelSource.Contains('tile.SetVariant(4)')) { throw 'Sluice changes visuals but not shared terrain.' }
 $think = [regex]::Match($npcSource, '(?s)void World::Think\(.*?(?=bool World::RaidAllowed\()').Value
 if ($think.Contains('Position gathering') -or $think.Contains('delegated || gateOpen') -or
@@ -203,6 +216,7 @@ if ($probes -eq 0) { throw 'No visible chunk coverage samples.' }
     first_time_guidance_contracts = $true; npc_name_distance_tiles = [double]$nameDistance
     quest_route_reuse_and_invalidation = $true; quest_route_on_minimap = $true
     full_world_map_with_named_villages = $true
+    personal_village_waypoint = $true
     compact_ui_contracts = $true; ui_font_height_pixels = 15; result_panel_left_pixels = 20
     quest_panel_pixels = @(740, 88); help_panel_pixels = @(720, 360)
     game_build_performed = $false; game_execution_performed = $false

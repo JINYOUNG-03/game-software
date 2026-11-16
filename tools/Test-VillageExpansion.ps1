@@ -91,7 +91,7 @@ foreach ($token in @('recoveryPoint = fallenAt', 'village < WorldLayout::Village
     if (-not $recovery.Contains($token)) { throw "Missing walkable village recovery behavior: $token" }
 }
 $recoveryFrame = [regex]::Match($game, '(?s)harbor\.Update\(dt\);.*?(?=firstLevel\.Attack\(\);)').Value
-if ($recoveryFrame -notmatch 'if \(firstLevel\.ConsumePlayerRecovery\(\)\)\s*\{\s*questRoute = \{\};\s*ClearGameplayInput\(\);\s*UpdatePromptActor\(\);\s*return;')
+if ($recoveryFrame -notmatch 'if \(firstLevel\.ConsumePlayerRecovery\(\)\)\s*\{\s*navigationRoute = \{\};\s*ClearGameplayInput\(\);\s*UpdatePromptActor\(\);\s*return;')
 { throw 'Recovery must invalidate the route and discard queued actions before combat resumes.' }
 
 # All five markets must permit local trade, including merchants visiting from another home village.

@@ -42,6 +42,13 @@ namespace
     constexpr float QuestPanelHeight = 88;
     constexpr float HelpPanelWidth = 720;
     constexpr float HelpPanelHeight = 360;
+    constexpr float WorldMapCenterX = 478;
+    constexpr float WorldMapCenterY = 408;
+    constexpr float VillageLabelHeight = 22;
+    constexpr float ClearWaypointX = 920;
+    constexpr float ClearWaypointY = 617;
+    constexpr float ClearWaypointWidth = 250;
+    constexpr float ClearWaypointHeight = 32;
     constexpr wchar_t SaveShortcutHint[] = L"F5 \uc800\uc7a5 \u00b7 F9 \uc774\uc5b4\ud558\uae30";
     using Vec3 = Level::Position;
 
@@ -68,6 +75,7 @@ namespace
     ActorId questMarkerId = InvalidActorId;
     ActorId inventoryPanelId = InvalidActorId;
     ActorId tradePanelId = InvalidActorId;
+    ActorId worldMapPanelId = InvalidActorId;
     float uiOriginX = 0;
     float uiOriginY = 0;
 
@@ -81,7 +89,7 @@ namespace
     ActorId huntHintTarget = InvalidActorId;
     bool huntHintIsHide = false;
 
-    struct QuestRoute
+    struct NavigationRoute
     {
         ActorId target = InvalidActorId;
         std::uint64_t revision = 0;
@@ -93,7 +101,8 @@ namespace
         bool visible = false;
     };
 
-    QuestRoute questRoute;
+    NavigationRoute navigationRoute;
+    int waypointVillage = -1;
 
     Vec3 PlayerPosition()
     {
@@ -119,6 +128,9 @@ namespace
     std::vector<std::wstring> journalRows;
     bool worldMap = false;
     bool worldMapTogglePressed = false;
+    bool worldMapClickPressed = false;
+    float worldMapClickX = 0;
+    float worldMapClickY = 0;
     int attributePressed = 0;
     bool statsPanel = false;
     bool inventoryTogglePressed = false;
@@ -338,6 +350,10 @@ namespace
             if (part == UiPart::Trade)
             {
                 tradePanelId = ui.Id();
+            }
+            if (part == UiPart::WorldMap)
+            {
+                worldMapPanelId = ui.Id();
             }
             ui.drawable = true;
             ui.pass = ScenePass::Overlay;
@@ -757,9 +773,9 @@ namespace
         return std::floor(first.x) == std::floor(second.x) && std::floor(first.y) == std::floor(second.y);
     }
 
-    bool FollowQuestRoute(const Vec3& player)
+    bool FollowRoute(const Vec3& player)
     {
-        auto& route = questRoute;
+        auto& route = navigationRoute;
         if (route.waypoint + 1 < route.points.size() &&
             Distance2D(player, route.points[route.waypoint]) < .30f)
         {
@@ -781,6 +797,15 @@ namespace
             }
         }
         return false;
+    }
+
+    void SetWaypointVillage(int village)
+    {
+        if (waypointVillage != village)
+        {
+            waypointVillage = village;
+            navigationRoute = {};
+        }
     }
 
     void UpdateHuntHint()
@@ -827,27 +852,40 @@ namespace
         }
     }
 
-    void UpdateQuestRoute(float dt)
+    void UpdateNavigationRoute(float dt)
     {
         frameGuide = harbor.Guide();
         UpdateHuntHint();
-        auto& route = questRoute;
+        const Vec3 player = PlayerPosition();
+        if (waypointVillage >= 0 && !worldMap)
+        {
+            const Vec3 market = WorldLayout::VillageMarket(waypointVillage);
+            if (Distance2D(player, market) < 1.5f && firstLevel.ClearLine(player, market))
+            {
+                SetWaypointVillage(-1);
+            }
+        }
+
+        auto& route = navigationRoute;
         route.visible = false;
         route.refreshIn = (std::max)(0.0f, route.refreshIn - dt);
         const Actor* goal = firstLevel.Scene().Find(frameGuide.target);
-        if (!goal || frameGuide.ready || introVisible)
+        const bool personal = waypointVillage >= 0;
+        if (introVisible || (!personal && (!goal || frameGuide.ready)))
         {
             route.target = InvalidActorId;
             route.points.clear();
             return;
         }
 
-        const Vec3 player = PlayerPosition(), destination = goal->WorldPosition();
+        const Vec3 destination =
+            personal ? WorldLayout::VillageMarket(waypointVillage) : goal->WorldPosition();
+        const ActorId target = personal ? InvalidActorId : goal->Id();
         const auto revision = firstLevel.MapRevision();
-        const bool changed = route.target != goal->Id() || route.revision != revision;
+        const bool changed = route.target != target || route.revision != revision;
         if (!changed && SameRouteTile(destination, route.destination))
         {
-            if (!route.points.empty() && FollowQuestRoute(player))
+            if (!route.points.empty() && FollowRoute(player))
             {
                 route.visible = true;
                 Perf::Count(Perf::Counter::QuestRouteReused);
@@ -863,7 +901,7 @@ namespace
             return;
         }
 
-        route.target = goal->Id();
+        route.target = target;
         route.revision = revision;
         route.start = player;
         route.destination = destination;
@@ -874,7 +912,7 @@ namespace
         route.visible = !route.points.empty();
         if (route.visible)
         {
-            FollowQuestRoute(player);
+            FollowRoute(player);
         }
         else
         {
@@ -882,10 +920,34 @@ namespace
         }
     }
 
+    struct VillageMapLabel
+    {
+        float markerX;
+        float markerY;
+        float x;
+        float y;
+        float width;
+    };
+
+    VillageMapLabel VillageLabel(int village)
+    {
+        constexpr float extent = Renderer::WorldMapExtent;
+        constexpr float left = WorldMapCenterX - extent * .5f;
+        constexpr float top = WorldMapCenterY - extent * .5f;
+        constexpr float scale = extent / MapSize;
+        const Vec3 market = WorldLayout::VillageMarket(village);
+        const float markerX = left + market.x * scale;
+        const float markerY = top + market.y * scale;
+        const float width = renderer->TextWidth(WorldLayout::VillageName(village), fontDC, fontHandle) + 14;
+        const float x = std::clamp(markerX, left + width * .5f + 1, left + extent - width * .5f - 1);
+        const float y = (std::max)(top + 15, markerY - 24);
+        return {markerX, markerY, x, y, width};
+    }
+
     void RenderMiniMap(bool wholeWorld)
     {
         Perf::Scope scope(Perf::Cpu::MiniMap);
-        const float cx = wholeWorld ? 478 : 1150, cy = wholeWorld ? 408 : 163;
+        const float cx = wholeWorld ? WorldMapCenterX : 1150, cy = wholeWorld ? WorldMapCenterY : 163;
         const float extent = wholeWorld ? Renderer::WorldMapExtent : 208;
         const int span = wholeWorld ? MapSize : 64;
         const int originX =
@@ -898,6 +960,7 @@ namespace
                 : (std::max)(0, (std::min)(MapSize - span, int(PlayerPosition().y) / 8 * 8 - span / 2));
         const float scale = extent / static_cast<float>(span);
         const float left = cx - extent * .5f, top = cy - extent * .5f;
+        const bool personal = waypointVillage >= 0;
         renderer->SetMaterial(0);
         if (wholeWorld)
         {
@@ -957,18 +1020,18 @@ namespace
                                            }
                                        }
                                    });
-        if (questRoute.visible)
+        if (navigationRoute.visible)
         {
-            const auto& points = questRoute.points;
+            const auto& points = navigationRoute.points;
             const size_t stride = wholeWorld ? 4 : 1;
             const float size = wholeWorld ? 3.5f : 3.0f;
             const float radius = size * .5f;
-            for (size_t i = questRoute.waypoint; i < points.size(); ++i)
+            for (size_t i = navigationRoute.waypoint; i < points.size(); ++i)
             {
                 const auto& p = points[i];
                 const bool corner = i > 0 && i + 1 < points.size() && points[i - 1].x != points[i + 1].x &&
                                     points[i - 1].y != points[i + 1].y;
-                if (i % stride != 0 && i != questRoute.waypoint && !corner)
+                if (i % stride != 0 && i != navigationRoute.waypoint && !corner)
                 {
                     continue;
                 }
@@ -977,7 +1040,8 @@ namespace
                 if (x >= left + radius && x <= left + extent - radius && y >= top + radius &&
                     y <= top + extent - radius)
                 {
-                    renderer->DrawEllipse(x, y, size, size, .14f, .90f, 1, 1);
+                    renderer->DrawEllipse(
+                        x, y, size, size, personal ? .83f : .14f, personal ? .55f : .90f, 1, 1);
                     Perf::Count(Perf::Counter::QuestRouteDots);
                 }
             }
@@ -1018,13 +1082,18 @@ namespace
             {
                 const Vec3 market = WorldLayout::VillageMarket(village);
                 const wchar_t* name = WorldLayout::VillageName(village);
-                const float x = left + market.x * scale, y = top + market.y * scale;
-                const float width = renderer->TextWidth(name, fontDC, fontHandle);
-                const float labelX = std::clamp(x, left + width * .5f + 8, left + extent - width * .5f - 8);
-                const float labelY = (std::max)(top + 15, y - 24);
-                marker(market, .73f, .56f, .32f, 8, false);
-                renderer->DrawSolidRect(labelX, labelY, width + 14, 22, .04f, .06f, .07f, .96f);
-                DrawText(labelX - width * .5f, labelY + 5, name);
+                const VillageMapLabel label = VillageLabel(village);
+                const bool selected = village == waypointVillage;
+                marker(market, selected ? .83f : .73f, .56f, selected ? 1 : .32f, 8, false);
+                renderer->DrawSolidRect(label.x,
+                                        label.y,
+                                        label.width,
+                                        VillageLabelHeight,
+                                        selected ? .25f : .04f,
+                                        .06f,
+                                        selected ? .32f : .07f,
+                                        .96f);
+                DrawText(label.x - label.width * .5f + 7, label.y + 5, name);
             }
         }
         else
@@ -1049,6 +1118,10 @@ namespace
         {
             marker(goal->WorldPosition(), 1, .85f, .15f, 8 + std::sin(elapsed * 4), true);
         }
+        if (personal && !wholeWorld)
+        {
+            marker(WorldLayout::VillageMarket(waypointVillage), .83f, .55f, 1, 7, true);
+        }
         if (const Actor* hunt = wholeWorld ? nullptr : firstLevel.Scene().Find(huntHintTarget))
         {
             marker(hunt->WorldPosition(), .57f, 1, .72f, 5, false);
@@ -1058,13 +1131,38 @@ namespace
         if (wholeWorld)
         {
             DrawText(795, 157, L"\uc804\uccb4 \uc9c0\ub3c4", .97f, .89f, .67f);
-            DrawText(795, 213, L"\ud604\uc7ac \ubaa9\uc801\uc9c0", .78f, .81f, .76f);
+            DrawText(795, 213, L"\uc758\ub8b0 \ubaa9\uc801\uc9c0", .78f, .81f, .76f);
             DrawText(795, 242, frameGuide.destination.c_str());
             DrawText(795, 319, L"\ud770\uc0c9 \u00b7 \ub098\uc758 \uc704\uce58", 1, 1, 1);
             DrawText(795, 346, L"\uae08\ube5b \u00b7 \uc758\ub8b0 \ubaa9\ud45c", 1, .85f, .45f);
-            DrawText(795, 373, L"\ud558\ub298\uc0c9 \u00b7 \uac78\uc5b4\uac08 \uae38", .54f, .91f, 1);
+            DrawText(795,
+                     373,
+                     personal ? L"\ubcf4\ub77c\uc0c9 \u00b7 \ub0b4\uac00 \uace0\ub978 \uae38"
+                              : L"\ud558\ub298\uc0c9 \u00b7 \uc758\ub8b0\ub85c \uac00\ub294 \uae38",
+                     personal ? .83f : .54f,
+                     personal ? .55f : .91f,
+                     1);
             DrawText(
                 795, 400, L"\ubd89\uc740\uc0c9 \u00b7 \uc57d\ud0c8\uc790 \uc57c\uc601\uc9c0", 1, .53f, .44f);
+            DrawText(795,
+                     471,
+                     L"\ub9c8\uc744\uc744 \ub20c\ub7ec \uae38 \ud45c\uc2dc\ud558\uae30",
+                     .91f,
+                     .86f,
+                     .72f);
+            if (personal)
+            {
+                DrawText(795, 501, WorldLayout::VillageName(waypointVillage), .89f, .69f, 1);
+                renderer->DrawSolidRect(ClearWaypointX,
+                                        ClearWaypointY,
+                                        ClearWaypointWidth,
+                                        ClearWaypointHeight,
+                                        .25f,
+                                        .15f,
+                                        .33f,
+                                        1);
+                DrawText(808, 623, L"\ub0b4 \uae38 \ud45c\uc2dc \uc9c0\uc6b0\uae30", .96f, .87f, 1);
+            }
             DrawText(795, 681, L"M / ESC \ub2eb\uae30", .78f, .81f, .76f);
             return;
         }
@@ -1075,8 +1173,9 @@ namespace
                  313,
                  huntHintTarget
                      ? L"\uc5f0\ub450\uc0c9 \ud45c\uc2dd \u00b7 \uc0ac\uc2b4 \ub610\ub294 \uac00\uc8fd"
-                 : questRoute.visible ? L"\ud558\ub298\uc0c9 \uc810 \u00b7 \uac78\uc5b4\uac08 \uae38"
-                                      : L"\uc804\uccb4 \uc6d4\ub4dc \uc911 \uc77c\ubd80",
+                 : personal ? L"\ubcf4\ub77c\uc0c9 \uc810 \u00b7 \ub0b4\uac00 \uace0\ub978 \uae38"
+                 : navigationRoute.visible ? L"\ud558\ub298\uc0c9 \uc810 \u00b7 \uac78\uc5b4\uac08 \uae38"
+                                           : L"\uc804\uccb4 \uc6d4\ub4dc \uc911 \uc77c\ubd80",
                  .83f,
                  .87f,
                  .71f);
@@ -1127,6 +1226,33 @@ namespace
         return float(lines) * TextLineHeight;
     }
 
+    std::wstring RouteDirections()
+    {
+        const Vec3 player = PlayerPosition();
+        const Vec3& next = navigationRoute.points[navigationRoute.waypoint];
+        const float dx = ((next.x - player.x) - (next.y - player.y)) * TileWidth * .5f;
+        const float dy = ((next.x - player.x) + (next.y - player.y)) * TileHeight * .5f;
+        std::wstring direction;
+        if (std::abs(dx) > std::abs(dy) * 2)
+        {
+            direction = dx < 0 ? L"A \uc67c\ucabd" : L"D \uc624\ub978\ucabd";
+        }
+        else if (std::abs(dy) > std::abs(dx) * 2)
+        {
+            direction = dy < 0 ? L"W \uc704\ucabd" : L"S \uc544\ub798\ucabd";
+        }
+        else
+        {
+            direction =
+                dy < 0 ? (dx < 0 ? L"W+A \uc67c\ucabd \uc704" : L"W+D \uc624\ub978\ucabd \uc704")
+                       : (dx < 0 ? L"S+A \uc67c\ucabd \uc544\ub798" : L"S+D \uc624\ub978\ucabd \uc544\ub798");
+        }
+        const float remaining =
+            Distance2D(player, next) + float(navigationRoute.points.size() - 1 - navigationRoute.waypoint);
+        return L"\ub2e4\uc74c \ubc29\ud5a5 " + direction + L" \u00b7 \ub0a8\uc740 \uae38 \uc57d " +
+               std::to_wstring(int(std::ceil(remaining))) + L"\ud0c0\uc77c";
+    }
+
     std::wstring TravelHint(const Harbor::ObjectiveGuide& guide)
     {
         const Actor* target = firstLevel.Scene().Find(guide.target);
@@ -1159,33 +1285,24 @@ namespace
             }
             return L"\uc870\uae08\ub9cc \ub354 \uac00\uae4c\uc774 \uac00\uc790. " + guide.action;
         }
-        if (!questRoute.visible)
+        if (waypointVillage >= 0)
+        {
+            return L"M\uc5d0\uc11c \ub0b4 \uae38 \ud45c\uc2dc\ub97c \uc9c0\uc6b0\uba74 \uc758\ub8b0 \uae38\uc774 \ub2e4\uc2dc \ubcf4\uc778\ub2e4.";
+        }
+        if (!navigationRoute.visible)
         {
             return L"M\uc73c\ub85c \uc9c0\ub3c4\ub97c \ubcf4\uace0 \ud070\uae38 \ucabd\uc73c\ub85c \uc6c0\uc9c1\uc5ec \ubcf4\uc790.";
         }
-        const Vec3& next = questRoute.points[questRoute.waypoint];
-        const float dx = ((next.x - player.x) - (next.y - player.y)) * TileWidth * .5f;
-        const float dy = ((next.x - player.x) + (next.y - player.y)) * TileHeight * .5f;
-        std::wstring direction;
-        if (std::abs(dx) > std::abs(dy) * 2)
-        {
-            direction = dx < 0 ? L"A \uc67c\ucabd" : L"D \uc624\ub978\ucabd";
-        }
-        else if (std::abs(dy) > std::abs(dx) * 2)
-        {
-            direction = dy < 0 ? L"W \uc704\ucabd" : L"S \uc544\ub798\ucabd";
-        }
-        else
-        {
-            direction =
-                dy < 0 ? (dx < 0 ? L"W+A \uc67c\ucabd \uc704" : L"W+D \uc624\ub978\ucabd \uc704")
-                       : (dx < 0 ? L"S+A \uc67c\ucabd \uc544\ub798" : L"S+D \uc624\ub978\ucabd \uc544\ub798");
-        }
-        const float remaining =
-            Distance2D(player, next) + float(questRoute.points.size() - 1 - questRoute.waypoint);
-        return L"\ub2e4\uc74c \ubc29\ud5a5 " + direction + L" \u00b7 \ub0a8\uc740 \uae38 \uc57d " +
-               std::to_wstring(int(std::ceil(remaining))) +
-               L"\ud0c0\uc77c \u00b7 \uc9c0\ub3c4 \ud558\ub298\uc0c9 \uc810";
+        return RouteDirections() + L" \u00b7 \uc9c0\ub3c4 \ud558\ub298\uc0c9 \uc810";
+    }
+
+    std::wstring WaypointHint()
+    {
+        const std::wstring village = WorldLayout::VillageName(waypointVillage);
+        return village + L" \u00b7 " +
+               (navigationRoute.visible
+                    ? RouteDirections()
+                    : L"\uae38\uc774 \uc548 \ubcf4\uc774\uba74 \uac00\uae4c\uc6b4 \ud070\uae38\ub85c \uc62e\uaca8 \ubcf4\uc790.");
     }
 
     void DrawQuestTracker()
@@ -1195,7 +1312,7 @@ namespace
         renderer->DrawSolidRect(390, 166, QuestPanelWidth, QuestPanelHeight, .035f, .055f, .06f, .94f);
         DrawText(32, 142, L"\uc9c0\uae08 \ud560 \uc77c \u00b7 H \uc790\uc138\ud788", 1, .83f, .4f);
         DrawWrapped(32, 164, guide.action, 716, 1);
-        DrawWrapped(32, 188, TravelHint(guide), 716, 1);
+        DrawWrapped(32, 188, waypointVillage >= 0 ? WaypointHint() : TravelHint(guide), 716, 1);
         if (guide.ready && guide.interactionKey)
         {
             renderer->DrawSolidRect(701, 138, 94, 24, .22f, .36f, .18f, 1);
@@ -2237,6 +2354,7 @@ namespace
         journalTogglePressed = false;
         journalScrollPressed = 0;
         worldMapTogglePressed = false;
+        worldMapClickPressed = false;
         attributePressed = 0;
         inventoryTogglePressed = inventoryClosePressed = inventoryUsePressed = inventoryClickPressed = false;
         inventoryMovePressed = 0;
@@ -2384,6 +2502,35 @@ namespace
         tradeMovePressed = tradeQuantityPressed = 0;
     }
 
+    void UpdateWorldMapInput()
+    {
+        if (!worldMapClickPressed)
+        {
+            return;
+        }
+        worldMapClickPressed = false;
+        const Vec3 origin = firstLevel.Scene().Get(worldMapPanelId).WorldPosition();
+        const float x = worldMapClickX - origin.x, y = worldMapClickY - origin.y;
+        if (waypointVillage >= 0 && std::abs(x - ClearWaypointX) <= ClearWaypointWidth * .5f &&
+            std::abs(y - ClearWaypointY) <= ClearWaypointHeight * .5f)
+        {
+            SetWaypointVillage(-1);
+            return;
+        }
+        for (int village = 0; village < WorldLayout::VillageCount; ++village)
+        {
+            const VillageMapLabel label = VillageLabel(village);
+            const bool onLabel = std::abs(x - label.x) <= label.width * .5f &&
+                                 std::abs(y - label.y) <= VillageLabelHeight * .5f;
+            const bool onMarker = std::hypot(x - label.markerX, y - label.markerY) <= 10;
+            if (onLabel || onMarker)
+            {
+                SetWaypointVillage(village);
+                return;
+            }
+        }
+    }
+
     void UpdateCheckpoint(CheckpointRequest request)
     {
         if (harbor.Conversation().Active() || harbor.Trading().Active() || statsPanel)
@@ -2406,6 +2553,8 @@ namespace
                 InitializeSceneActors();
                 paused = helpVisible = introVisible = journalPanel = statsPanel = false;
                 worldMap = false;
+                waypointVillage = -1;
+                navigationRoute = {};
                 inventorySelection = 0;
                 tradeConfirmPending = false;
                 previousTime = std::chrono::steady_clock::now();
@@ -2552,6 +2701,7 @@ namespace
         }
         if (worldMap)
         {
+            UpdateWorldMapInput();
             return;
         }
         elapsed += dt;
@@ -2570,7 +2720,7 @@ namespace
         harbor.Update(dt);
         if (firstLevel.ConsumePlayerRecovery())
         {
-            questRoute = {};
+            navigationRoute = {};
             ClearGameplayInput();
             UpdatePromptActor();
             return;
@@ -2677,7 +2827,7 @@ void RenderScene()
                    : 0;
     previousTime = now;
     Update((std::min)(dt, .05f));
-    UpdateQuestRoute((std::min)(dt, .05f));
+    UpdateNavigationRoute((std::min)(dt, .05f));
     const Vec3 player = PlayerPosition();
     Vec3 camera = player;
     if (!WorldPaused())
@@ -3044,6 +3194,13 @@ void WindowMouse(GLFWwindow* window, int button, int action, int)
     Perf::Count(Perf::Counter::WindowMouseEvents);
     double x = 0, y = 0;
     glfwGetCursorPos(window, &x, &y);
+    if (worldMap && button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+    {
+        worldMapClickX = float(x) * ScreenWidth / (std::max)(1, inputWidth);
+        worldMapClickY = float(y) * ScreenHeight / (std::max)(1, inputHeight);
+        worldMapClickPressed = true;
+        return;
+    }
     InventoryMouse(button, action, x, y);
 }
 

@@ -154,7 +154,7 @@
 | counters.npc_attack_cues_drawn | 가시 주민의 공격 예고·타격 표시 배치 수. 드로우콜은 기존 draw_calls에서 확인 |
 | cpu_ms.save_game / load_game | F5 저장의 상태 수집·직렬화·파일 교체 / F9의 파일 읽기·검증·월드 재생성·복원 시간(ms). 상위 Update에 포함된다 |
 | counters.save_bytes_written / save_bytes_read | 성공적으로 교체한 저장 슬롯 / 읽어들인 슬롯의 UTF-8 바이트 수 |
-| cpu_ms.quest_route_search / counters.quest_route_cells | 목표까지의 A* 탐색 CPU 시간(ms)과 탐색한 칸 수. 주민의 npc_navigation 계측과 구분 |
+| cpu_ms.quest_route_search / counters.quest_route_cells | 플레이어가 따라가는 의뢰 또는 마을 경로의 A* CPU 시간(ms)과 탐색한 칸 수. 주민의 npc_navigation 계측과 구분 |
 | counters.quest_route_searches / quest_route_reused / quest_route_failures | 새 경로 탐색 / 기존 경로를 재사용한 프레임 / 경로를 찾지 못한 횟수 |
 | counters.quest_route_dots | 지도 범위 안에 그린 경로 점 수. 지형 지도 캐시와 별개로 배치에 추가된다 |
 | cpu_ms.hunt_hint / counters.hunt_hint_candidates / hunt_hint_markers | 초반 사냥 표식 선택 CPU 시간(ms) / 검사한 사슴·가죽 수 / 월드와 지도에 제출한 표식 수 |
