@@ -1497,9 +1497,14 @@ namespace
             .75f);
     }
 
+    bool WorldPaused();
+
     void DrawHud()
     {
         const auto& stats = firstLevel.stats;
+        const int maxHealth = stats.MaxHealth();
+        const float healthRatio = float(stats.health) / maxHealth;
+        const bool lowHealth = healthRatio <= .30f;
         renderer->SetMaterial(0);
         renderer->DrawSolidRect(510, 61, 980, 102, .035f, .055f, .06f, .94f);
         DrawText(35,
@@ -1508,17 +1513,25 @@ namespace
                  .92f,
                  .76f,
                  .48f);
+        if (lowHealth && !WorldPaused())
+        {
+            const wchar_t* hint = stats.potions > 0
+                                      ? L"\uccb4\ub825 \uc704\ud5d8 \u00b7 [Q] \ud68c\ubcf5\uc57d"
+                                      : L"\uccb4\ub825 \uc704\ud5d8 \u00b7 \ud68c\ubcf5\uc57d \uc5c6\uc74c";
+            DrawText(490, 38, hint, 1, .64f, .43f);
+        }
         DrawText(785, 38, harbor.Clock().c_str(), .84f, .82f, .7f);
         std::wstring status = L"\ub808\ubca8 " + std::to_wstring(stats.level) + L"   \uccb4\ub825 " +
-                              std::to_wstring(stats.health) + L"/" + std::to_wstring(stats.MaxHealth()) +
+                              std::to_wstring(stats.health) + L"/" + std::to_wstring(maxHealth) +
                               L"   \uacf5\uaca9 " + std::to_wstring(stats.Attack()) + L"   \ubc29\uc5b4 " +
                               std::to_wstring(stats.Defense());
         DrawText(35, 65, status.c_str());
-        float hp = 260.0f * stats.health / stats.MaxHealth();
+        const float hp = 260.0f * healthRatio;
         renderer->DrawSolidRect(165, 84, 260, 7, .18f, .13f, .12f, 1);
         if (hp > 0)
         {
-            renderer->DrawSolidRect(35 + hp * .5f, 84, hp, 7, .66f, .28f, .21f, 1);
+            renderer->DrawSolidRect(
+                35 + hp * .5f, 84, hp, 7, lowHealth ? .97f : .66f, lowHealth ? .43f : .28f, .21f, 1);
         }
         std::wstring xp = L"\uacbd\ud5d8\uce58 " + std::to_wstring(stats.experience) + L"/" +
                           std::to_wstring(stats.RequiredExperience());

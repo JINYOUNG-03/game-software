@@ -1697,19 +1697,19 @@ namespace Level
         if (stats.potions <= 0)
         {
             Notify(
-                L"\ud68c\ubcf5\uc57d\uc774 \uc5c6\ub2e4. \ub9c8\uc744\uc5d0\uc11c \uc26c\uac70\ub098 \uc804\ub9ac\ud488\uc744 \ucc3e\uc544\ubcf4\uc790.");
+                L"\ud68c\ubcf5\uc57d\uc774 \uc5c6\ub2e4. \uc7a5\ud130\uc5d0\uc11c \uad6c\ud574 \ubcf4\uc790.");
             return;
         }
-        if (stats.health >= stats.MaxHealth())
+        const int maxHealth = stats.MaxHealth();
+        if (stats.health >= maxHealth)
         {
-            Notify(
-                L"\uc544\uc9c1 \uc57d\uc744 \ub9c8\uc2e4 \ub9cc\ud07c \ub2e4\uce58\uc9c4 \uc54a\uc558\ub2e4.");
+            Notify(L"\uccb4\ub825\uc774 \uc774\ubbf8 \uac00\ub4dd \ucc3c\ub2e4.");
             return;
         }
+        const int healed = (std::min)(45, maxHealth - stats.health);
         --stats.potions;
-        stats.health = (std::min)(stats.MaxHealth(), stats.health + 45);
-        Notify(
-            L"\uc4f4 \uc57d\uc744 \uc0bc\ucf30\ub2e4. \uc774\uc81c \uc880 \ubc84\ud2f8 \ub9cc\ud558\ub2e4.");
+        stats.health += healed;
+        Notify(L"\ud68c\ubcf5\uc57d \uc0ac\uc6a9 \u00b7 \uccb4\ub825 +" + std::to_wstring(healed));
     }
 
     std::wstring DescribeAttributeBonus(int attribute)

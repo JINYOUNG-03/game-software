@@ -87,6 +87,19 @@ for (const contract
     assert(game.includes(contract), `Inventory integration missing ${contract}`);
 }
 assert(game.includes("paused || helpVisible || statsPanel || harbor.Conversation().Active()"));
+const hud = game.match(/void DrawHud\(\)[\s\S]*?(?=const wchar_t\* InventoryName)/)[0];
+assert(hud.includes("float(stats.health) / maxHealth") && hud.includes("healthRatio <= .30f"));
+assert(hud.includes("if (lowHealth && !WorldPaused())") && hud.includes("stats.potions > 0"));
+const potion = level.match(/void FirstLevel::UsePotion\(\)[\s\S]*?(?=std::wstring DescribeAttributeBonus)/)[0];
+const consumed = potion.indexOf("--stats.potions");
+for (const guard of ["if (stats.potions <= 0)", "if (stats.health >= maxHealth)"])
+{
+    const checked = potion.indexOf(guard);
+    assert(checked >= 0 && checked < consumed);
+}
+assert(potion.includes("(std::min)(45, maxHealth - stats.health)") &&
+       potion.includes("stats.health += healed") && potion.includes("std::to_wstring(healed)"),
+       "The displayed amount must match the healing actually applied");
 const update = game.slice(game.indexOf("void Update(float dt)"),
                           game.indexOf("} // namespace", game.indexOf("void Update(float dt)")));
 assert(update.indexOf("UpdateInventoryInput()") < update.indexOf("firstLevel.MovePlayer"));
