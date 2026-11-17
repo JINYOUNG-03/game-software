@@ -2083,24 +2083,24 @@ namespace Harbor
         return Holder(key) == level.Player().Id();
     }
 
-    void World::PlayerAttack()
+    Level::PlayerStrike World::PlayerAttack()
     {
+        using Level::PlayerStrike;
+        PlayerStrike result = PlayerStrike::NoTarget;
         for (Npc* npc : level.Scene().Actors<Npc>(ActorKind::Npc))
         {
             if (npc->health <= 0)
             {
                 continue;
             }
-            Position p = npc->WorldPosition(), hero = level.Player().WorldPosition();
-            float sx = ((p.x - hero.x) - (p.y - hero.y)) * 48;
-            float sy = ((p.x - hero.x) + (p.y - hero.y)) * 24;
-            float d = std::hypot(sx, sy);
-            if (d <= 78 && (d <= 12 || (sx * level.facingX + sy * level.facingY) / d >= .1f) &&
-                level.ClearLine(hero, p))
+            const PlayerStrike strike = level.CheckPlayerStrike(*npc);
+            if (strike == PlayerStrike::Hit && !Hurt(*npc, level.stats.Attack(), level.Player().Id()))
             {
-                Hurt(*npc, level.stats.Attack(), level.Player().Id());
+                continue;
             }
+            result = (std::max)(result, strike);
         }
+        return result;
     }
 
     Npc* World::Nearest(float radius)

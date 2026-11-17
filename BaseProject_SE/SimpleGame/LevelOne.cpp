@@ -7,6 +7,7 @@
 #include <cmath>
 #include <limits>
 #include <queue>
+#include <utility>
 
 namespace Level
 {
@@ -473,7 +474,8 @@ namespace Level
         Player().SetWorldPosition(ToWorld(Camp));
         moving = false;
         attackAnimation = 0;
-        attackImpactPending = attackImpactReady = false;
+        attackImpactPending = false;
+        attackImpact = PlayerStrike::None;
         attackCooldown = 0;
         dodgeRemaining = dodgeCooldown = 0;
         enemyAttackImpacts.clear();
@@ -1172,42 +1174,59 @@ namespace Level
         attackCooldown = .48f;
         attackAnimation = CharacterPresentation::AttackDuration;
         attackImpactPending = true;
-        attackImpactReady = false;
+        attackImpact = PlayerStrike::None;
         UpdateActorModels();
         return true;
     }
 
-    bool FirstLevel::ConsumeAttackImpact()
+    PlayerStrike FirstLevel::ConsumeAttackImpact()
     {
-        bool ready = attackImpactReady;
-        attackImpactReady = false;
-        return ready;
+        return std::exchange(attackImpact, PlayerStrike::None);
     }
 
-    void FirstLevel::ResolveAttackImpact()
+    PlayerStrike FirstLevel::CheckPlayerStrike(const Actor& target) const
+    {
+        constexpr float attackRange = 78;
+        constexpr float hintRange = 112;
+        const Position hero = Player().WorldPosition(), position = target.WorldPosition();
+        const float dx = position.x - hero.x, dy = position.y - hero.y;
+        const float sx = (dx - dy) * HalfTileWidth, sy = (dx + dy) * HalfTileHeight;
+        const float distance = std::hypot(sx, sy);
+        if (distance > hintRange)
+        {
+            return PlayerStrike::NoTarget;
+        }
+
+        const bool inFront = distance <= 12 || (sx * facingX + sy * facingY) / distance >= .1f;
+        if (distance > attackRange)
+        {
+            return inFront ? PlayerStrike::OutOfRange : PlayerStrike::NoTarget;
+        }
+        if (!inFront)
+        {
+            return PlayerStrike::WrongDirection;
+        }
+        return ClearLine(hero, position) ? PlayerStrike::Hit : PlayerStrike::Obstructed;
+    }
+
+    PlayerStrike FirstLevel::ResolveAttackImpact()
     {
         Perf::Scope scope(Perf::Cpu::Combat);
-        for (Enemy* instance : scene.Actors<Enemy>(ActorKind::Enemy))
+        PlayerStrike result = PlayerStrike::NoTarget;
+        for (Enemy* enemy : scene.Actors<Enemy>(ActorKind::Enemy))
         {
-            Enemy& enemy = *instance;
-            if (enemy.health <= 0)
+            if (enemy->health <= 0)
             {
                 continue;
             }
-            float sx = ((enemy.WorldPosition().x - Player().WorldPosition().x) -
-                        (enemy.WorldPosition().y - Player().WorldPosition().y)) *
-                       HalfTileWidth;
-            float sy = ((enemy.WorldPosition().x - Player().WorldPosition().x) +
-                        (enemy.WorldPosition().y - Player().WorldPosition().y)) *
-                       HalfTileHeight;
-            float length = std::hypot(sx, sy);
-            if (length > 78 || (length > 12 && (sx * facingX + sy * facingY) / length < .1f) ||
-                !ClearLine(Player().WorldPosition(), enemy.WorldPosition()))
+            const PlayerStrike strike = CheckPlayerStrike(*enemy);
+            if (strike == PlayerStrike::Hit)
             {
-                continue;
+                DamageEnemy(*enemy, stats.Attack(), true);
             }
-            DamageEnemy(enemy, stats.Attack(), true);
+            result = (std::max)(result, strike);
         }
+        return result;
     }
 
     bool FirstLevel::DamageEnemy(Enemy& enemy, int damage, bool playerCredit, ActorId source)
@@ -1473,7 +1492,8 @@ namespace Level
         moving = false;
         attackAnimation = attackCooldown = 0;
         dodgeRemaining = dodgeCooldown = 0;
-        attackImpactPending = attackImpactReady = false;
+        attackImpactPending = false;
+        attackImpact = PlayerStrike::None;
         hero.SetWorldPosition(recoveryPoint);
         stats.health = stats.MaxHealth();
         invulnerability = 3;
@@ -1762,8 +1782,7 @@ namespace Level
             attackImpactPending = false;
             if (Player().IsActive())
             {
-                ResolveAttackImpact();
-                attackImpactReady = true;
+                attackImpact = ResolveAttackImpact();
             }
         }
         hurtFlash = (std::max)(0.0f, hurtFlash - dt);

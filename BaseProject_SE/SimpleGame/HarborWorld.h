@@ -199,7 +199,7 @@ namespace Harbor
 
         void Initialize();
         void Update(float dt);
-        void PlayerAttack();
+        Level::PlayerStrike PlayerAttack();
         Npc* NearbyQuestSpeaker();
         void Talk(ActorId target);
         void AdvanceDialogue();

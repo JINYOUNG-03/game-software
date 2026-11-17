@@ -28,6 +28,17 @@ namespace Level
         Quest
     };
 
+    // For a swing against several targets, keep a hit or the most specific miss.
+    enum class PlayerStrike
+    {
+        None,
+        NoTarget,
+        OutOfRange,
+        WrongDirection,
+        Obstructed,
+        Hit
+    };
+
     enum class Terrain
     {
         Grass,
@@ -156,7 +167,8 @@ namespace Level
         }
 
         bool Attack();
-        bool ConsumeAttackImpact();
+        PlayerStrike ConsumeAttackImpact();
+        PlayerStrike CheckPlayerStrike(const Actor& target) const;
         bool DamageEnemy(Enemy& enemy, int damage, bool playerCredit, ActorId source = InvalidActorId);
         void ReportHit(Actor& target, int damage, ActorId source);
         float HitFlash(const Actor& actor) const;
@@ -273,7 +285,7 @@ namespace Level
         std::vector<EnemyAttackImpact> enemyAttackImpacts;
         float attackCooldown = 0;
         bool attackImpactPending = false;
-        bool attackImpactReady = false;
+        PlayerStrike attackImpact = PlayerStrike::None;
         bool playerRecovered = false;
         float navigationTime = 0;
         float invulnerability = 0;
@@ -292,7 +304,7 @@ namespace Level
         void AddProp(const Position& position, int kind, bool blocksMovement = false);
         Loot& AddLoot(const Position& position, LootKind kind, int amount);
         void UpdateActorModels();
-        void ResolveAttackImpact();
+        PlayerStrike ResolveAttackImpact();
         void UpdateEnemyAttack(Enemy& enemy, float dt);
         void CancelEnemyAttack(Enemy& enemy);
         void UpdateHitFeedback(float dt);

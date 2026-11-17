@@ -86,12 +86,13 @@ foreach ($token in @('recoveryPoint = fallenAt', 'village < WorldLayout::Village
                      'ToWorld(WorldLayout::VillageMarket(village))', 'Distance(fallenAt, market)',
                      'distance < closest && Walkable(market.x, market.y)', 'closest = distance',
                      'hero.SetWorldPosition(recoveryPoint)', 'WorldLayout::VillageName(recoveryVillage)',
-                     'attackImpactPending = attackImpactReady = false', 'stats.health = stats.MaxHealth()'))
+                     'attackImpactPending = false', 'attackImpact = PlayerStrike::None',
+                     'stats.health = stats.MaxHealth()'))
 {
     if (-not $recovery.Contains($token)) { throw "Missing walkable village recovery behavior: $token" }
 }
 $recoveryFrame = [regex]::Match($game, '(?s)harbor\.Update\(dt\);.*?(?=firstLevel\.Attack\(\);)').Value
-if ($recoveryFrame -notmatch 'if \(firstLevel\.ConsumePlayerRecovery\(\)\)\s*\{\s*navigationRoute = \{\};\s*ClearGameplayInput\(\);\s*UpdatePromptActor\(\);\s*return;')
+if ($recoveryFrame -notmatch 'if \(firstLevel\.ConsumePlayerRecovery\(\)\)\s*\{\s*navigationRoute = \{\};\s*strikeHintTime = 0;\s*ClearGameplayInput\(\);\s*UpdatePromptActor\(\);\s*return;')
 { throw 'Recovery must invalidate the route and discard queued actions before combat resumes.' }
 
 # All five markets must permit local trade, including merchants visiting from another home village.

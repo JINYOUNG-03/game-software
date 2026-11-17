@@ -42,7 +42,7 @@ if ($game.Contains('BuildCitizen(') -or $models.Contains('MIST_MODELS'))
 if (-not $presentation.Contains('DirectionCount = 8') -or -not $presentation.Contains('diagonalBoundary') -or
     -not $presentation.Contains('x >= 0 ? 4 : 5'))
 { throw 'Eight-direction ordering/diagonal sectors missing.' }
-$duration = [double][regex]::Match($presentation, 'AttackDuration = ([.\d]+)f').Groups[1].Value
+$duration = [double][regex]::Match($presentation, '\bAttackDuration = ([.\d]+)f').Groups[1].Value
 $frames = [int][regex]::Match($presentation, '\bAttackFrames = (\d+)').Groups[1].Value
 $impactFraction = [double][regex]::Match($presentation, 'AttackImpactTime = AttackDuration \* ([.\d]+)f').Groups[1].Value
 if ($frames -ne 12 -or $duration -ne .38) { throw 'Expected twelve readable attack poses across 380ms.' }
@@ -73,11 +73,12 @@ foreach ($dt in @((1.0 / 144), (1.0 / 60), (1.0 / 20), .25, .7))
     }
     if ($hits -ne 1) { throw "Swing must resolve once, including skipped visual frames: dt=$dt" }
 }
-$startAttack = [regex]::Match($level, '(?s)bool FirstLevel::Attack\(\).*?(?=bool FirstLevel::ConsumeAttackImpact)').Value
-if ($startAttack.Contains('DamageEnemy(')) { throw 'Starting wind-up must not deal immediate damage.' }
-if (-not $game.Contains('if (firstLevel.ConsumeAttackImpact())') -or
+$startAttack = [regex]::Match($level, '(?s)bool FirstLevel::Attack\(\).*?(?=PlayerStrike FirstLevel::ConsumeAttackImpact)').Value
+if (!$startAttack -or $startAttack.Contains('DamageEnemy(')) { throw 'Starting wind-up must not deal immediate damage.' }
+if (-not $game.Contains('beastStrike = firstLevel.ConsumeAttackImpact()') -or
+    -not $game.Contains('if (beastStrike != Level::PlayerStrike::None)') -or
     -not $level.Contains('attackImpactPending = false;') -or
-    -not $level.Contains('attackImpactReady = false;')) { throw 'Missing one-shot NPC impact consumption.' }
+    -not $level.Contains('std::exchange(attackImpact, PlayerStrike::None)')) { throw 'Missing one-shot NPC impact consumption.' }
 if (36 - 13 - (12 + 2.5) -le 0) { throw 'NPC labels overlap health bars.' }
 [pscustomobject]@{
     event = 'character_static_contracts'; passed = $true; npc_appearances = 18

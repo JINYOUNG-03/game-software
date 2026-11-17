@@ -179,6 +179,8 @@ namespace
     int inputWidth = ScreenWidth;
     int inputHeight = ScreenHeight;
     float elapsed = 0;
+    const wchar_t* strikeMissHint = nullptr;
+    float strikeHintTime = 0;
     HDC fontDC = nullptr;
     HFONT fontHandle = nullptr;
 
@@ -1505,6 +1507,21 @@ namespace
 
     bool WorldPaused();
 
+    const wchar_t* StrikeMissHint(Level::PlayerStrike strike)
+    {
+        switch (strike)
+        {
+        case Level::PlayerStrike::OutOfRange:
+            return L"\uce7c\uc774 \ub2ff\uc9c0 \uc54a\uc558\ub2e4. \uc870\uae08 \ub354 \uac00\uae4c\uc774.";
+        case Level::PlayerStrike::WrongDirection:
+            return L"\uc0c1\ub300\uac00 \uc788\ub294 \ucabd\uc744 \ubcf4\uace0 \ud718\ub458\ub7ec \ubcf4\uc790.";
+        case Level::PlayerStrike::Obstructed:
+            return L"\uc55e\uc774 \ub9c9\ud614\ub2e4. \uc606\uc73c\ub85c \ub3cc\uc544\uac00\uc790.";
+        default:
+            return nullptr;
+        }
+    }
+
     void DrawHud()
     {
         const auto& stats = firstLevel.stats;
@@ -1581,6 +1598,11 @@ namespace
             {
                 renderer->DrawSolidRect(430, 672, 820, 80, .035f, .05f, .055f, .97f);
                 DrawWrapped(32, 650, firstLevel.message, 796, 3);
+            }
+            if (strikeMissHint && strikeHintTime > 0 && !WorldPaused())
+            {
+                renderer->DrawSolidRect(1054, 672, 404, 38, .035f, .05f, .055f, .95f);
+                DrawWrapped(864, 678, strikeMissHint, 380, 1);
             }
         }
         std::wstring inventory = L"\ud68c\ubcf5\uc57d " + std::to_wstring(stats.potions) +
@@ -2627,6 +2649,7 @@ namespace
                 worldMap = false;
                 waypointVillage = -1;
                 navigationRoute = {};
+                strikeHintTime = 0;
                 inventorySelection = 0;
                 tradeConfirmPending = false;
                 previousTime = std::chrono::steady_clock::now();
@@ -2784,6 +2807,7 @@ namespace
             return;
         }
         elapsed += dt;
+        strikeHintTime = (std::max)(0.0f, strikeHintTime - dt);
         float sx = (keys['d'] ? 1.0f : 0) - (keys['a'] ? 1.0f : 0);
         float sy = (keys['s'] ? 1.0f : 0) - (keys['w'] ? 1.0f : 0);
         if (tryDodge)
@@ -2792,14 +2816,18 @@ namespace
         }
         firstLevel.MovePlayer(sx, sy, dt);
         firstLevel.Update(dt);
-        if (firstLevel.ConsumeAttackImpact())
+        const Level::PlayerStrike beastStrike = firstLevel.ConsumeAttackImpact();
+        if (beastStrike != Level::PlayerStrike::None)
         {
-            harbor.PlayerAttack();
+            const Level::PlayerStrike strike = (std::max)(beastStrike, harbor.PlayerAttack());
+            strikeMissHint = StrikeMissHint(strike);
+            strikeHintTime = strikeMissHint ? .85f : 0.0f;
         }
         harbor.Update(dt);
         if (firstLevel.ConsumePlayerRecovery())
         {
             navigationRoute = {};
+            strikeHintTime = 0;
             ClearGameplayInput();
             UpdatePromptActor();
             return;

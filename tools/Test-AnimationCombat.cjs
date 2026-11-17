@@ -66,6 +66,23 @@ assert(!world.includes("Hurt(npc, 5 + beast->kind"));
 assert(world.includes("level.BeginEnemyAttack(*beast, npc.Id())"));
 assert(world.indexOf("level.ConsumeEnemyAttackImpacts()") < world.indexOf("Step(*npc, dt)"));
 const game = read("SimpleGame.cpp");
+const playerStrike = source.match(/PlayerStrike FirstLevel::CheckPlayerStrike[\s\S]*?(?=PlayerStrike FirstLevel::ResolveAttackImpact)/)[0];
+for (const gate of ["distance > hintRange", "distance > attackRange", "distance <= 12",
+                    "/ distance >= .1f", "!inFront", "ClearLine(hero, position) ? PlayerStrike::Hit"])
+{
+    assert(playerStrike.includes(gate), `Missing player strike gate: ${gate}`);
+}
+assert.equal(Number(playerStrike.match(/attackRange = (\d+)/)[1]), 78);
+assert.equal(Number(playerStrike.match(/hintRange = (\d+)/)[1]), 112);
+assert(source.includes("CheckPlayerStrike(*enemy)") && world.includes("level.CheckPlayerStrike(*npc)"));
+assert(game.includes("(std::max)(beastStrike, harbor.PlayerAttack())"));
+const missHint = game.match(/const wchar_t\* StrikeMissHint[\s\S]*?(?=void DrawHud)/)[0];
+for (const miss of ["OutOfRange", "WrongDirection", "Obstructed"])
+{
+    assert(missHint.includes("case Level::PlayerStrike::" + miss), miss);
+}
+assert(missHint.includes("return nullptr") && !missHint.includes("::Hit") &&
+       !missHint.includes("::NoTarget") && !missHint.includes("firstLevel.message"));
 const npcBegin = world.match(/bool World::BeginNpcAttack[\s\S]*?(?=void World::CancelNpcAttack)/)[0];
 const npcAttack = world.match(/void World::AdvanceNpcAttack[\s\S]*?(?=bool World::ResolveNpcHit)/)[0];
 const npcHit = world.match(/bool World::ResolveNpcHit[\s\S]*?(?=void World::Witness)/)[0];
@@ -208,6 +225,7 @@ console.log(JSON.stringify({
     one_shot_variable_dt : true,
     npc_one_shot_variable_dt : true,
     npc_raid_requires_applied_damage : true,
+    player_strike_miss_hint : true,
     dodge_cover_and_facing_gates : true,
     species_clips_checked : 3,
     game_build_performed : false,
