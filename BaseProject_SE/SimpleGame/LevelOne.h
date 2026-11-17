@@ -156,6 +156,11 @@ namespace Level
             return dodgeRemaining > 0;
         }
 
+        bool CanInteract() const
+        {
+            return Player().IsActive() && attackAnimation <= 0 && !Dodging();
+        }
+
         bool CanDodge() const
         {
             return Player().IsActive() && dodgeCooldown <= 0 && attackAnimation <= 0;

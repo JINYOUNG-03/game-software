@@ -388,6 +388,8 @@ namespace
         questMarkerId = marker.Id();
     }
 
+    bool WorldPaused();
+
     void UpdatePromptActor()
     {
         SceneGraph& scene = firstLevel.Scene();
@@ -414,6 +416,14 @@ namespace
             prompt->drawable = true;
             prompt->drawOrder = 10;
         }
+
+        nearbySiteTarget = nearbyTradeTarget = InvalidActorId;
+        if (WorldPaused() || !firstLevel.CanInteract())
+        {
+            prompt->SetVisible(false);
+            return;
+        }
+
         ActorId target = InvalidActorId;
         if (const Npc* questGiver = harbor.NearbyQuestSpeaker())
         {
@@ -438,17 +448,11 @@ namespace
             }
         }
         nearbySiteTarget = harbor.NearbySite();
-        nearbyTradeTarget = InvalidActorId;
-        if (!paused && !helpVisible && !statsPanel && !journalPanel && !worldMap &&
-            !harbor.Conversation().Active() && !harbor.Trading().Active())
+        if (const Npc* trader = harbor.NearbyTrader())
         {
-            if (const Npc* trader = harbor.NearbyTrader())
-            {
-                nearbyTradeTarget = trader->Id();
-            }
+            nearbyTradeTarget = trader->Id();
         }
-        prompt->SetVisible(target != InvalidActorId && !paused && !helpVisible &&
-                           !harbor.Conversation().Active());
+        prompt->SetVisible(target != InvalidActorId);
         if (target)
         {
             scene.Reparent(promptId, target, false);
@@ -1327,7 +1331,7 @@ namespace
         DrawText(32, 142, L"\uc9c0\uae08 \ud560 \uc77c \u00b7 H \uc790\uc138\ud788", 1, .83f, .4f);
         DrawWrapped(32, 164, guide.action, 716, 1);
         DrawWrapped(32, 188, waypointVillage >= 0 ? WaypointHint() : TravelHint(guide), 716, 1);
-        if (guide.ready && guide.interactionKey)
+        if (guide.ready && guide.interactionKey && firstLevel.CanInteract())
         {
             renderer->DrawSolidRect(701, 138, 94, 24, .22f, .36f, .18f, 1);
             std::wstring key = L"[";
@@ -1504,8 +1508,6 @@ namespace
             .9f,
             .75f);
     }
-
-    bool WorldPaused();
 
     const wchar_t* StrikeMissHint(Level::PlayerStrike strike)
     {
@@ -2808,6 +2810,7 @@ namespace
         }
         elapsed += dt;
         strikeHintTime = (std::max)(0.0f, strikeHintTime - dt);
+        const bool canInteractBeforeMovement = firstLevel.CanInteract();
         float sx = (keys['d'] ? 1.0f : 0) - (keys['a'] ? 1.0f : 0);
         float sy = (keys['s'] ? 1.0f : 0) - (keys['w'] ? 1.0f : 0);
         if (tryDodge)
@@ -2832,9 +2835,13 @@ namespace
             UpdatePromptActor();
             return;
         }
-        if (keys[' '])
+        if (interactionPressed || tradePressed || sitePressed || revealPressed)
         {
-            firstLevel.Attack();
+            keys[' '] = false;
+            if (!canInteractBeforeMovement || !firstLevel.CanInteract())
+            {
+                interactionPressed = tradePressed = sitePressed = revealPressed = false;
+            }
         }
         if (interactionPressed)
         {
@@ -2896,6 +2903,10 @@ namespace
         {
             firstLevel.Allocate(attributePressed);
             attributePressed = 0;
+        }
+        if (keys[' '])
+        {
+            firstLevel.Attack();
         }
         if (harbor.Conversation().Active())
         {

@@ -106,6 +106,19 @@ assert(source.match(/bool FirstLevel::DamagePlayer[\s\S]*?invulnerability > 0[\s
 assert(game.includes("NpcAttackCuesDrawn") && game.includes("npc->attackForward"));
 
 const levelHeader = read("LevelOne.h");
+assert(levelHeader.includes("return Player().IsActive() && attackAnimation <= 0 && !Dodging()"));
+const actionUpdate = game.match(/void Update\(float dt\)[\s\S]*?(?=\} \/\/ namespace)/)[0];
+const interactionGate = actionUpdate.match(
+    /if \(interactionPressed \|\| tradePressed \|\| sitePressed \|\| revealPressed\)[\s\S]*?(?=if \(interactionPressed\))/
+)[0];
+assert(interactionGate.includes("keys[' '] = false"));
+assert(interactionGate.includes("!canInteractBeforeMovement || !firstLevel.CanInteract()"));
+assert(interactionGate.includes("interactionPressed = tradePressed = sitePressed = revealPressed = false"));
+assert(actionUpdate.indexOf("canInteractBeforeMovement = firstLevel.CanInteract()") <
+       actionUpdate.indexOf("firstLevel.BeginDodge(sx, sy)"));
+assert(actionUpdate.indexOf("TryInteract()") < actionUpdate.indexOf("firstLevel.Attack()"));
+const interactionPrompt = game.match(/void UpdatePromptActor\(\)[\s\S]*?(?=void DrawEffectActor)/)[0];
+assert(interactionPrompt.match(/nearbySiteTarget = nearbyTradeTarget = InvalidActorId;\s*if \(WorldPaused\(\) \|\| !firstLevel.CanInteract\(\)\)\s*\{\s*prompt->SetVisible\(false\);\s*return;/));
 const dodgeValue = name => Number(levelHeader.match(new RegExp(name + " = ([.\\d]+)f;"))[1]);
 const dodgeDuration = dodgeValue("DodgeDuration");
 const dodgeProtection = dodgeValue("DodgeProtection");
@@ -226,6 +239,7 @@ console.log(JSON.stringify({
     npc_one_shot_variable_dt : true,
     npc_raid_requires_applied_damage : true,
     player_strike_miss_hint : true,
+    interaction_waits_for_active_combat_motion : true,
     dodge_cover_and_facing_gates : true,
     species_clips_checked : 3,
     game_build_performed : false,
