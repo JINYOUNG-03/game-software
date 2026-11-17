@@ -114,8 +114,8 @@ const interactionGate = actionUpdate.match(
 assert(interactionGate.includes("keys[' '] = false"));
 assert(interactionGate.includes("!canInteractBeforeMovement || !firstLevel.CanInteract()"));
 assert(interactionGate.includes("interactionPressed = tradePressed = sitePressed = revealPressed = false"));
-assert(actionUpdate.indexOf("canInteractBeforeMovement = firstLevel.CanInteract()") <
-       actionUpdate.indexOf("firstLevel.BeginDodge(sx, sy)"));
+const dodgeBeginAt = actionUpdate.indexOf("firstLevel.BeginDodge(queuedDodge->x, queuedDodge->y)");
+assert(dodgeBeginAt > actionUpdate.indexOf("canInteractBeforeMovement = firstLevel.CanInteract()"));
 assert(actionUpdate.indexOf("TryInteract()") < actionUpdate.indexOf("firstLevel.Attack()"));
 const interactionPrompt = game.match(/void UpdatePromptActor\(\)[\s\S]*?(?=void DrawEffectActor)/)[0];
 assert(interactionPrompt.match(/nearbySiteTarget = nearbyTradeTarget = InvalidActorId;\s*if \(WorldPaused\(\) \|\| !firstLevel.CanInteract\(\)\)\s*\{\s*prompt->SetVisible\(false\);\s*return;/));
@@ -133,9 +133,33 @@ assert(damagePlayer.indexOf("dodgeRemaining > DodgeDuration - DodgeProtection") 
        damagePlayer.indexOf("stats.health -= appliedDamage"));
 assert(source.includes("attackCooldown > 0 || Dodging()"));
 assert(game.includes("GLFW_KEY_LEFT_SHIFT || key == GLFW_KEY_RIGHT_SHIFT"));
-assert(game.indexOf("firstLevel.BeginDodge(sx, sy)") < game.indexOf("firstLevel.MovePlayer(sx, sy, dt)"));
+assert(dodgeBeginAt < actionUpdate.indexOf("firstLevel.MovePlayer(movement.x, movement.y, dt)"));
+assert(levelHeader.includes("dodgeCooldown <= within && attackAnimation <= within"));
+assert(actionUpdate.includes("std::exchange(dodgeInput, std::nullopt)"));
+assert(actionUpdate.includes("requestedDodge && firstLevel.CanDodge(DodgeInputWindow)"));
+assert(actionUpdate.match(/if \(queuedDodge && firstLevel\.BeginDodge\(queuedDodge->x, queuedDodge->y\)\)\s*\{\s*queuedDodge.reset\(\);/));
+assert(actionUpdate.includes("keys[' '] && !queuedDodge"));
+assert(actionUpdate.match(/if \(WorldPaused\(\)\)\s*\{\s*queuedDodge.reset\(\);/));
+assert(game.includes("dodgeInput.reset();") && game.includes("MovementInput{firstLevel.facingX, firstLevel.facingY}"));
+const dodgeWindow = Number(game.match(/DodgeInputWindow = ([.\d]+)f;/)[1]);
+assert.equal(dodgeWindow, .12);
 for (const dt of [1 / 144, 1 / 60, .05])
 {
+    for (const wait of [0, .061, dodgeWindow, dodgeWindow + .001])
+    {
+        let queued = wait <= dodgeWindow, readyIn = wait, starts = 0;
+        for (let frame = 0; frame * dt <= dodgeWindow + dt; ++frame)
+        {
+            if (queued && readyIn <= 0)
+            {
+                assert(frame * dt >= wait - 1e-8 && frame * dt <= wait + dt + 1e-8);
+                queued = false;
+                ++starts;
+            }
+            readyIn = Math.max(0, readyIn - dt);
+        }
+        assert.equal(starts, wait <= dodgeWindow ? 1 : 0);
+    }
     let remaining = dodgeDuration;
     let moveTime = 0;
     while (remaining > 0)
@@ -240,6 +264,7 @@ console.log(JSON.stringify({
     npc_raid_requires_applied_damage : true,
     player_strike_miss_hint : true,
     interaction_waits_for_active_combat_motion : true,
+    dodge_early_press_window_seconds : dodgeWindow,
     dodge_cover_and_facing_gates : true,
     species_clips_checked : 3,
     game_build_performed : false,

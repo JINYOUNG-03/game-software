@@ -12,6 +12,8 @@
 #include <string>
 #include <random>
 #include <iterator>
+#include <optional>
+#include <utility>
 #include <GL/glew.h>
 #include "GlfwInput.h"
 #include "KoreanFont.h"
@@ -38,6 +40,7 @@ namespace
     constexpr float TextLineHeight = 21;
     constexpr int JournalVisibleRows = 17;
     constexpr float JournalTextWidth = 938;
+    constexpr float DodgeInputWindow = .12f;
     constexpr float QuestPanelWidth = 740;
     constexpr float QuestPanelHeight = 88;
     constexpr float HelpPanelWidth = 720;
@@ -121,7 +124,15 @@ namespace
     ActorId nearbySiteTarget = InvalidActorId;
     ActorId siteInputTarget = InvalidActorId;
     bool revealPressed = false;
-    bool dodgePressed = false;
+
+    struct MovementInput
+    {
+        float x;
+        float y;
+    };
+
+    std::optional<MovementInput> dodgeInput;
+    std::optional<MovementInput> queuedDodge;
     bool journalPanel = false;
     bool journalTogglePressed = false;
     int journalScrollPressed = 0;
@@ -183,6 +194,12 @@ namespace
     float strikeHintTime = 0;
     HDC fontDC = nullptr;
     HFONT fontHandle = nullptr;
+
+    MovementInput ReadMovementInput()
+    {
+        return {(keys['d'] ? 1.0f : 0) - (keys['a'] ? 1.0f : 0),
+                (keys['s'] ? 1.0f : 0) - (keys['w'] ? 1.0f : 0)};
+    }
 
     float Distance2D(const Vec3& a, const Vec3& b)
     {
@@ -2429,7 +2446,8 @@ namespace
     {
         const bool tradeHeld = keys['t'], escapeHeld = keys[27];
         interactionPressed = potionPressed = tradePressed = sitePressed = revealPressed = false;
-        dodgePressed = false;
+        dodgeInput.reset();
+        queuedDodge.reset();
         journalTogglePressed = false;
         journalScrollPressed = 0;
         worldMapTogglePressed = false;
@@ -2685,8 +2703,11 @@ namespace
     void Update(float dt)
     {
         Perf::Scope scope(Perf::Cpu::Update);
-        const bool tryDodge = dodgePressed;
-        dodgePressed = false;
+        const auto requestedDodge = std::exchange(dodgeInput, std::nullopt);
+        if (WorldPaused())
+        {
+            queuedDodge.reset();
+        }
         if (checkpointRequest != CheckpointRequest::None)
         {
             const auto request = checkpointRequest;
@@ -2811,13 +2832,16 @@ namespace
         elapsed += dt;
         strikeHintTime = (std::max)(0.0f, strikeHintTime - dt);
         const bool canInteractBeforeMovement = firstLevel.CanInteract();
-        float sx = (keys['d'] ? 1.0f : 0) - (keys['a'] ? 1.0f : 0);
-        float sy = (keys['s'] ? 1.0f : 0) - (keys['w'] ? 1.0f : 0);
-        if (tryDodge)
+        const MovementInput movement = ReadMovementInput();
+        if (requestedDodge && firstLevel.CanDodge(DodgeInputWindow))
         {
-            firstLevel.BeginDodge(sx, sy);
+            queuedDodge = requestedDodge;
         }
-        firstLevel.MovePlayer(sx, sy, dt);
+        if (queuedDodge && firstLevel.BeginDodge(queuedDodge->x, queuedDodge->y))
+        {
+            queuedDodge.reset();
+        }
+        firstLevel.MovePlayer(movement.x, movement.y, dt);
         firstLevel.Update(dt);
         const Level::PlayerStrike beastStrike = firstLevel.ConsumeAttackImpact();
         if (beastStrike != Level::PlayerStrike::None)
@@ -2904,7 +2928,7 @@ namespace
             firstLevel.Allocate(attributePressed);
             attributePressed = 0;
         }
-        if (keys[' '])
+        if (keys[' '] && !queuedDodge)
         {
             firstLevel.Attack();
         }
@@ -3289,7 +3313,10 @@ void WindowKey(GLFWwindow*, int key, int, int action, int)
     {
         if (action == GLFW_PRESS && !WorldPaused())
         {
-            dodgePressed = true;
+            const MovementInput movement = ReadMovementInput();
+            dodgeInput = movement.x != 0 || movement.y != 0
+                             ? movement
+                             : MovementInput{firstLevel.facingX, firstLevel.facingY};
         }
         return;
     }
