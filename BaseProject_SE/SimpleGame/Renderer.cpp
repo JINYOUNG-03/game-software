@@ -301,6 +301,23 @@ void Renderer::DrawEllipse(float x, float y, float w, float h, float r, float g,
     m_Material = previous;
 }
 
+Renderer::Viewport Renderer::FitViewport(int outputWidth,
+                                         int outputHeight,
+                                         int logicalWidth,
+                                         int logicalHeight)
+{
+    if (outputWidth <= 0 || outputHeight <= 0 || logicalWidth <= 0 || logicalHeight <= 0)
+    {
+        return {};
+    }
+    const std::int64_t widthForHeight = std::int64_t(outputHeight) * logicalWidth;
+    const std::int64_t heightForWidth = std::int64_t(outputWidth) * logicalHeight;
+    const bool widthLimited = heightForWidth <= widthForHeight;
+    const int width = widthLimited ? outputWidth : int(widthForHeight / logicalHeight);
+    const int height = widthLimited ? int(heightForWidth / logicalWidth) : outputHeight;
+    return {(outputWidth - width) / 2, (outputHeight - height) / 2, width, height};
+}
+
 void Renderer::EndWorld(float time)
 {
     Flush();
@@ -316,10 +333,9 @@ void Renderer::EndWorld(float time)
     glViewport(0, 0, m_OutputWidth, m_OutputHeight);
     glClearColor(.025f, .035f, .04f, 1);
     glClear(GL_COLOR_BUFFER_BIT);
-    float scale = (std::min)(float(m_OutputWidth) / m_WindowSizeX, float(m_OutputHeight) / m_WindowSizeY);
-    int width = int(m_WindowSizeX * scale), height = int(m_WindowSizeY * scale);
-    glViewport((m_OutputWidth - width) / 2, (m_OutputHeight - height) / 2, width, height);
-    DrawPost(0, m_SceneTexture, m_GlowTexture[0], 3, width, height);
+    const Viewport viewport = FitViewport(m_OutputWidth, m_OutputHeight, m_WindowSizeX, m_WindowSizeY);
+    glViewport(viewport.left, viewport.bottom, viewport.width, viewport.height);
+    DrawPost(0, m_SceneTexture, m_GlowTexture[0], 3, viewport.width, viewport.height);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     m_Material = 0;

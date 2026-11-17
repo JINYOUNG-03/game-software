@@ -3203,23 +3203,6 @@ void KeyUp(unsigned char key)
     keys[key] = false;
 }
 
-void InventoryMouse(int button, int state, double x, double y)
-{
-    if (harbor.Trading().Active() && button == GLFW_MOUSE_BUTTON_LEFT && state == GLFW_PRESS)
-    {
-        tradeClickX = float(x) * ScreenWidth / (std::max)(1, inputWidth);
-        tradeClickY = float(y) * ScreenHeight / (std::max)(1, inputHeight);
-        tradeClickPressed = true;
-        return;
-    }
-    if (statsPanel && button == GLFW_MOUSE_BUTTON_LEFT && state == GLFW_PRESS)
-    {
-        inventoryClickX = float(x) * ScreenWidth / (std::max)(1, inputWidth);
-        inventoryClickY = float(y) * ScreenHeight / (std::max)(1, inputHeight);
-        inventoryClickPressed = true;
-    }
-}
-
 void InventorySpecialKey(int key)
 {
     if (harbor.Trading().Active())
@@ -3349,20 +3332,48 @@ void WindowKey(GLFWwindow*, int key, int, int action, int)
 void WindowMouse(GLFWwindow* window, int button, int action, int)
 {
     Perf::Count(Perf::Counter::WindowMouseEvents);
-    if (loadConfirmation)
+    const bool trading = harbor.Trading().Active();
+    if (loadConfirmation || button != GLFW_MOUSE_BUTTON_LEFT || action != GLFW_PRESS ||
+        (!worldMap && !trading && !statsPanel))
+    {
+        return;
+    }
+
+    const auto viewport = Renderer::FitViewport(outputWidth, outputHeight, ScreenWidth, ScreenHeight);
+    if (inputWidth <= 0 || inputHeight <= 0 || viewport.width <= 0 || viewport.height <= 0)
     {
         return;
     }
     double x = 0, y = 0;
     glfwGetCursorPos(window, &x, &y);
-    if (worldMap && button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+    const int viewportTop = outputHeight - viewport.bottom - viewport.height;
+    const double localX = x * outputWidth / inputWidth - viewport.left;
+    const double localY = y * outputHeight / inputHeight - viewportTop;
+    if (localX < 0 || localY < 0 || localX >= viewport.width || localY >= viewport.height)
     {
-        worldMapClickX = float(x) * ScreenWidth / (std::max)(1, inputWidth);
-        worldMapClickY = float(y) * ScreenHeight / (std::max)(1, inputHeight);
-        worldMapClickPressed = true;
         return;
     }
-    InventoryMouse(button, action, x, y);
+
+    const float logicalX = float(localX * ScreenWidth / viewport.width);
+    const float logicalY = float(localY * ScreenHeight / viewport.height);
+    if (worldMap)
+    {
+        worldMapClickX = logicalX;
+        worldMapClickY = logicalY;
+        worldMapClickPressed = true;
+    }
+    else if (trading)
+    {
+        tradeClickX = logicalX;
+        tradeClickY = logicalY;
+        tradeClickPressed = true;
+    }
+    else
+    {
+        inventoryClickX = logicalX;
+        inventoryClickY = logicalY;
+        inventoryClickPressed = true;
+    }
 }
 
 void WindowScroll(GLFWwindow*, double, double y)

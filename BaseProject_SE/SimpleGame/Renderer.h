@@ -45,6 +45,16 @@ class Renderer
         std::uint64_t revision, float cx, float cy, bool wholeWorld, const std::function<void()>& draw);
     void FinishOverlay();
 
+    struct Viewport
+    {
+        int left;
+        int bottom;
+        int width;
+        int height;
+    };
+
+    static Viewport FitViewport(int outputWidth, int outputHeight, int logicalWidth, int logicalHeight);
+
     void SetOutputSize(int w, int h)
     {
         m_OutputWidth = w;

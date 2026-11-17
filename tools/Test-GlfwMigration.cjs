@@ -119,9 +119,19 @@ for (const contract of ["GLFW_CONTEXT_VERSION_MAJOR, 3", "GLFW_CONTEXT_VERSION_M
                         'glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)',
                         "glfwSwapInterval(vsync[0] == '1' ? 1 : 0)"])
     assert(game.includes(contract), contract);
-assert(game.includes("float(x) * ScreenWidth / (std::max)(1, inputWidth)"));
-assert(game.includes("float(y) * ScreenHeight / (std::max)(1, inputHeight)"));
-assert(!game.includes("ScreenWidth / (std::max)(1, outputWidth)"));
+const mouse = game.match(/void WindowMouse\([\s\S]*?(?=void WindowScroll\()/)[0];
+const render = cpp("Renderer.cpp");
+assert(render.includes("FitViewport(m_OutputWidth, m_OutputHeight, m_WindowSizeX, m_WindowSizeY)"));
+assert(render.includes("glViewport(viewport.left, viewport.bottom, viewport.width, viewport.height)"));
+assert(mouse.includes("Renderer::FitViewport(outputWidth, outputHeight, ScreenWidth, ScreenHeight)"));
+assert(mouse.includes("x * outputWidth / inputWidth - viewport.left"));
+assert(mouse.includes("y * outputHeight / inputHeight - viewportTop"));
+assert(mouse.includes("viewportTop = outputHeight - viewport.bottom - viewport.height"));
+assert(mouse.includes("localX >= viewport.width || localY >= viewport.height"));
+for (const target of ["worldMap", "trade", "inventory"])
+{
+    assert(mouse.includes(target + "ClickX = logicalX") && mouse.includes(target + "ClickY = logicalY"));
+}
 const close = game.slice(game.indexOf("void Close()"), game.indexOf("int main()"));
 assert(close.indexOf("delete renderer") < close.indexOf("glfwDestroyWindow"));
 assert(close.indexOf("Profiler::Get().Shutdown()") < close.indexOf("glfwDestroyWindow"));
@@ -142,19 +152,44 @@ for (let code = key("A"); code <= key("Z"); code++)
     assert.equal(97 + code - key("A"), code + 32);
 for (const special of ["SPACE", "TAB", "ESCAPE", "ENTER", "KP_ENTER"])
     assert(input.includes("GLFW_KEY_" + special));
-// Physical framebuffer pixels never enter cursor scaling, including non-uniform DPI scale.
+// Convert between GLFW cursor coordinates and the centered framebuffer viewport.
 let dpiProbes = 0;
-for (const window of [[ 1280, 800 ], [ 900, 600 ], [ 1600, 900 ]])
+let marginProbes = 0;
+for (const window of [[1280, 800], [901, 600], [1600, 900], [900, 1000], [1601, 903], [641, 401]])
     for (const scale of [[ 1, 1 ], [ 1.25, 1.25 ], [ 2, 2 ], [ 1.5, 2 ]])
+    {
+        const [fbWidth, fbHeight] = window.map((size, i) => Math.round(size * scale[i]));
+        const widthLimited = fbWidth * 800 <= fbHeight * 1280;
+        const width = widthLimited ? fbWidth : Math.floor(fbHeight * 1280 / 800);
+        const height = widthLimited ? Math.floor(fbWidth * 800 / 1280) : fbHeight;
+        const left = Math.floor((fbWidth - width) / 2), bottom = Math.floor((fbHeight - height) / 2);
+        const top = fbHeight - height - bottom;
+        const toCursor = (x, y) => [x * window[0] / fbWidth, y * window[1] / fbHeight];
+        const toLogical = ([x, y]) =>
+        {
+            const lx = x * fbWidth / window[0] - left, ly = y * fbHeight / window[1] - top;
+            return lx >= 0 && ly >= 0 && lx < width && ly < height
+                       ? [lx * 1280 / width, ly * 800 / height]
+                       : null;
+        };
         for (const logical of [[ 200, 245 ], [ 490, 215 ], [ 800, 600 ]])
         {
-            const cursor = [ logical[0] * window[0] / 1280, logical[1] * window[1] / 800 ];
-            assert(Math.abs(cursor[0] * 1280 / window[0] - logical[0]) < .00001);
-            assert(Math.abs(cursor[1] * 800 / window[1] - logical[1]) < .00001);
-            const framebuffer = [ window[0] * scale[0], window[1] * scale[1] ];
-            assert(framebuffer.every(value => value > 0));
+            const cursor = toCursor(left + logical[0] * width / 1280, top + logical[1] * height / 800);
+            const result = toLogical(cursor);
+            assert(Math.abs(result[0] - logical[0]) < .00001);
+            assert(Math.abs(result[1] - logical[1]) < .00001);
             dpiProbes++;
         }
+        for (const point of [[left - .5, fbHeight / 2], [left + width + .5, fbHeight / 2],
+                             [fbWidth / 2, top - .5], [fbWidth / 2, top + height + .5]])
+        {
+            if (point[0] >= 0 && point[0] < fbWidth && point[1] >= 0 && point[1] < fbHeight)
+            {
+                assert.equal(toLogical(toCursor(...point)), null);
+                marginProbes++;
+            }
+        }
+    }
 assert(!/freeglut\.lib|glew32\.lib|Dependencies\\x64/.test(project));
 assert(project.includes("GLEW_STATIC;GLEW_NO_GLU;GLFW_INCLUDE_NONE"));
 assert(project.includes("MultiThreadedDebug") && project.includes("MultiThreaded"));
@@ -192,6 +227,7 @@ console.log(JSON.stringify({
     bundled_source_files : bundles.reduce((n, b) => n + b.files, 0),
     font_unicode_characters : characters.size,
     dpi_probes : dpiProbes,
+    rejected_margin_probes : marginProbes,
     static_library_sources : 22,
     game_build_performed : false,
     game_execution_performed : false,

@@ -108,8 +108,8 @@ if (-not $mapUpdate.Contains('ClearGameplayInput()') -or -not $mapUpdate.Contain
 { throw 'The world map must be modal, dismissible by M/ESC and managed by SceneGraph.' }
 $mapClick = [regex]::Match($renderSource, '(?s)void UpdateWorldMapInput\(.*?(?=void UpdateCheckpoint\()').Value
 if (-not $mapUpdate.Contains('UpdateWorldMapInput()') -or
-    -not $renderSource.Contains('worldMapClickX = float(x) * ScreenWidth') -or
-    -not $renderSource.Contains('worldMapClickY = float(y) * ScreenHeight') -or
+    -not $renderSource.Contains('worldMapClickX = logicalX') -or
+    -not $renderSource.Contains('worldMapClickY = logicalY') -or
     -not $mapClick.Contains('worldMapClickX - origin.x') -or
     -not $mapClick.Contains('worldMapClickY - origin.y') -or
     -not $mapClick.Contains('VillageLabel(village)') -or -not $routeMap.Contains('VillageLabel(village)') -or
