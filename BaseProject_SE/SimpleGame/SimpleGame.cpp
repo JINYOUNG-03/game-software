@@ -3247,14 +3247,6 @@ void InventorySpecialKey(int key)
     }
 }
 
-void Entry(GLFWwindow*, int entered)
-{
-    if (!entered)
-    {
-        ClearGameplayInput();
-    }
-}
-
 void FocusChanged(GLFWwindow*, int focused)
 {
     Perf::Count(Perf::Counter::WindowFocusEvents);
@@ -3464,7 +3456,6 @@ int main()
         glfwSetKeyCallback(gameWindow, WindowKey);
         glfwSetMouseButtonCallback(gameWindow, WindowMouse);
         glfwSetScrollCallback(gameWindow, WindowScroll);
-        glfwSetCursorEnterCallback(gameWindow, Entry);
         glfwSetWindowFocusCallback(gameWindow, FocusChanged);
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);

@@ -120,6 +120,12 @@ for (const contract of ["GLFW_CONTEXT_VERSION_MAJOR, 3", "GLFW_CONTEXT_VERSION_M
                         "glfwSwapInterval(vsync[0] == '1' ? 1 : 0)"])
     assert(game.includes(contract), contract);
 const mouse = game.match(/void WindowMouse\([\s\S]*?(?=void WindowScroll\()/)[0];
+const focus = game.match(/void FocusChanged\([\s\S]*?(?=void Reshape\()/)[0];
+assert(!game.includes("glfwSetCursorEnterCallback"), "Moving the pointer outside must preserve keyboard input");
+assert(game.includes("glfwSetWindowFocusCallback(gameWindow, FocusChanged)"));
+assert(focus.match(/if \(!focused\)\s*\{\s*ClearGameplayInput\(\);\s*\}/));
+const clearInput = game.match(/void ClearGameplayInput\([\s\S]*?(?=bool WorldPaused\()/)[0];
+assert(clearInput.includes("queuedDodge.reset()") && clearInput.includes("std::fill(std::begin(keys)"));
 const render = cpp("Renderer.cpp");
 assert(render.includes("FitViewport(m_OutputWidth, m_OutputHeight, m_WindowSizeX, m_WindowSizeY)"));
 assert(render.includes("glViewport(viewport.left, viewport.bottom, viewport.width, viewport.height)"));
@@ -228,6 +234,7 @@ console.log(JSON.stringify({
     font_unicode_characters : characters.size,
     dpi_probes : dpiProbes,
     rejected_margin_probes : marginProbes,
+    focus_loss_clears_keyboard_input : true,
     static_library_sources : 22,
     game_build_performed : false,
     game_execution_performed : false,
